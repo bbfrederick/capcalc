@@ -1,0 +1,6 @@
+matplotlib
+nibabel
+numpy
+scipy
+scikit-learn
+statsmodels
