@@ -61,6 +61,7 @@ xsize=thedims[1]
 ysize=thedims[2]
 numslices=thedims[3]
 numvoxels = xsize * ysize * numslices
+print(numregions, numclusters, xsize, ysize, numslices, numvoxels)
 output_data = zeros((numvoxels, numregions), dtype='float')
 templatevoxels = reshape(template_data, (numvoxels)).asint()
 
