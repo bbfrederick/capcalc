@@ -39,28 +39,29 @@ def usage():
     print("usage: capgeneration -i timecoursefile --samplefreq=FREQ --sampletime=TSTEP -o outputfile [-l LABEL] [-s STARTTIME] [-D DURATION] [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C] [--nodetrend] [-m] [-n NUMCLUSTER] [-b BATCHSIZE]")
     print("")
     print("required arguments:")
-    print("    -i, --infile=TIMECOURSEFILE     - text file mulitple timeseries")
-    print("    -o, --outfile=OUTNAME           - the root name of the output files")
+    print("    -i, --infile=TIMECOURSEFILE  - text file mulitple timeseries")
+    print("    -o, --outfile=OUTNAME        - the root name of the output files")
     print("")
-    print("    --samplefreq=FREQ               - sample frequency of all timecourses is FREQ ")
+    print("    --samplefreq=FREQ            - sample frequency of all timecourses is FREQ ")
     print("           or")
-    print("    --sampletime=TSTEP              - time step of all timecourses is TSTEP ")
-    print("                                      NB: --samplefreq and --sampletime are two ways to specify")
-    print("                                      the same thing.")
+    print("    --sampletime=TSTEP           - time step of all timecourses is TSTEP ")
+    print("                                   NB: --samplefreq and --sampletime are two ways to specify")
+    print("                                   the same thing.")
     print("")
     print("optional arguments:")
-    print("    --nodetrend   - do not detrend the data before correlation")
-    print("    -s STARTTIME  - time of first datapoint to use in seconds in the first file")
-    print("    -D DURATION   - amount of data to use in seconds")
-    print("    -F            - filter data and regressors from LOWERFREQ to UPPERFREQ.")
-    print("                    LOWERSTOP and UPPERSTOP can be specified, or will be calculated automatically")
-    print("    -V            - filter data and regressors to VLF band")
-    print("    -L            - filter data and regressors to LFO band")
-    print("    -R            - filter data and regressors to respiratory band")
-    print("    -C            - filter data and regressors to cardiac band")
-    print('    -m              - run MiniBatch Kmeans rather than conventional - use with very large datasets')
-    print('    -n NUMCLUSTER   - set the number of clusters to NUMCLUSTER (default is 8)')
-    print('    -b BATCHSIZE    - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 100')
+    print("    --nodetrend                  - do not detrend the data before correlation")
+    print("    -s STARTTIME                 - time of first datapoint to use in seconds in the first file")
+    print("    -D DURATION                  - amount of data to use in seconds")
+    print("    -F                           - filter data and regressors from LOWERFREQ to UPPERFREQ.")
+    print("                                   LOWERSTOP and UPPERSTOP can be specified, or will be calculated automatically")
+    print("    -V                           - filter data and regressors to VLF band")
+    print("    -L                           - filter data and regressors to LFO band")
+    print("    -R                           - filter data and regressors to respiratory band")
+    print("    -C                           - filter data and regressors to cardiac band")
+    print('    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets')
+    print('    -n NUMCLUSTER                - set the number of clusters to NUMCLUSTER (default is 8)')
+    print('    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
+    print('                                   Default segmentsize is the entire length')
     print("")
     return ()
 
@@ -78,7 +79,7 @@ verbose = True
 
 # scan the command line arguments
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "i:o:s:D:F:VLRCmn:b:", ["infile=", "outfile=",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "i:o:s:D:F:S:VLRCmn:b:", ["infile=", "outfile=",
                                                                                     "nodetrend",
                                                                                     "samplefreq=", "sampletime=", "help"])
 except getopt.GetoptError as err:
@@ -88,12 +89,13 @@ except getopt.GetoptError as err:
     sys.exit(2)
 
 if len(args) > 1:
-    print('showstxcorr takes no unflagged arguments')
+    print('capgeneration takes no unflagged arguments')
     usage()
     exit()
 
 # unset all required arguments
 infilename = []
+segsize = -1
 sampletime = None
 Fs = None
 outfilename = None
@@ -113,6 +115,10 @@ for o, a in opts:
         outfilename = a
         if verbose:
             print('will use', outfilename, 'as output file')
+    elif o == '-S':
+        segsize = int(a)
+        if verbose:
+            print('Setting segment size to ', segsize)
     elif o == '--samplefreq':
         Fs = float(a)
         sampletime = 1.0 / Fs
@@ -228,11 +234,20 @@ thedims=trimmeddata.shape
 tclen=thedims[1]
 numcomponents=thedims[0]
 reformdata=reshape(trimmeddata,(numcomponents,tclen))
+if segsize < 0:
+    segsize = tclen
+if tclen % segsize > 0:
+    print('segment size is not an even divisor of the total length - exiting')
+    sys.exit()
+else:
+    numsegs = int(tclen // segsize)
  
-print('preprocessing all timecourses')
 for component in range(0,numcomponents):
-    filtereddata=tide.corrnormalize(theprefilter.apply(Fs, reformdata[component,:]), False, dodetrend)
-    reformdata[component,:]=tide.stdnormalize(tide.detrend(tide.stdnormalize(filtereddata)))
+    print('preprocessing component', component')
+    for segment in range(numsegs):
+        segstart = segment * segsize
+        filtereddata=tide.corrnormalize(theprefilter.apply(Fs, reformdata[component,segstart:segstart + segsize]), False, dodetrend)
+        reformdata[component,segstart:segstart + segsize]=tide.stdnormalize(tide.detrend(tide.stdnormalize(filtereddata)))
 
 print('setting up kmeans')
 if minibatch:
