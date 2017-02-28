@@ -38,8 +38,8 @@ def usage():
     print('    outputfile       - the name of the output text file')
     print('')
     print('optional arguments:')
-    print('    --nonorm         - don\'t normalize timecourses')
-    print('    --pctnorm        - scale each timecourse to it\'s percentage of the mean (default)')
+    print('    --nonorm         - don\'t normalize timecourses (default)')
+    print('    --pctnorm        - scale each timecourse to it\'s percentage of the mean')
     print('    --varnorm        - scale each timecourse to have a variance of 1.0')
     print('    --stdnorm        - scale each timecourse to have a standard deviation of 1.0')
     print('    --ppnorm         - scale each timecourse to have a peak to peak range of 1.0')
@@ -57,7 +57,7 @@ inputfilename = sys.argv[1]
 templatefile = sys.argv[2]
 outputfile = sys.argv[3]
 
-normmethod = 'pctnorm'
+normmethod = 'none'
 
 # now scan for optional arguments
 try:
