@@ -35,7 +35,7 @@ def usage():
     print('required arguments:')
     print('    inputfile        - the name of the file with the kmeans cluster centers')
     print('    templatefile     - the name of the template region file')
-    print('    outputroot       - the root of the output nifti file')
+    print('    outputfile       - the name of the output nifti file')
     print('')
     return()
 
@@ -48,11 +48,11 @@ if len(sys.argv) < 4:
 # handle required args first
 inputfilename=sys.argv[1]
 templatefile=sys.argv[2]
-outputroot=sys.argv[3]
+outputfile=sys.argv[3]
 
 print('loading data')
 theclustercenters = tide.readvecs(inputfilename)
-template_img, template_data, template_hdr, thedims, thesizes = tide.readfromnifti(templatefilename)
+template_img, template_data, template_hdr, thedims, thesizes = tide.readfromnifti(templatefile)
     
 print(theclustercenters.shape)
 numclusters = theclustercenters.shape[0]
@@ -70,4 +70,4 @@ for cluster in range(numclusters):
     
 theheader=template_hdr
 theheader['dim'][4] = numclusters
-tide.savetonifti(output_data.reshape((xsize, ysize, numslices, numclusters)), theheader, thesizes, outputroot)
+tide.savetonifti(output_data.reshape((xsize, ysize, numslices, numclusters)), theheader, thesizes, outputfile)
