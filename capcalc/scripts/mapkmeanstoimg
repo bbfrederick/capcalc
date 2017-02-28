@@ -33,29 +33,12 @@ def usage():
     print('usage: mapkmeanstoimg inputfile outputroot [-m] [-n NUMCLUSTER]')
     print('')
     print('required arguments:')
-    print('    inputfile        - the name of the set of kmeans matrices')
+    print('    inputfile        - the name of the file with the kmeans cluster centers')
     print('    templatefile     - the name of the template region file')
     print('    outputroot       - the root of the output nifti file')
     print('')
-    #print('optional arguments:')
-    #print('     -m              - run MiniBatch Kmeans rather than conventional - use with very large datasets')
-    #print('     -n NUMCLUSTER   - set the number of clusters to NUMCLUSTER (default is 8)')
-    #print('     -b BATCHSIZE    - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 100')
-    #print('')
     return()
 
-def progressbar(thisval, end_val, label='Percent', barsize=60):
-    percent = float(thisval) / end_val
-    hashes = '#' * int(round(percent * barsize))
-    spaces = ' ' * (barsize - len(hashes))
-    sys.stdout.write('\r{0}: [{1}] {2:.3f}%'.format(label, hashes + spaces, 100.0*percent))
-    sys.stdout.flush()
-
-# set default variable values
-minibatch = False
-histlen=101
-n_clusters = 8
-batch_size = 100
 
 # get the command line parameters
 if len(sys.argv) < 4:
@@ -67,52 +50,24 @@ inputfilename=sys.argv[1]
 templatefile=sys.argv[2]
 outputroot=sys.argv[3]
 
-# now scan for optional arguments
-try:
-    opts, args = getopt.getopt(sys.argv[4:], "mn:b:", ["help"])
-except getopt.GetoptError as err:
-    # print help information and exit:
-    print(str(err))  # will print something like "option -x not recognized"
-    usage()
-    sys.exit(2)
-
-for o, a in opts:
-    if o == "-m":
-        minibatch = True
-        print('will perform MiniBatchKMeans')
-    elif o == "-b":
-        batch_size = int(a)
-        print('will use', batch_size, 'as batch_size (if doing MiniBatchKMeans)')
-    elif o == "-n":
-        n_clusters = int(a)
-        print('will use', n_clusters, 'clusters')
-    else:
-        assert False, "unhandled option"
-
 print('loading data')
-input_img, input_data, input_hdr, thedims, thesizes = tide.readfromnifti(inputfilename)
-template_img, template_data, template_hdr, thetemplatedims, thetemplatesizes = tide.readfromnifti(templatefilename)
-output_data = template_data * 0.0
+theclustercenters = tide.readvecs(inputfilename)
+template_img, template_data, template_hdr, thedims, thesizes = tide.readfromnifti(templatefilename)
     
+print(theclustercenters.shape)
+numclusters = theclustercenters.shape[0]
+numregions = theclustercenters.shape[1]
 xsize=thedims[1]
 ysize=thedims[2]
 numslices=thedims[3]
-numtrials=thedims[4]
+numvoxels = xsize * ysize * numslices
+output_data = zeros((numvoxels, numregions), dtype='float')
+templatevoxels = reshape(template_data, (numvoxels)).asint()
+
+for cluster in range(numclusters):
+    for i in range(1, numregions + 1):
+        output_data[where(templatevoxels == i), cluster] = theclustercenters[thecluster, i - 1]
     
-numspatiallocs = int(xsize) * int(ysize) * int(numslices)
-corr_data = input_data.reshape((numspatiallocs,numtrials))
-print('corr_data shape:',corr_data.shape)
-
-print('calculating kmeans')
-if minibatch:
-    kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size).fit(np.nan_to_num(np.transpose(corr_data)))
-else:
-    kmeans = KMeans(n_clusters=n_clusters).fit(np.nan_to_num(np.transpose(corr_data)))
-
-theheader=input_hdr
-theheader['dim'][4] = n_clusters
-theclusters = np.transpose(kmeans.cluster_centers_)
-print('clusters shape:',theclusters.shape)
-tide.savetonifti(theclusters.reshape((xsize, ysize, numslices, n_clusters)), theheader, thesizes, outputroot + '_states')
-
-tide.writenpvecs(kmeans.labels_, outputroot + '_statelabels.txt')
+theheader=template_hdr
+theheader['dim'][4] = numclusters
+tide.savetonifti(output_data.reshape((xsize, ysize, numslices, numclusters)), theheader, thesizes, outputroot)
