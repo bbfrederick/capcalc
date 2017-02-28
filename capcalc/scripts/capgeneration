@@ -60,6 +60,7 @@ def usage():
     print("    -C                           - filter data and regressors to cardiac band")
     print('    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets')
     print('    -n NUMCLUSTER                - set the number of clusters to NUMCLUSTER (default is 8)')
+    print('    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 100')
     print('    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
     print('                                   Default segmentsize is the entire length')
     print("")
@@ -243,7 +244,7 @@ else:
     numsegs = int(tclen // segsize)
  
 for component in range(0,numcomponents):
-    print('preprocessing component', component')
+    print('preprocessing component', component)
     for segment in range(numsegs):
         segstart = segment * segsize
         filtereddata=tide.corrnormalize(theprefilter.apply(Fs, reformdata[component,segstart:segstart + segsize]), False, dodetrend)
