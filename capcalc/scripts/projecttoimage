@@ -30,7 +30,7 @@ from numpy import r_, zeros, ones, shape, where, sort
 from pylab import *
 
 def usage():
-    print('usage: mapkmeanstoimg inputfile outputroot [-m] [-n NUMCLUSTER]')
+    print('usage: projecttoimage inputfile outputroot [-m] [-n NUMCLUSTER]')
     print('')
     print('required arguments:')
     print('    inputfile        - the name of the file with the kmeans cluster centers')

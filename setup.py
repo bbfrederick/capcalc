@@ -28,7 +28,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 script_list = ['capcalc/scripts/kmeans',
                'capcalc/scripts/capgeneration',
-               'capcalc/scripts/mapkmeanstoimg',
+               'capcalc/scripts/projecttoimage',
                'capcalc/scripts/extracttcs',
                'capcalc/scripts/demeantcs']
 
