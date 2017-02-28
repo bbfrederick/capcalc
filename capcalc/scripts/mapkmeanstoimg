@@ -62,13 +62,12 @@ xsize=thedims[1]
 ysize=thedims[2]
 numslices=thedims[3]
 numvoxels = int(xsize) * int(ysize) * int(numslices)
-#print(numregions, numclusters, xsize, ysize, numslices, numvoxels)
 output_data = zeros((numvoxels, numregions), dtype='float')
 templatevoxels = reshape(template_data, (numvoxels)).astype(int)
 
 for thecluster in range(numclusters):
     for i in range(1, numregions + 1):
-        output_data[where(templatevoxels == i), thecluster] = theclustercenters[thecluster, i - 1]
+        output_data[where(templatevoxels == i), thecluster] = theclustercenters[i - 1, thecluster]
     
 theheader=template_hdr
 theheader['dim'][4] = numclusters
