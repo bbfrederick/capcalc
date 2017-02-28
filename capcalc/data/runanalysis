@@ -1,0 +1,21 @@
+#!/bin/csh -f
+
+echo 'extracting timecourses'
+extracttcs Resting_101309/REST1_LR/origional/101309_Hutch17CortStriatAmyg_MNI_REST1_LR.txt \
+    Hutch17CortStriatAmyg_MNI.nii.gz \
+    orig_hcptcs.txt \
+    --stdnorm
+extracttcs Resting_101309/REST1_LR/rapidtide/101309_rapidtide_Hutch17CortStriatAmyg_MNI_REST1_LR.txt \
+    Hutch17CortStriatAmyg_MNI.nii.gz \
+    rapidtide_hcptcs.txt \
+    --stdnorm
+
+
+echo 'calculating kmeans'
+capgeneration -i orig_hcptcs.txt -o orig_hcp --sampletime=0.72 -L
+capgeneration -i rapidtide_hcptcs.txt -o rapidtide_hcp --sampletime=0.72 -L
+
+
+echo 'projecting clusters back onto the brain'
+projecttoimage orig_hcptcs.txt Hutch17CortStriatAmyg_MNI.nii.gz orig_states
+projecttoimage rapidtide_hcptcs.txt Hutch17CortStriatAmyg_MNI.nii.gz rapidtide_states
