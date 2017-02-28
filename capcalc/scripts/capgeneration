@@ -63,12 +63,18 @@ def usage():
     print('    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 100')
     print('    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
     print('                                   Default segmentsize is the entire length')
+    print('    --nonorm                     - don\'t normalize timecourses')
+    print('    --pctnorm                    - scale each timecourse to it\'s percentage of the mean')
+    print('    --varnorm                    - scale each timecourse to have a variance of 1.0')
+    print('    --stdnorm                    - scale each timecourse to have a standard deviation of 1.0 (default)')
+    print('    --ppnorm                     - scale each timecourse to have a peak to peak range of 1.0')
     print("")
     return ()
 
 
 # get the command line parameters
 dodetrend = True
+normmethod = 'stdnorm'
 minibatch = False
 n_clusters = 8
 batch_size = 100
@@ -132,6 +138,16 @@ for o, a in opts:
         linkchar = '='
         if verbose:
             print('Setting sample time step to ', sampletime)
+    elif o == "--nonorm":
+        normmethod = 'none'
+    elif o == "--pctnorm":
+        normmethod = 'pctnorm'
+    elif o == "--stdnorm":
+        normmethod = 'stdnorm'
+    elif o == "--varnorm":
+        normmethod = 'varnorm'
+    elif o == "--ppnorm":
+        normmethod = 'ppnorm'
     elif o == "--nodetrend":
         dodetrend = False
         if verbose:
@@ -202,6 +218,18 @@ if sampletime is None:
     usage()
     sys.exit()
 
+if normmethod == 'none':
+    print('will not normalize timecourses')
+elif normmethod == 'pctnorm':
+    print('will normalize timecourses to percentage of mean')
+elif normmethod == 'stdnorm':
+    print('will normalize timecourses to standard deviation of 1.0')
+elif normmethod == 'varnorm':
+    print('will normalize timecourses to variance of 1.0')
+elif normmethod == 'ppnorm':
+    print('will normalize timecourses to p-p deviation of 1.0')
+
+
 # read in the files and get everything trimmed to the right length
 startpoint = max([int(starttime * Fs), 0])
 if len(infilename) == 1:
@@ -247,8 +275,21 @@ for component in range(0,numcomponents):
     print('preprocessing component', component)
     for segment in range(numsegs):
         segstart = segment * segsize
-        filtereddata=tide.corrnormalize(theprefilter.apply(Fs, reformdata[component,segstart:segstart + segsize]), False, dodetrend)
-        reformdata[component,segstart:segstart + segsize]=tide.stdnormalize(tide.detrend(tide.stdnormalize(filtereddata)))
+        if dodetrend:
+            segdata = tide.detrend(reformdata[component,segstart:segstart + segsize])
+        else:
+            segdata = reformdata[component,segstart:segstart + segsize]
+        if normmethod == 'none':
+            segnorm = segdata - np.mean(segdata)
+        elif normmethod == 'pctnorm':
+            segnorm = tide.pcnormalize(segdata)
+        elif normmethod == 'varnorm':
+            segnorm = tide.varnormalize(segdata)
+        elif normmethod == 'stdnorm':
+            segnorm = tide.stdnormalize(segdata)
+        elif normmethod == 'ppnorm':
+            segnorm = tide.ppnormalize(segdata)
+        reformdata[component,segstart:segstart + segsize] = theprefilter.apply(Fs, segnorm)
 
 print('setting up kmeans')
 if minibatch:
