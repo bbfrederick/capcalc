@@ -57,6 +57,7 @@ template_img, template_data, template_hdr, thedims, thesizes = tide.readfromnift
 print(theclustercenters.shape)
 numregions = theclustercenters.shape[0]
 numclusters = theclustercenters.shape[1]
+print(numregions, 'regions, ', numclusters, 'clusters')
 xsize=thedims[1]
 ysize=thedims[2]
 numslices=thedims[3]
