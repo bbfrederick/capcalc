@@ -31,3 +31,11 @@ Ok, I'm sold.  What's in here?
         cluster analysis on the set of timecourses to find the best representitive
         set of "states" in the file.  Outputs the states found and the dominant
         state in each timepoint of the timecourse.
+
+- **maptoroi** - The inverse of roidecompose.  Give it a set of cluster timecourses
+        and a template file, and it maps the values back onto the rois
+
+- **statematch** - Use this for aligning two state output files.  Takes two state
+        timecourse files, and determines which states in the second correspond to
+        which states in the first.  Generates a new 'remapped' file with the states
+        in the second file expressed as states in the first.

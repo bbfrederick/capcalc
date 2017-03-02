@@ -1,7 +1,7 @@
 Prerequisites
 -------------
 
-The processing programs in rapidtide require the following to be installed first:
+The processing programs in capcalc require the following to be installed first:
 
 * Python 2.x or 3.x
 * numpy
@@ -33,7 +33,7 @@ python setup.py install
 Usage
 ------------
 
-Execute any of the commands to run rapidtide on the sample data:
+Execute any of the commands to run capcalc on the sample data:
 
 ```bash
 # run rapidtide2 to perform dynamic global signal regression (dGSR) on an fMRI file[1]:
