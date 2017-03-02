@@ -8,6 +8,7 @@ The processing programs in rapidtide require the following to be installed first
 * scipy
 * scikit-learn
 * statsmodels
+* rapidtide (get it from github)
 
 Installation
 ------------
