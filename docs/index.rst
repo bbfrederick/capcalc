@@ -1,20 +1,16 @@
-.. rapidtide documentation master file, created by
+.. capcalc documentation master file, created by
    sphinx-quickstart on Thu Jun 16 15:27:19 2016.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-The pretty html version of this file can be found here: http://rapidtide.readthedocs.io/en/latest/
+The pretty html version of this file can be found here: http://capcalc.readthedocs.io/en/latest/
 
-Rapidtide
+Capcalc
 ==========
-Rapidtide is a suite of python programs used to perform time delay analysis on functional imaging data to find time lagged correlations between the voxelwise time series and other time series. 
+capcalc is a suite of python programs used to perform coactivation pattern analysis on time series data.  It uses K-Means clustering to find a set of "activation states" that represent the covarying patterns in the data.
 
 .. toctree::
    :maxdepth: 2
-
-NOTE
-====
-This is an evolving code base.  I'm constantly tinkering with it.  That said, now that I'm releasing this to the world, I'm being somewhat more responsible about locking down stable release points.  In between releases, however, I'll be messing with things. **It's very possible I could break something while doing this, so check back for status updates if you download the code in between releases**.  I've finally become a little more modern and started adding automated testing, so as time goes by hopefully the "in between" releases will be somewhat more reliable.  Check back often for exciting new features and bug fixes!
 
 Introduction
 ============
@@ -37,64 +33,36 @@ For a number of reasons.
       
     #.    It’s giving back to the community.  I benefit from the generosity of a lot of authors who have made the open source tools I use for work and play, so I figure I can pony up too.
       
-A note on coding quality and style:
------------------------------------
-This code has been in active development since June of 2012.  This has two implications.  The first is that it has been tuned and refined quite a bit over the years, with a lot of optimizations and bug fixes - most of the core routines have been tested fairly extensively to get rid of the stupidest bugs.  I find new bugs all the time, but most of the showstoppers seem to be gone.  The second result is that the coding style is all over the place.  When I started writing this, I had just moved over from C, and it was basically a mental port of how I would write it in C, and was extremely unpythonic (I’ve been told by a somewhat reliable source that looking over some of my early python efforts “made his eyes bleed”).  Over the years, as I've gone back and added functions, I periodically get embarassed and upgrade things to a somewhat more modern coding style.  I even put in some classes - that's what the cool kids do, right?  But the pace of that effort has to be balanced with the fact that when I make major architectural changes, I tend to break things.  So be patient with me, and keep in mind that you get what you pay for, and this cost you nothing!  Function before form.
-
 Python version compatibility: 
 -----------------------------
-This code has been extensively tested in python 2.7.  I dragged my feet somewhat making it python 3 compatible, since a number of the libraries I needed took a long time to get ported to python 3, and I honestly saw no advantage to doing it.  I have since decided that I’m going to have to do it eventually, so why not now?  As far as I know, the code all works fine in python 3.5 now - I’ve switched over to that on my development machine, and have not hit any version related issues in a while now, and according to PyCharm’s code inspection, there are no incompatible constructions.  However that’s no guarantee that there isn’t a problem in some option I haven’t bothered to test yet, so be vigilant, and please let me know if there is some issue with python 3 that I haven’t caught (or any bugs, really).
+This code has been tested in python 2.7 and 3.5.  I try very hard not to use any version dependant features when I write programs, so it will probably work on any subversion of python 3.  I think there is some weirdness in the python's numerical routines in versions 2.6 and below, so no guarantees it will work in anythin lower than 2.7.
       
 How do I cite this?
 -------------------
 Good question!  I think the following will work, although I should probably get a DOI for this.
-	Frederick, B, rapidtide [Computer Software] (2016).  Retrieved from https://github.com/bbfrederick/rapidtide.
+	Frederick, B, capcalc [Computer Software] (2017).  Retrieved from https://github.com/bbfrederick/capcalc.
 
 What’s included in this package?
 ================================
-I’ve included a number of tools to get you going – I’ll add in a number of other utilities as I get them closer to the point that I can release them without people laughing at my code.  For the time being, I’m including the following:
+For the time being, I’m including the following:
 
-rapidtide2
+capfromtcs
 ----------
 
 Description:
 ^^^^^^^^^^^^
 
-	The central program in this package is rapidtide2.  This is the program that quantifies the correlation strength and time delay of pervasive signals in a BOLD fMRI dataset.
+	This scripts takes a file containing a number of timecourses, does some preprocessing on them, then calculates the coactivation patterns found in the data.
 
-	At its core, rapidtide2 is simply performing a full crosscorrelation between a "probe" timecourse and every voxel in an fMRI dataset (by “full” I mean over a range of time lags that account for any delays between the signals, rather than only at zero lag, as in a Pearson correlation).  As with many things, however, the devil is in the details, and so rapidtide2 provides a number of features which make it pretty good at this particular task.  A few highlights:
-
-	#. There are lots of ways to do something even as simple as a cross-correlation in a nonoptimal way (not windowing, improper normalization, doing it in the time rather than frequency domain, etc.).  I'm pretty sure what rapidtide2 does by default is, if not the best way, at least a very good and very fast way.
-
-	#. rapidtide2 has been optimized and profiled to speed it up quite a bit; it has an optional dependency on numba – if it’s installed, some of the most heavily used routines will speed up significantly due to judicious use of @jit.
-
-	#. The sample rate of your probe regressor and the fMRI data do not have to match - rapidtide2 resamples the probe regressor to an integral multiple of the fMRI data rate automatically.
-
-	#. The probe and data can be temporally prefiltered to the LFO, respiratory, or cardiac frequency band with a command line switch, or you can specify any low, high, or bandpass range you want.
-
-	#. The data can be spatially smoothed at runtime (so you don't have to keep smoothed versions of big datasets around).  This is quite fast, so no reason not to do it this way.
-
-	#. rapidtide2 can generate a probe regressor from the global mean of the data itself - no externally recorded timecourse is required.  Optionally you can input both a mask of regions that you want to be included in the mean, and the voxels that you want excluded from the mean (there are situations when you might want to do one or the other or both).
-	
-	#. Determining the significance threshold for filtered correlations where the optimal delay has been selected is nontrivial; using the conventional formulae for the significance of a correlation leads to wildly inflated p values.  rapidtide2 estimates the spurious correlation threshold by calculating the distribution of null correlation values obtained with a shuffling  procedure at the beginning of each run (the default is to use 10000 shuffled correlations), and uses this value to mask the correlation maps it calculates.  As of version 0.1.2 it will also handle two-tailed significance, which you need when using bipolar mode.
-
-	#. rapidtide2 can do an iterative refinement of the probe regressor by aligning the voxel timecourses in time and regenerating the test regressor.
-
-	#. rapidtide2 fits the peak of the correlation function, so you can make fine grained distinctions between close lag times. The resolution of the time lag discrimination is set by the length of the timecourse, not the timestep – this is a feature of correlations, not rapidtide2.
-
-	#. Once the time delay in each voxel has been found, rapidtide2 outputs a 4D file of delayed probe regressors for using as voxel specific confound regressors or to estimate the strength of the probe regressor in each voxel.  This regression is performed by default, but these outputs let you do it yourself if you are so inclined.
-
-	#. I've put a lot of effort into making the outputs as informative as possible - lots of useful maps, histograms, timecourses, etc.
-
-	#. There are a lot of tuning parameters you can mess with if you feel the need.  I've tried to make intelligent defaults so things will work well out of the box, but you have the ability to set most of the interesting parameters yourself.
-     
 Inputs:
 ^^^^^^^
-	At a minimum, rapidtide2 needs a Nifti file to work on (space by time), which is generally thought to be a BOLD fMRI data file.  This can be Nifti1 or Nifti2; I can currently read (probably) but not write Cifti files, so if you want to use grayordinate files you need to convert them to nifti in workbench, run rapidtide2, then convert back. As soon as nibabel finishes their Cifti support, I'll add that.
+	There are three required inputs:
 
-	The file needs one time dimension and at least one spatial dimension.  Internally, the array is flattened to a time by voxel array for simplicity.
+	The input file is a text file containing 2 or more timecourses in columns separated by whitespace.  Each row is a time point.
 
-	The file you input here should be the result of any preprocessing you intend to do.  The expectation is that rapidtide will be run as the last preprocessing step before resting state or task based analysis.  So any slice time correction, motion correction, spike removal, etc. should already have been done.  If you use FSL, this means that if you've run preprocessing, you would use the filtered_func_data.nii.gz file as input.  Temporal and spatial filtering are the two (partial) exceptions here.  Generally rapidtide is most useful for looking at low frequency oscillations, so when you run it, you usually use the "-L" option or some other to limit the analysis to the detection and removal of low frequency systemic physiological oscillations.  So rapidtide will generally apply it's own temporal filtering on top of whatever you do in preprocessing.  Also, you have the option of doing spatial smoothing in rapidtide to boost the SNR of the analysis; the hemodynamic signals rapidtide looks for are often very smooth, so you rather than smooth your functional data excessively, you can do it within rapidtide so that only the hemodynamic data is smoothed at that level.
+        The outputname is the prefix of all output files.
+
+        The samplerate (or sampletime) is the frequency (or timestep) of the input data.
      
 Outputs:
 ^^^^^^^^
@@ -105,139 +73,49 @@ Usage:
 
 	::
 
-		usage: rapidtide2 fmrifilename outputname 
-		[-r LAGMIN,LAGMAX] [-s SIGMALIMIT] [-a] [--nowindow] [--phat] [--liang] [--eckart] [-f GAUSSSIGMA] [-O oversampfac] [-t TRvalue] [-d] [-b] [-V] [-L] [-R] [-C] [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-o OFFSETTIME] [-T] [-p] [-P] [-A ORDER] [-B] [-h HISTLEN] [-i INTERPTYPE] [-I] [-Z DELAYTIME] [-N NREPS] --numskip=SKIP[--refineweighting=TYPE] [--refinepasses=PASSES] [--excludemask=MASK] [--includemask=MASK] [--lagminthresh=MIN] [--lagmaxthresh=MAX] [--ampthresh=AMP] [--corrmaskthresh=PCT][--sigmathresh=SIGMA] [--refineoffset] [--pca] [--ica] [--nodispersioncalc] [--refineupperlag] [--refinelowerlag][--tmask=MASKFILE] [--limitoutput] [--timerange=START,END] [--skipsighistfit] [--accheck] [--acfix][--numskip=SKIP] [--slicetimes=FILE] [--glmsourcefile=FILE] [--regressorfreq=FREQ] [--regressortstep=TSTEP][--regressor=FILENAME] [--regressorstart=STARTTIME] [--usesp] [--maxfittype=FITTYPE
+		capfromtcs - calculate and cluster coactivation patterns for a set of timecourses
 
-		Required arguments:
-			fmrifilename             - The BOLD fmri file
-			outputname               - The root name for the output files
-
-		Preprocessing options:
-			-t TRvalue               - Override the TR in the fMRI file with the value 
-									   TRvalue
-			-a                       - Disable antialiasing filter
-			--nodetrend              - Disable linear trend removal
-			-I                       - Invert the sign of the regressor before processing
-			-i                       - Use specified interpolation type (options are 'cubic',
-									   'quadratic', and 'univariate (default)')
-			-o                       - Apply an offset OFFSETTIME to the lag regressors
-			-b                       - Use butterworth filter for band splitting instead of
-									   trapezoidal FFT filter
-			-F                       - Filter data and regressors from LOWERFREQ to UPPERFREQ.
-									   LOWERSTOP and UPPERSTOP can be specified, or will be
-									   calculated automatically
-			-V                       - Filter data and regressors to VLF band
-			-L                       - Filter data and regressors to LFO band
-			-R                       - Filter data and regressors to respiratory band
-			-C                       - Filter data and regressors to cardiac band
-			-N                       - Estimate significance threshold by running NREPS null 
-									   correlations (default is 10000, set to 0 to disable)
-			--skipsighistfit         - Do not fit significance histogram with a Johnson SB function
-			--nowindow               - Disable precorrelation windowing
-			-f GAUSSSIGMA            - Spatially filter fMRI data prior to analysis using 
-									   GAUSSSIGMA in mm
-			-M                       - Generate a global mean regressor and use that as the 
-									   reference regressor
-			-m                       - Mean scale regressors during global mean estimation
-			--slicetimes=FILE        - Apply offset times from FILE to each slice in the dataset
-			--numskip=SKIP           - SKIP tr's were previously deleted during preprocessing
-									   (default is 0)
-
-		Correlation options:
-			-O OVERSAMPFAC           - Oversample the fMRI data by the following integral 
-									   factor (default is 2)
-			--regressor=FILENAME     - Read probe regressor from file FILENAME (if none 
-									   specified, generate and use global regressor)
-			--regressorfreq=FREQ     - Probe regressor in file has sample frequency FREQ 
-									   (default is 1/tr) NB: --regressorfreq and --regressortstep
-									   are two ways to specify the same thing
-			--regressortstep=TSTEP   - Probe regressor in file has sample time step TSTEP 
-									   (default is tr) NB: --regressorfreq and --regressortstep
-									   are two ways to specify the same thing
-			--regressorstart=START   - The time delay in seconds into the regressor file, corresponding
-									   in the first TR of the fmri file (default is 0.0)
-			--phat                   - Use generalized cross-correlation with phase alignment 
-									   transform (PHAT) instead of correlation
-			--liang                  - Use generalized cross-correlation with Liang weighting function
-									   (Liang, et al, doi:10.1109/IMCCC.2015.283)
-			--eckart                 - Use generalized cross-correlation with Eckart weighting function
-			--corrmaskthresh=PCT     - Do correlations in voxels where the mean exceeeds this 
-									   percentage of the robust max (default is 1.0)
-			--accheck                - Check for periodic components that corrupt the autocorrelation
-
-		Correlation fitting options:
-			-Z DELAYTIME             - Don't fit the delay time - set it to DELAYTIME seconds 
-									   for all voxels
-			-r LAGMIN,LAGMAX         - Limit fit to a range of lags from LAGMIN to LAGMAX
-			-s SIGMALIMIT            - Reject lag fits with linewidth wider than SIGMALIMIT
-			-B                       - Bipolar mode - match peak correlation ignoring sign
-			--nofitfilt              - Do not zero out peak fit values if fit fails
-			--maxfittype=FITTYPE     - Method for fitting the correlation peak (default is 'gauss'). 
-									   'quad' uses a quadratic fit.  Faster but not as well tested
-
-		Regressor refinement options:
-			--refineweighting=TYPE   - Apply TYPE weighting to each timecourse prior 
-									   to refinement (valid weightings are 'None', 
-									   'R', 'R2' (default)
-			--refinepasses=PASSES    - Set the number of refinement passes to PASSES 
-									   (default is 1)
-			--includemask=MASK       - Only use voxels in NAME for global regressor 
-									   generation and regressor refinement
-			--excludemask=MASK       - Do not use voxels in NAME for global regressor 
-									   generation and regressor refinement
-			--lagminthresh=MIN       - For refinement, exclude voxels with delays less 
-									   than MIN (default is 1.5s)
-			--lagmaxthresh=MAX       - For refinement, exclude voxels with delays greater 
-									   than MAX (default is 1000s)
-			--ampthresh=AMP          - For refinement, exclude voxels with correlation 
-									   coefficients less than AMP (default is 0.3)
-			--sigmathresh=SIGMA      - For refinement, exclude voxels with widths greater 
-									   than SIGMA (default is 100s)
-			--refineoffset           - Adjust offset time during refinement to bring peak 
-									   delay to zero
-			--refineupperlag         - Only use positive lags for regressor refinement
-			--refinelowerlag         - Only use negative lags for regressor refinement
-			--pca                    - Use pca to derive refined regressor (default is 
-									   averaging)
-			--ica                    - Use ica to derive refined regressor (default is 
-									   averaging)
-			--nodispersioncalc       - Disable dispersion calculation during refinement
-
-		Output options:
-			--limitoutput            - Don't save some of the large and rarely used files
-			-T                       - Save a table of lagtimes used
-			-h HISTLEN               - Change the histogram length to HISTLEN (default is
-									   100)
-			--timerange=START,END    - Limit analysis to data between timepoints START 
-									   and END in the fmri file
-			--glmsourcefile=FILE     - Regress delayed regressors out of FILE instead of the 
-									   initial fmri file used to estimate delays
-			--noglm                  - Turn off GLM filtering to remove delayed regressor 
-									   from each voxel (disables output of fitNorm)
-
-		Miscellaneous options:
-			--usesp                  - Use single precision for internal calculations (may
-									   be useful when RAM is limited)
-			-c                       - Data file is a converted CIFTI
-			-S                       - Simulate a run - just report command line options
-			-d                       - Display plots of interesting timecourses
-			--nonumba                - Disable jit compilation with numba
-			--memprofile             - Enable memory profiling for debugging - warning:
-									   this slows things down a lot.
-
-		Experimental options (not fully tested, may not work):
-			--acfix                  - Remove periodic components that corrupt the autocorrelation
-									   (enables --accheck).  Experimental.
-			--tmask=MASKFILE         - Only correlate during epochs specified in 
-									   MASKFILE (NB: each line of MASKFILE contains the 
-									   time and duration of an epoch to include
-			-p                       - Prewhiten and refit data
-			-P                       - Save prewhitened data (turns prewhitening on)
-			-A, --AR                 - Set AR model order to ORDER (default is 1)
-
+		usage: capfromtcs -i timecoursefile -o outputfile --samplefreq=FREQ --sampletime=TSTEP
+                  		[--nodetrend] [-s STARTTIME] [-D DURATION]
+                  		[-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C]
+                  		[-m] [-n NUMCLUSTER] [-b BATCHSIZE] [-S SEGMENTSIZE] [-I INITIALIZATIONS]
+                  		[--nonorm] [--pctnorm] [--varnorm] [--stdnorm] [--ppnorm]
+		
+		required arguments:
+    		-i, --infile=TIMECOURSEFILE  - text file mulitple timeseries
+    		-o, --outfile=OUTNAME        - the root name of the output files
+		
+    		--samplefreq=FREQ            - sample frequency of all timecourses is FREQ 
+           		or
+    		--sampletime=TSTEP           - time step of all timecourses is TSTEP 
+                                   		NB: --samplefreq and --sampletime are two ways to specify
+                                   		the same thing.
+		
+		optional arguments:
+    		--nodetrend                  - do not detrend the data before correlation
+    		-s STARTTIME                 - time of first datapoint to use in seconds in the first file
+    		-D DURATION                  - amount of data to use in seconds
+    		-F                           - filter data and regressors from LOWERFREQ to UPPERFREQ.
+                                   		LOWERSTOP and UPPERSTOP can be specified, or will be calculated automatically
+    		-V                           - filter data and regressors to VLF band
+    		-L                           - filter data and regressors to LFO band
+    		-R                           - filter data and regressors to respiratory band
+    		-C                           - filter data and regressors to cardiac band
+    		-m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets
+    		-n NUMCLUSTER                - set the number of clusters to NUMCLUSTER (default is 8)
+    		-b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 100
+    		-S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.
+                                   		Default segmentsize is the entire length
+    		-I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)
+    		--nonorm                     - don't normalize timecourses
+    		--pctnorm                    - scale each timecourse to it's percentage of the mean
+    		--varnorm                    - scale each timecourse to have a variance of 1.0
+    		--stdnorm                    - scale each timecourse to have a standard deviation of 1.0 (default)
+    		--ppnorm                     - scale each timecourse to have a peak to peak range of 1.0
 
         
 	These options are somewhat self-explanatory.  I will be expanding this section of the manual going forward, but I want to put something here to get this out here.
+
 
 showxcorr
 ---------
@@ -541,25 +419,6 @@ Description:
 	This is the library of the various helper routines that are used by pretty much every program in here for correlation, resampling, filtering, normalization, significance estimation, file I/O, etc.
 
 
-Inputs:
-^^^^^^^
-
-Outputs:
-^^^^^^^^
-
-Usage:
-^^^^^^
-
-::
-
-
-OrthoImageItem.py
------------------
-
-Description:
-^^^^^^^^^^^^
-	This is a class that implements the orthographic projection module that is used to display all of the maps in tidepool. It uses pyqtgraph to do all the heavy lifting.  None of the built-ins in pyqtgraph did exactly what I wanted in terms of allowing 3D selection, overlays and the like, so I cobbled this together.  It may be generally useful to anybody wanting to display functional data.
-        
 Inputs:
 ^^^^^^^
 
