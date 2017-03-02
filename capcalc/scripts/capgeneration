@@ -77,6 +77,8 @@ dodetrend = True
 normmethod = 'stdnorm'
 minibatch = False
 n_clusters = 8
+max_iter = 250
+n_init = 100
 batch_size = 100
 duration = 1000000.0
 starttime = 0.0
@@ -293,9 +295,9 @@ for component in range(0,numcomponents):
 
 print('setting up kmeans')
 if minibatch:
-    kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size).fit(nan_to_num(transpose(reformdata)))
+    kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter).fit(nan_to_num(transpose(reformdata)))
 else:
-    kmeans = KMeans(n_clusters=n_clusters).fit(nan_to_num(transpose(reformdata)))
+    kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(nan_to_num(transpose(reformdata)))
 theclusters = transpose(kmeans.cluster_centers_)
 thestatelabels = kmeans.labels_
 
