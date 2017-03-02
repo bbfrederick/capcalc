@@ -27,7 +27,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 script_list = ['capcalc/scripts/kmeans',
-               'capcalc/scripts/capgeneration',
+               'capcalc/scripts/capfromtcs',
                'capcalc/scripts/statematch',
                'capcalc/scripts/roidecompose',
                'capcalc/scripts/maptoroi',
