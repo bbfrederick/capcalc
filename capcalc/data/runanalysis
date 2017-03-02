@@ -5,24 +5,24 @@ echo 'extracting timecourses'
 #    Hutch17CortStriatAmyg_MNI.nii.gz \
 #    orig_hcptcs.txt \
 #    --stdnorm
-cp Resting_101309/REST1_LR/origional/101309_Hutch17CortStriatAmyg_MNI_REST1_LR.txt orig_hcptcs.txt
+cp Resting_101309/REST1_LR/origional/101309_Hutch17CortStriatAmyg_MNI_REST1_LR.txt output/orig_hcptcs.txt
 #roidecompose Resting_101309/REST1_LR/rapidtide/101309_rapidtide_Hutch17CortStriatAmyg_MNI_REST1_LR.txt \
 #    Hutch17CortStriatAmyg_MNI.nii.gz \
 #    rapidtide_hcptcs.txt \
 #    --stdnorm
-cp Resting_101309/REST1_LR/rapidtide/101309_rapidtide_Hutch17CortStriatAmyg_MNI_REST1_LR.txt rapidtide_hcptcs.txt
+cp Resting_101309/REST1_LR/rapidtide/101309_rapidtide_Hutch17CortStriatAmyg_MNI_REST1_LR.txt output/rapidtide_hcptcs.txt
 
 
 echo 'calculating kmeans'
-capgeneration -i orig_hcptcs.txt -o orig_hcp --sampletime=0.72
-capgeneration -i rapidtide_hcptcs.txt -o rapidtide_hcp --sampletime=0.72
+capfromtcs -i output/orig_hcptcs.txt -o output/orig_hcp --sampletime=0.72
+capfromtcs -i output/rapidtide_hcptcs.txt -o output/rapidtide_hcp --sampletime=0.72
 
 echo 'remapping onto rosi states'
-statematch rosi_orig.txt orig_hcp_statelabels.txt orig
-statematch rosi_rapidtide.txt rapidtide_hcp_statelabels.txt rapidtide
+statematch rosi_orig.txt output/orig_hcp_statelabels.txt output/orig
+statematch rosi_rapidtide.txt output/rapidtide_hcp_statelabels.txt output/rapidtide
 
 echo 'projecting clusters back onto the brain'
-roirecompose orig_hcp_clustercenters.txt Hutch17CortStriatAmyg_MNI.nii.gz orig_states
-roirecompose rapidtide_hcp_clustercenters.txt Hutch17CortStriatAmyg_MNI.nii.gz rapidtide_states
+roirecompose output/orig_hcp_clustercenters.txt Hutch17CortStriatAmyg_MNI.nii.gz output/orig_states
+roirecompose output/rapidtide_hcp_clustercenters.txt Hutch17CortStriatAmyg_MNI.nii.gz output/rapidtide_states
 
-fslview orig_states -l Hot -b 0.1,2 rapidtide_states -l Hot -b 0.1,2
+fslview output/orig_states -l Hot -b 0.1,2 output/rapidtide_states -l Hot -b 0.1,2
