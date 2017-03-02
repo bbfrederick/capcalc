@@ -28,8 +28,9 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 script_list = ['capcalc/scripts/kmeans',
                'capcalc/scripts/capgeneration',
-               'capcalc/scripts/projecttoimage',
-               'capcalc/scripts/extracttcs',
+               'capcalc/scripts/statematch',
+               'capcalc/scripts/roidecompose',
+               'capcalc/scripts/maptoroi',
                'capcalc/scripts/demeantcs']
 
 def update_gittag_py():
