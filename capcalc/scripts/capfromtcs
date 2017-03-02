@@ -34,9 +34,13 @@ from pylab import plot, legend, show, figure
 
 def usage():
     print("")
-    print("capgeneration - calculate and cluster coactivation patterns for a set of timecourses")
+    print("capfromtcs - calculate and cluster coactivation patterns for a set of timecourses")
     print("")
-    print("usage: capgeneration -i timecoursefile --samplefreq=FREQ --sampletime=TSTEP -o outputfile [-l LABEL] [-s STARTTIME] [-D DURATION] [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C] [--nodetrend] [-m] [-n NUMCLUSTER] [-b BATCHSIZE]")
+    print("usage: capfromtcs -i timecoursefile -o outputfile --samplefreq=FREQ --sampletime=TSTEP")
+    print("                  [--nodetrend] [-s STARTTIME] [-D DURATION]")
+    print("                  [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C]")
+    print("                  [-m] [-n NUMCLUSTER] [-b BATCHSIZE] [-S SEGMENTSIZE] [-I INITIALIZATIONS]")
+    print("                  [--nonorm] [--pctnorm] [--varnorm] [--stdnorm] [--ppnorm]")
     print("")
     print("required arguments:")
     print("    -i, --infile=TIMECOURSEFILE  - text file mulitple timeseries")
@@ -63,6 +67,7 @@ def usage():
     print('    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 100')
     print('    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
     print('                                   Default segmentsize is the entire length')
+    print('    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)')
     print('    --nonorm                     - don\'t normalize timecourses')
     print('    --pctnorm                    - scale each timecourse to it\'s percentage of the mean')
     print('    --varnorm                    - scale each timecourse to have a variance of 1.0')
@@ -88,8 +93,13 @@ verbose = True
 
 # scan the command line arguments
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "i:o:s:D:F:S:VLRCmn:b:", ["infile=", "outfile=",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "i:o:s:D:F:S:VLRCmn:b:I:", ["infile=", "outfile=",
                                                                                     "nodetrend",
+                                                                                    "nonorm",
+                                                                                    "pctnorm",
+                                                                                    "varnorm",
+                                                                                    "stdnorm",
+                                                                                    "ppnorm",
                                                                                     "samplefreq=", "sampletime=", "help"])
 except getopt.GetoptError as err:
     # print help information and exit:
@@ -98,7 +108,7 @@ except getopt.GetoptError as err:
     sys.exit(2)
 
 if len(args) > 1:
-    print('capgeneration takes no unflagged arguments')
+    print('capfromtcs takes no unflagged arguments')
     usage()
     exit()
 
@@ -203,6 +213,9 @@ for o, a in opts:
     elif o == "-b":
         batch_size = int(a)
         print('will use', batch_size, 'as batch_size (if doing MiniBatchKMeans)')
+    elif o == "-I":
+        n_init = int(a)
+        print('will do', n_init, 'initializations')
     elif o == "-n":
         n_clusters = int(a)
         print('will use', n_clusters, 'clusters')
