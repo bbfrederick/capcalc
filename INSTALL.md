@@ -7,16 +7,7 @@ The processing programs in rapidtide require the following to be installed first
 * numpy
 * scipy
 * scikit-learn
-* nibabel
-* matplotlib
 * statsmodels
-
-The following optional dependencies will be used if present
-* numba for faster performance
-
-If you want to use tidepool for image display, you will also need to install the following:
-* pyqt4
-* pyqtgraph
 
 Installation
 ------------
@@ -26,8 +17,7 @@ Once you have installed the prerequisites, cd into the package directory, and ty
 python setup.py install
 ```
 to install all of the tools in the package.  You should be able to run them from the command line
-then (after rehashing).  NOTE: I haven't figured out how to install pyqt4 automatically yet, so you
-have install it and pyqtgraph manually.  If you do that, tidepool should work, otherwise it won't.
+then (after rehashing).
 
 Updating
 --------
