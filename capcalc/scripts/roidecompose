@@ -30,7 +30,7 @@ import numpy as np
 from pylab import *
 
 def usage():
-    print('usage: extracttcs fmrifile templatefile outputfile [--stdnorm] [--pctnorm] [--ppnorm] [--varnorm] [--nonorm]')
+    print('usage: roidecompose fmrifile templatefile outputfile [--stdnorm] [--pctnorm] [--ppnorm] [--varnorm] [--nonorm]')
     print('')
     print('required arguments:')
     print('    inputfile        - the name of the file with the kmeans cluster centers')
