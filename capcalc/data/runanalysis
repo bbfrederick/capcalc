@@ -14,10 +14,10 @@ cp Resting_101309/REST1_LR/rapidtide/101309_rapidtide_Hutch17CortStriatAmyg_MNI_
 
 
 echo 'calculating kmeans'
-capfromtcs -i output/orig_hcptcs.txt -o output/orig_hcp --sampletime=0.72
-capfromtcs -i output/rapidtide_hcptcs.txt -o output/rapidtide_hcp --sampletime=0.72
-capfromtcs -i output/orig_hcptcs.txt -o output/orig_hcp_lfo --sampletime=0.72 -L
-capfromtcs -i output/rapidtide_hcptcs.txt -o output/rapidtide_hcp_lfo --sampletime=0.72 -L
+capfromtcs -i output/orig_hcptcs.txt -o output/orig_hcp --sampletime=0.72 --quality
+capfromtcs -i output/rapidtide_hcptcs.txt -o output/rapidtide_hcp --sampletime=0.72 --quality
+capfromtcs -i output/orig_hcptcs.txt -o output/orig_hcp_lfo --sampletime=0.72 -L --quality
+capfromtcs -i output/rapidtide_hcptcs.txt -o output/rapidtide_hcp_lfo --sampletime=0.72 -L --quality
 
 echo 'remapping onto rosi states'
 statematch rosi_orig.txt output/orig_hcp_statelabels.txt output/orig
