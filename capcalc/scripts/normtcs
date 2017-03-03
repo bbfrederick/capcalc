@@ -31,7 +31,7 @@ import rapidtide.tide_funcs as tide
 
 
 def usage():
-    print("demeantcs - remove the mean (and optionally the trend) from all timecourses in a text file")
+    print("normtcs - remove the mean (and optionally the trend) from all timecourses in a text file and normalize")
     print("")
     print(
         "usage: demeantcs infile outfile [-t]")
