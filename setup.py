@@ -31,7 +31,7 @@ script_list = ['capcalc/scripts/kmeans',
                'capcalc/scripts/statematch',
                'capcalc/scripts/roidecompose',
                'capcalc/scripts/maptoroi',
-               'capcalc/scripts/demeantcs']
+               'capcalc/scripts/normtcs']
 
 def update_gittag_py():
     if not path.isdir(".git"):
