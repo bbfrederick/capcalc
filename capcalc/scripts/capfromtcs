@@ -358,8 +358,8 @@ if theprefilter.gettype() != 'none':
         print("filtering to ", theprefilter.gettype(), " band")
 
 thedims=trimmeddata.shape
-tclen=thedims[1]
 numcomponents=thedims[0]
+tclen=thedims[1]
 reformdata=np.reshape(trimmeddata,(numcomponents,tclen))
 if segsize < 0:
     segsize = tclen
@@ -389,6 +389,7 @@ for component in range(0,numcomponents):
         elif normmethod == 'ppnorm':
             segnorm = tide.ppnormalize(segdata)
         reformdata[component,segstart:segstart + segsize] = theprefilter.apply(Fs, segnorm)
+tide.writenpvecs(reformdata, outfilename + '_normalized.txt')
 X = np.nan_to_num(np.transpose(reformdata))
 
 print('setting up kmeans')
