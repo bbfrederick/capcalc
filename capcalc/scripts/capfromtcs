@@ -25,71 +25,83 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import getopt
 import rapidtide.tide_funcs as tide
-from sklearn.cluster import KMeans, MiniBatchKMeans
-from sklearn.metrics import silhouette_samples, silhouette_score
+from sklearn.cluster import KMeans, MiniBatchKMeans, DBSCAN
+from sklearn.decomposition import PCA, IncrementalPCA, FastICA
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn import metrics
+from sklearn.preprocessing import StandardScaler
 from scipy import sin, arange, pi, randn
 import numpy as np
 import nibabel as nib
 
-def silhouette_test(X, kmeans, n_clusters, outfilename):
+def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, outfilename, summaryonly):
+    print('generating cluster labels')
     cluster_labels = kmeans.fit_predict(X)
-    silhouette_avg = silhouette_score(X, kmeans.labels_)
-    sample_silhouette_values = silhouette_samples(X, kmeans.labels_)
+    thesilavgs = np.zeros((numsegs), dtype='float')
+    thesilclusterstats = np.zeros((numsegs, 3, n_clusters), dtype='float')
+    print('calculating silhouette stats')
+    for segment in range(numsegs):
+        seg_X = X[segment * segsize:(segment + 1) * segsize]
+        seg_cluster_labels = cluster_labels[segment * segsize:(segment + 1) * segsize]
+        thesilavgs[segment] = metrics.silhouette_score(seg_X, seg_cluster_labels)
+        print('average silhouette score for segment', segment, '=', thesilavgs[segment])
 
-    # Create a subplot with 1 row and 2 columns
-    fig, (ax1) = plt.subplots(1, 1)
-    fig.set_size_inches(8, 4.5)
+        if not summaryonly:
+            print('doing silhouette samples')
+            sample_silhouette_values = metrics.silhouette_samples(seg_X, seg_cluster_labels)
+            # Create a subplot with 1 row and 2 columns
+            fig, (ax1) = plt.subplots(1, 1)
+            fig.set_size_inches(8, 4.5)
+    
+            # The 1st subplot is the silhouette plot
+            # The silhouette coefficient can range from -1, 1 but in this example all
+            # lie within [-0.3, 1]
+            ax1.set_xlim([-0.3, 1])
+            # The (n_clusters+1)*10 is for inserting blank space between silhouette
+            # plots of individual clusters, to demarcate them clearly.
+            ax1.set_ylim([0, len(seg_X) + (n_clusters + 1) * 10])
+    
+            y_lower = 10
+            for i in range(n_clusters):
+                # Aggregate the silhouette scores for samples belonging to
+                # cluster i, and sort them
+                ith_cluster_silhouette_values = \
+                    sample_silhouette_values[seg_cluster_labels == i]
+        
+                ith_cluster_silhouette_values.sort()
+                thesilclusterstats[segment, 0, i] = np.mean(ith_cluster_silhouette_values)
+                thesilclusterstats[segment, 1, i] = ith_cluster_silhouette_values[0]
+                thesilclusterstats[segment, 2, i] = ith_cluster_silhouette_values[-1]
+    
+                size_cluster_i = ith_cluster_silhouette_values.shape[0]
+                y_upper = y_lower + size_cluster_i
+    
+                color = cm.spectral(float(i) / n_clusters)
+                ax1.fill_betweenx(np.arange(y_lower, y_upper),
+                                  0, ith_cluster_silhouette_values,
+                                  facecolor=color, edgecolor=color, alpha=0.7)
+    
+                # Label the silhouette plots with their cluster numbers at the middle
+                ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+    
+                # Compute the new y_lower for next plot
+                y_lower = y_upper + 10  # 10 for the 0 samples
+    
+            ax1.set_title("The silhouette plot for the various clusters.")
+            ax1.set_xlabel("The silhouette coefficient values")
+            ax1.set_ylabel("Cluster label")
+    
+            # The vertical line for average silhouette score of all the values
+            ax1.axvline(x=thesilavgs[segment], color="red", linestyle="--")
+        
+            ax1.set_yticks([])  # Clear the yaxis labels / ticks
+            ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+            plt.suptitle(("Silhouette analysis for KMeans clustering on sample data "
+                          "with n_clusters = %d" % n_clusters),
+                         fontsize=14, fontweight='bold')
 
-    # The 1st subplot is the silhouette plot
-    # The silhouette coefficient can range from -1, 1 but in this example all
-    # lie within [-0.3, 1]
-    ax1.set_xlim([-0.3, 1])
-    # The (n_clusters+1)*10 is for inserting blank space between silhouette
-    # plots of individual clusters, to demarcate them clearly.
-    ax1.set_ylim([0, len(X) + (n_clusters + 1) * 10])
-
-    thesilstats = np.zeros((n_clusters, 3), dtype='float')
-    y_lower = 10
-    for i in range(n_clusters):
-        # Aggregate the silhouette scores for samples belonging to
-        # cluster i, and sort them
-        ith_cluster_silhouette_values = \
-            sample_silhouette_values[cluster_labels == i]
-
-        ith_cluster_silhouette_values.sort()
-        thesilstats[i, 0] = np.mean(ith_cluster_silhouette_values)
-        thesilstats[i, 1] = ith_cluster_silhouette_values[0]
-        thesilstats[i, 2] = ith_cluster_silhouette_values[-1]
-
-        size_cluster_i = ith_cluster_silhouette_values.shape[0]
-        y_upper = y_lower + size_cluster_i
-
-        color = cm.spectral(float(i) / n_clusters)
-        ax1.fill_betweenx(np.arange(y_lower, y_upper),
-                          0, ith_cluster_silhouette_values,
-                          facecolor=color, edgecolor=color, alpha=0.7)
-
-        # Label the silhouette plots with their cluster numbers at the middle
-        ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-
-        # Compute the new y_lower for next plot
-        y_lower = y_upper + 10  # 10 for the 0 samples
-
-    ax1.set_title("The silhouette plot for the various clusters.")
-    ax1.set_xlabel("The silhouette coefficient values")
-    ax1.set_ylabel("Cluster label")
-
-    # The vertical line for average silhouette score of all the values
-    ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
-
-    ax1.set_yticks([])  # Clear the yaxis labels / ticks
-    ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
-    plt.suptitle(("Silhouette analysis for KMeans clustering on sample data "
-                  "with n_clusters = %d" % n_clusters),
-                 fontsize=14, fontweight='bold')
-
-    plt.show()
-    tide.writenpvecs(thesilstats, outfilename + "_silhouettestats.txt")
+            plt.show()
+    return thesilavgs, thesilclusterstats
 
 
 def usage():
@@ -135,12 +147,16 @@ def usage():
     print('    --ppnorm                     - scale each timecourse to have a peak to peak range of 1.0')
     print('    --quality                    - perform a silhouette test to evaluate fit quality')
     print('    -v                           - turn on verbose mode')
+    print('    --dbscan                     - perform dbscan clustering')
+    print('    --pca                        - perform PCA analysis')
+    print('    --ica                        - perform ICA analysis')
+    print('    --GBR                        - apply gradient boosting regressor testing on clusters')
     print("")
     return ()
 
 
 # get the command line parameters
-doquality = False
+summaryonly = True
 dodetrend = True
 normmethod = 'stdnorm'
 minibatch = False
@@ -153,11 +169,17 @@ starttime = 0.0
 usebutterworthfilter = False
 filtorder = 3
 verbose = False
+analysistype = 'kmeans'
+doGBR = False
 
 # scan the command line arguments
 try:
     opts, args = getopt.gnu_getopt(sys.argv[1:], "i:o:s:D:F:S:VLRCmn:b:I:v", ["infile=", "outfile=",
                                                                                     "nodetrend",
+                                                                                    "dbscan",
+                                                                                    "GBR",
+                                                                                    "pca",
+                                                                                    "ica",
                                                                                     "nonorm",
                                                                                     "pctnorm",
                                                                                     "varnorm",
@@ -235,13 +257,29 @@ for o, a in opts:
         if verbose:
             print('will do p-p normalization')
     elif o == "--quality":
-        doquality = True
+        summaryonly = False
         if verbose:
             print('will do silhouette test')
     elif o == "-v":
         verbose = True
         if verbose:
             print('verbose mode enabled')
+    elif o == "--ica":
+        analysistype = 'ica'
+        if verbose:
+            print('switching to ica analysis')
+    elif o == "--GBR":
+        doGBR = True
+        if verbose:
+            print('will do GBR on clusters')
+    elif o == "--pca":
+        analysistype = 'pca'
+        if verbose:
+            print('switching to pca analysis')
+    elif o == "--dbscan":
+        analysistype = 'dbscan'
+        if verbose:
+            print('switching to dbscan clustering')
     elif o == "--nodetrend":
         dodetrend = False
         if verbose:
@@ -294,7 +332,7 @@ for o, a in opts:
         print('will perform MiniBatchKMeans')
     elif o == "-b":
         batch_size = int(a)
-        print('will use', batch_size, 'as batch_size (if doing MiniBatchKMeans)')
+        print('will use', batch_size, 'as batch_size')
     elif o == "-I":
         n_init = int(a)
         print('will do', n_init, 'initializations')
@@ -392,25 +430,67 @@ for component in range(0,numcomponents):
 tide.writenpvecs(reformdata, outfilename + '_normalized.txt')
 X = np.nan_to_num(np.transpose(reformdata))
 
-print('setting up kmeans')
+if analysistype == 'kmeans':
+    print('setting up kmeans')
+    if minibatch:
+        kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter).fit(X)
+    else:
+        kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(X)
+    theclusters = np.transpose(kmeans.cluster_centers_)
+    thestatelabels = kmeans.labels_
+    print('kmeans done')
+    tide.writenpvecs(theclusters, outfilename + '_clustercenters.txt')
+    tide.writenpvecs(thestatelabels, outfilename + '_statelabels.txt')
 
-if minibatch:
-    kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter).fit(X)
-else:
-    kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(X)
+    # now do some stats!
+    thesilavgs, thesilclusterstats = silhouette_test(X, kmeans, n_clusters, numsegs, segsize, outfilename, summaryonly)
+    tide.writenpvecs(thesilavgs, outfilename + '_silhouettesegmentstats.txt')
 
-if doquality:
-    silhouette_test(X, kmeans, n_clusters, outfilename)
+    for segment in range(numsegs):
+        print('Segment %d average silhouette Coefficient: %0.3f'
+              % (segment, thesilavgs[segment]))
+        for state in range(n_clusters):
+            tc = np.where(thestatelabels == state, 1, 0) 
+            tide.writenpvecs(tc, outfilename + '_seg_' + str(segment).zfill(4) + '_instate_' + str(state).zfill(2) + '.txt')
+        tide.writenpvecs(thesilclusterstats[segment, :, :], outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
 
-theclusters = np.transpose(kmeans.cluster_centers_)
-thestatelabels = kmeans.labels_
+    if doGBR:
+        clf = GradientBoostingRegressor().fit(X, thestatelabels)
+        print('GBR fitting score is:', clf.score(X, thestatelabels))
+        tide.writenpvecs(np.reshape(clf.feature_importances_, (numcomponents, 1)), outfilename + '_featureimportances.txt')
 
-# now do some stats!
-for segment in range(numsegs):
-    print('calculating stats for segment', segment)
-    for state in range(n_clusters):
-        tc = np.where(thestatelabels == state, 1, 0) 
-        tide.writenpvecs(tc, outfilename + '_instate_' + str(state).zfill(2) + '.txt')
+elif analysistype == 'ica':
+    print('running FastICA')
+    ica = FastICA(n_components=n_clusters, algorithm='deflation').fit(X)
+    tide.writenpvecs(ica.components_, outfilename + "_icacomponents.txt")
 
-tide.writenpvecs(theclusters, outfilename + "_clustercenters.txt")
-tide.writenpvecs(thestatelabels, outfilename + '_statelabels.txt')
+elif analysistype == 'pca':
+    print('running PCA')
+    if minibatch:
+        pca = IncrementalPCA(batch_size=batch_size, n_components=n_clusters).fit(X)
+    else:
+        pca = PCA(n_components=n_clusters).fit(X)
+    for i in range(n_clusters):
+        print('component', i, 'explained variance:', pca.explained_variance_[i], 'explained variance %:', 100.0 * pca.explained_variance_ratio_[i])
+    tide.writenpvecs(pca.components_, outfilename + "_pcacomponents.txt")
+
+else:  # DBSCAN
+    print('setting up DBSCAN')
+    db = DBSCAN(eps=100.0, min_samples=5).fit(X)
+    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+    core_samples_mask[db.core_sample_indices_] = True
+    labels = db.labels_
+    
+    # Number of clusters in labels, ignoring noise if present.
+    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+    
+    print('Estimated number of clusters: %d' % n_clusters_)
+    #print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels))
+    #print("Completeness: %0.3f" % metrics.completeness_score(labels_true, labels))
+    #print("V-measure: %0.3f" % metrics.v_measure_score(labels_true, labels))
+    #print("Adjusted Rand Index: %0.3f"
+          #% metrics.adjusted_rand_score(labels_true, labels))
+    #print("Adjusted Mutual Information: %0.3f"
+          #% metrics.adjusted_mutual_info_score(labels_true, labels))
+    print("Silhouette Coefficient: %0.3f"
+          % metrics.silhouette_score(X, labels))
