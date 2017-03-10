@@ -34,10 +34,11 @@ from scipy import sin, arange, pi, randn
 import numpy as np
 import nibabel as nib
 
-def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, outfilename, summaryonly):
+
+def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly):
     print('generating cluster labels')
     cluster_labels = kmeans.fit_predict(X)
-    thesilavgs = np.zeros((numsegs), dtype='float')
+    thesilavgs = np.zeros(numsegs, dtype='float')
     thesilclusterstats = np.zeros((numsegs, 3, n_clusters), dtype='float')
     print('calculating silhouette stats')
     for segment in range(numsegs):
@@ -52,7 +53,7 @@ def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, outfilename, summar
             # Create a subplot with 1 row and 2 columns
             fig, (ax1) = plt.subplots(1, 1)
             fig.set_size_inches(8, 4.5)
-    
+
             # The 1st subplot is the silhouette plot
             # The silhouette coefficient can range from -1, 1 but in this example all
             # lie within [-0.3, 1]
@@ -60,40 +61,40 @@ def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, outfilename, summar
             # The (n_clusters+1)*10 is for inserting blank space between silhouette
             # plots of individual clusters, to demarcate them clearly.
             ax1.set_ylim([0, len(seg_X) + (n_clusters + 1) * 10])
-    
+
             y_lower = 10
             for i in range(n_clusters):
                 # Aggregate the silhouette scores for samples belonging to
                 # cluster i, and sort them
                 ith_cluster_silhouette_values = \
                     sample_silhouette_values[seg_cluster_labels == i]
-        
+
                 ith_cluster_silhouette_values.sort()
                 thesilclusterstats[segment, 0, i] = np.mean(ith_cluster_silhouette_values)
                 thesilclusterstats[segment, 1, i] = ith_cluster_silhouette_values[0]
                 thesilclusterstats[segment, 2, i] = ith_cluster_silhouette_values[-1]
-    
+
                 size_cluster_i = ith_cluster_silhouette_values.shape[0]
                 y_upper = y_lower + size_cluster_i
-    
+
                 color = cm.spectral(float(i) / n_clusters)
                 ax1.fill_betweenx(np.arange(y_lower, y_upper),
                                   0, ith_cluster_silhouette_values,
                                   facecolor=color, edgecolor=color, alpha=0.7)
-    
+
                 # Label the silhouette plots with their cluster numbers at the middle
                 ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-    
+
                 # Compute the new y_lower for next plot
                 y_lower = y_upper + 10  # 10 for the 0 samples
-    
+
             ax1.set_title("The silhouette plot for the various clusters.")
             ax1.set_xlabel("The silhouette coefficient values")
             ax1.set_ylabel("Cluster label")
-    
+
             # The vertical line for average silhouette score of all the values
             ax1.axvline(x=thesilavgs[segment], color="red", linestyle="--")
-        
+
             ax1.set_yticks([])  # Clear the yaxis labels / ticks
             ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
             plt.suptitle(("Silhouette analysis for KMeans clustering on sample data "
@@ -129,15 +130,19 @@ def usage():
     print("    -s STARTTIME                 - time of first datapoint to use in seconds in the first file")
     print("    -D DURATION                  - amount of data to use in seconds")
     print("    -F                           - filter data and regressors from LOWERFREQ to UPPERFREQ.")
-    print("                                   LOWERSTOP and UPPERSTOP can be specified, or will be calculated automatically")
+    print(
+        "                                   LOWERSTOP and UPPERSTOP can be specified, or will be calculated automatically")
     print("    -V                           - filter data and regressors to VLF band")
     print("    -L                           - filter data and regressors to LFO band")
     print("    -R                           - filter data and regressors to respiratory band")
     print("    -C                           - filter data and regressors to cardiac band")
-    print('    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets')
+    print(
+        '    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets')
     print('    -n NUMCLUSTER                - set the number of clusters to NUMCLUSTER (default is 8)')
-    print('    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 100')
-    print('    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
+    print(
+        '    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 1000')
+    print(
+        '    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
     print('                                   Default segmentsize is the entire length')
     print('    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)')
     print('    --nonorm                     - don\'t normalize timecourses')
@@ -163,7 +168,7 @@ minibatch = False
 n_clusters = 8
 max_iter = 250
 n_init = 100
-batch_size = 100
+batch_size = 1000
 duration = 1000000.0
 starttime = 0.0
 usebutterworthfilter = False
@@ -175,18 +180,18 @@ doGBR = False
 # scan the command line arguments
 try:
     opts, args = getopt.gnu_getopt(sys.argv[1:], "i:o:s:D:F:S:VLRCmn:b:I:v", ["infile=", "outfile=",
-                                                                                    "nodetrend",
-                                                                                    "dbscan",
-                                                                                    "GBR",
-                                                                                    "pca",
-                                                                                    "ica",
-                                                                                    "nonorm",
-                                                                                    "pctnorm",
-                                                                                    "varnorm",
-                                                                                    "stdnorm",
-                                                                                    "ppnorm",
-                                                                                    "quality",
-                                                                                    "samplefreq=", "sampletime=", "help"])
+                                                                              "nodetrend",
+                                                                              "dbscan",
+                                                                              "GBR",
+                                                                              "pca",
+                                                                              "ica",
+                                                                              "nonorm",
+                                                                              "pctnorm",
+                                                                              "varnorm",
+                                                                              "stdnorm",
+                                                                              "ppnorm",
+                                                                              "quality",
+                                                                              "samplefreq=", "sampletime=", "help"])
 except getopt.GetoptError as err:
     # print help information and exit:
     print(str(err))  # will print something like "option -x not recognized"
@@ -364,7 +369,6 @@ elif normmethod == 'varnorm':
 elif normmethod == 'ppnorm':
     print('will normalize timecourses to p-p deviation of 1.0')
 
-
 # read in the files and get everything trimmed to the right length
 startpoint = max([int(starttime * Fs), 0])
 if len(infilename) == 1:
@@ -389,33 +393,34 @@ else:
     print('showstxcorr requires 1 multicolumn timecourse file or two single column timecourse files as input')
     usage()
     sys.exit()
-    
+
 # band limit the regressors if that is needed
 if theprefilter.gettype() != 'none':
     if verbose:
         print("filtering to ", theprefilter.gettype(), " band")
 
-thedims=trimmeddata.shape
-numcomponents=thedims[0]
-tclen=thedims[1]
-reformdata=np.reshape(trimmeddata,(numcomponents,tclen))
+thedims = trimmeddata.shape
+n_features = thedims[0]
+n_samples = thedims[1]
+reformdata = np.reshape(trimmeddata, (n_features, n_samples))
 if segsize < 0:
-    segsize = tclen
-if tclen % segsize > 0:
+    segsize = n_samples
+if n_samples % segsize > 0:
     print('segment size is not an even divisor of the total length - exiting')
     sys.exit()
 else:
-    numsegs = int(tclen // segsize)
- 
-for component in range(0,numcomponents):
+    numsegs = int(n_samples // segsize)
+
+for feature in range(n_features):
     if verbose:
-        print('preprocessing component', component)
+        print('preprocessing feature', feature)
     for segment in range(numsegs):
         segstart = segment * segsize
         if dodetrend:
-            segdata = tide.detrend(reformdata[component,segstart:segstart + segsize])
+            segdata = tide.detrend(reformdata[feature, segstart:segstart + segsize])
         else:
-            segdata = reformdata[component,segstart:segstart + segsize]
+            segdata = reformdata[feature, segstart:segstart + segsize]
+
         if normmethod == 'none':
             segnorm = segdata - np.mean(segdata)
         elif normmethod == 'pctnorm':
@@ -426,7 +431,10 @@ for component in range(0,numcomponents):
             segnorm = tide.stdnormalize(segdata)
         elif normmethod == 'ppnorm':
             segnorm = tide.ppnormalize(segdata)
-        reformdata[component,segstart:segstart + segsize] = theprefilter.apply(Fs, segnorm)
+        else:
+            segnorm = segdata
+
+        reformdata[feature, segstart:segstart + segsize] = theprefilter.apply(Fs, segnorm)
 tide.writenpvecs(reformdata, outfilename + '_normalized.txt')
 X = np.nan_to_num(np.transpose(reformdata))
 
@@ -443,21 +451,23 @@ if analysistype == 'kmeans':
     tide.writenpvecs(thestatelabels, outfilename + '_statelabels.txt')
 
     # now do some stats!
-    thesilavgs, thesilclusterstats = silhouette_test(X, kmeans, n_clusters, numsegs, segsize, outfilename, summaryonly)
+    thesilavgs, thesilclusterstats = silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly)
     tide.writenpvecs(thesilavgs, outfilename + '_silhouettesegmentstats.txt')
 
     for segment in range(numsegs):
         print('Segment %d average silhouette Coefficient: %0.3f'
               % (segment, thesilavgs[segment]))
         for state in range(n_clusters):
-            tc = np.where(thestatelabels == state, 1, 0) 
-            tide.writenpvecs(tc, outfilename + '_seg_' + str(segment).zfill(4) + '_instate_' + str(state).zfill(2) + '.txt')
-        tide.writenpvecs(thesilclusterstats[segment, :, :], outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
+            tc = np.where(thestatelabels == state, 1, 0)
+            tide.writenpvecs(tc,
+                             outfilename + '_seg_' + str(segment).zfill(4) + '_instate_' + str(state).zfill(2) + '.txt')
+        tide.writenpvecs(thesilclusterstats[segment, :, :],
+                         outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
 
     if doGBR:
         clf = GradientBoostingRegressor().fit(X, thestatelabels)
         print('GBR fitting score is:', clf.score(X, thestatelabels))
-        tide.writenpvecs(np.reshape(clf.feature_importances_, (numcomponents, 1)), outfilename + '_featureimportances.txt')
+        tide.writenpvecs(np.reshape(clf.feature_importances_, (n_features, 1)), outfilename + '_featureimportances.txt')
 
 elif analysistype == 'ica':
     print('running FastICA')
@@ -471,7 +481,8 @@ elif analysistype == 'pca':
     else:
         pca = PCA(n_components=n_clusters).fit(X)
     for i in range(n_clusters):
-        print('component', i, 'explained variance:', pca.explained_variance_[i], 'explained variance %:', 100.0 * pca.explained_variance_ratio_[i])
+        print('component', i, 'explained variance:', pca.explained_variance_[i], 'explained variance %:',
+              100.0 * pca.explained_variance_ratio_[i])
     tide.writenpvecs(pca.components_, outfilename + "_pcacomponents.txt")
 
 else:  # DBSCAN
@@ -480,17 +491,17 @@ else:  # DBSCAN
     core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
     core_samples_mask[db.core_sample_indices_] = True
     labels = db.labels_
-    
+
     # Number of clusters in labels, ignoring noise if present.
     n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-    
+
     print('Estimated number of clusters: %d' % n_clusters_)
-    #print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels))
-    #print("Completeness: %0.3f" % metrics.completeness_score(labels_true, labels))
-    #print("V-measure: %0.3f" % metrics.v_measure_score(labels_true, labels))
-    #print("Adjusted Rand Index: %0.3f"
-          #% metrics.adjusted_rand_score(labels_true, labels))
-    #print("Adjusted Mutual Information: %0.3f"
-          #% metrics.adjusted_mutual_info_score(labels_true, labels))
+    # print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels))
+    # print("Completeness: %0.3f" % metrics.completeness_score(labels_true, labels))
+    # print("V-measure: %0.3f" % metrics.v_measure_score(labels_true, labels))
+    # print("Adjusted Rand Index: %0.3f"
+    # % metrics.adjusted_rand_score(labels_true, labels))
+    # print("Adjusted Mutual Information: %0.3f"
+    # % metrics.adjusted_mutual_info_score(labels_true, labels))
     print("Silhouette Coefficient: %0.3f"
           % metrics.silhouette_score(X, labels))

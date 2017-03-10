@@ -29,8 +29,10 @@ from sklearn.cluster import KMeans, MiniBatchKMeans
 import numpy as np
 from pylab import *
 
+
 def usage():
-    print('usage: roidecompose fmrifile templatefile outputfile [--stdnorm] [--pctnorm] [--ppnorm] [--varnorm] [--nonorm]')
+    print(
+        'usage: roidecompose fmrifile templatefile outputfile [--stdnorm] [--pctnorm] [--ppnorm] [--varnorm] [--nonorm]')
     print('')
     print('required arguments:')
     print('    inputfile        - the name of the file with the kmeans cluster centers')
@@ -44,7 +46,7 @@ def usage():
     print('    --stdnorm        - scale each timecourse to have a standard deviation of 1.0')
     print('    --ppnorm         - scale each timecourse to have a peak to peak range of 1.0')
     print('')
-    return()
+    return ()
 
 
 # get the command line parameters
@@ -96,12 +98,11 @@ elif normmethod == 'varnorm':
 elif normmethod == 'ppnorm':
     print('will normalize timecourses to p-p deviation of 1.0')
 
-
 print('loading fmri data')
 input_img, input_data, input_hdr, thedims, thesizes = tide.readfromnifti(inputfilename)
 print('loading template data')
 template_img, template_data, template_hdr, templatedims, templatsizes = tide.readfromnifti(templatefile)
-    
+
 print('checking dimensions')
 if not tide.checkspacematch(thedims, templatedims):
     print('template file dimensions and input fmri file do not match')
@@ -113,7 +114,7 @@ ysize = thedims[2]
 numslices = thedims[3]
 numtimepoints = thedims[4]
 numvoxels = int(xsize) * int(ysize) * int(numslices)
-templatevoxels = np.reshape(template_data, (numvoxels)).astype(int)
+templatevoxels = np.reshape(template_data, numvoxels).astype(int)
 inputvoxels = np.reshape(input_data, (numvoxels, numtimepoints))
 numregions = np.max(templatevoxels)
 timecourses = np.zeros((numregions, numtimepoints), dtype='float')
@@ -139,5 +140,5 @@ for theregion in range(1, numregions + 1):
         print('illegal normalization method')
         usage()
         sys.exit()
-    
+
 tide.writenpvecs(timecourses, outputfile)
