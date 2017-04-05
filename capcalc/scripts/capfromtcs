@@ -36,7 +36,21 @@ import numpy as np
 import nibabel as nib
 
 
-def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly):
+def maketransitionmat(thestates):
+    minlabel = np.min(thestates)
+    maxlabel = np.max(thestates)
+    numlabels = maxlabel - minlabel + 1
+    transmat = np.zeros((numlabels, numlabels), dtype='float')
+    for state in range(1, len(thestates)):
+        sourcestate = thestates[state - 1] - minlabel
+        deststate = thestates[state] - minlabel
+        transmat[sourcestate, deststate] += 1.0
+    for i in range(numlabels):
+        transmat[i, :] /= np.sum(transmat[i, :])
+    return transmat
+
+
+def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly, display=False):
     print('generating cluster labels')
     cluster_labels = kmeans.fit_predict(X)
     thesilavgs = np.zeros(numsegs, dtype='float')
@@ -51,19 +65,20 @@ def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly):
         if not summaryonly:
             print('doing silhouette samples')
             sample_silhouette_values = metrics.silhouette_samples(seg_X, seg_cluster_labels)
-            # Create a subplot with 1 row and 2 columns
-            fig, (ax1) = plt.subplots(1, 1)
-            fig.set_size_inches(8, 4.5)
+            if display:
+                # Create a subplot with 1 row and 2 columns
+                fig, (ax1) = plt.subplots(1, 1)
+                fig.set_size_inches(8, 4.5)
 
-            # The 1st subplot is the silhouette plot
-            # The silhouette coefficient can range from -1, 1 but in this example all
-            # lie within [-0.3, 1]
-            ax1.set_xlim([-0.3, 1])
-            # The (n_clusters+1)*10 is for inserting blank space between silhouette
-            # plots of individual clusters, to demarcate them clearly.
-            ax1.set_ylim([0, len(seg_X) + (n_clusters + 1) * 10])
-
-            y_lower = 10
+                # The 1st subplot is the silhouette plot
+                # The silhouette coefficient can range from -1, 1 but in this example all
+                # lie within [-0.3, 1]
+                ax1.set_xlim([-0.3, 1])
+                # The (n_clusters+1)*10 is for inserting blank space between silhouette
+                # plots of individual clusters, to demarcate them clearly.
+                ax1.set_ylim([0, len(seg_X) + (n_clusters + 1) * 10])
+    
+                y_lower = 10
             for i in range(n_clusters):
                 # Aggregate the silhouette scores for samples belonging to
                 # cluster i, and sort them
@@ -76,33 +91,35 @@ def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly):
                 thesilclusterstats[segment, 2, i] = ith_cluster_silhouette_values[-1]
 
                 size_cluster_i = ith_cluster_silhouette_values.shape[0]
-                y_upper = y_lower + size_cluster_i
 
-                color = cm.spectral(float(i) / n_clusters)
-                ax1.fill_betweenx(np.arange(y_lower, y_upper),
+                if display:
+                    y_upper = y_lower + size_cluster_i
+                    color = cm.spectral(float(i) / n_clusters)
+                    ax1.fill_betweenx(np.arange(y_lower, y_upper),
                                   0, ith_cluster_silhouette_values,
                                   facecolor=color, edgecolor=color, alpha=0.7)
 
-                # Label the silhouette plots with their cluster numbers at the middle
-                ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+                    # Label the silhouette plots with their cluster numbers at the middle
+                    ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
 
-                # Compute the new y_lower for next plot
-                y_lower = y_upper + 10  # 10 for the 0 samples
+                    # Compute the new y_lower for next plot
+                    y_lower = y_upper + 10  # 10 for the 0 samples
 
-            ax1.set_title("The silhouette plot for the various clusters.")
-            ax1.set_xlabel("The silhouette coefficient values")
-            ax1.set_ylabel("Cluster label")
+            if display:
+                ax1.set_title("The silhouette plot for the various clusters.")
+                ax1.set_xlabel("The silhouette coefficient values")
+                ax1.set_ylabel("Cluster label")
 
-            # The vertical line for average silhouette score of all the values
-            ax1.axvline(x=thesilavgs[segment], color="red", linestyle="--")
+                # The vertical line for average silhouette score of all the values
+                ax1.axvline(x=thesilavgs[segment], color="red", linestyle="--")
 
-            ax1.set_yticks([])  # Clear the yaxis labels / ticks
-            ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
-            plt.suptitle(("Silhouette analysis for KMeans clustering on sample data "
+                ax1.set_yticks([])  # Clear the yaxis labels / ticks
+                ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+                plt.suptitle(("Silhouette analysis for KMeans clustering on sample data "
                           "with n_clusters = %d" % n_clusters),
                          fontsize=14, fontweight='bold')
 
-            plt.show()
+                plt.show()
     return thesilavgs, thesilclusterstats
 
 
@@ -157,6 +174,7 @@ def usage():
     print('    --pca                        - perform PCA analysis')
     print('    --ica                        - perform ICA analysis')
     print('    --GBR                        - apply gradient boosting regressor testing on clusters')
+    print('    -d                           - display some quality metrics')
     print("")
     return ()
 
@@ -177,10 +195,11 @@ filtorder = 3
 verbose = False
 analysistype = 'kmeans'
 doGBR = False
+display = False
 
 # scan the command line arguments
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "i:o:s:D:F:S:VLRCmn:b:I:v", ["infile=", "outfile=",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "di:o:s:D:F:S:VLRCmn:b:I:v", ["infile=", "outfile=",
                                                                               "nodetrend",
                                                                               "dbscan",
                                                                               "GBR",
@@ -242,6 +261,10 @@ for o, a in opts:
         linkchar = '='
         if verbose:
             print('Setting sample time step to ', sampletime)
+    elif o == "-display":
+        display = True
+        if verbose:
+            print('will display quality metrics')
     elif o == "--nonorm":
         normmethod = 'none'
         if verbose:
@@ -403,10 +426,10 @@ if theprefilter.gettype() != 'none':
 thedims = trimmeddata.shape
 n_features = thedims[0]
 n_samples = thedims[1]
-print('input dataset has', n_features, 'features and', n_samples, 'samples in segments of size', segsize)
-reformdata = np.reshape(trimmeddata, (n_features, n_samples))
 if segsize < 0:
     segsize = n_samples
+print('input dataset has', n_features, 'features and', n_samples, 'samples in segments of size', segsize)
+reformdata = np.reshape(trimmeddata, (n_features, n_samples))
 if n_samples % segsize > 0:
     print('segment size is not an even divisor of the total length - exiting')
     sys.exit()
@@ -462,42 +485,48 @@ if analysistype == 'kmeans':
     #print(rfe.ranking_)
 
     print('calling SelectPercentiles with X and y of dimensions',X.shape, thestatelabels.shape)
-    selector = SelectPercentile(f_classif, percentile=20)
+    selector = SelectPercentile(f_classif, percentile=10)
     selector.fit(X, thestatelabels)
     print(selector.get_params())
     X_indices = np.arange(X.shape[-1])
     scores = -np.nan_to_num(np.log10(np.nan_to_num(selector.pvalues_)))
     scores /= scores.max()
-    plt.bar(X_indices - .45, scores, width=.2,
-        label=r'Univariate score ($-Log(p_{value})$)', color='darkorange')
-    print(selector.get_support(indices=True))
     sortedscores = np.sort(np.nan_to_num(selector.scores_))[::-1]
     print(sortedscores)
-    fig = plt.subplots(1, 1)
-    plt.plot(sortedscores)
-    plt.show()
-
-    selector = SelectFdr(alpha=0.05).fit(X, thestatelabels)
-    print(selector.get_support(indices=True))
-    sortedscores = np.sort(np.nan_to_num(selector.scores_))[::-1]
-    print(sortedscores)
-    fig = plt.subplots(1, 1)
-    plt.plot(sortedscores)
-    plt.show()
+    if display:
+        plt.bar(X_indices - .45, scores, width=.2,
+            label=r'Univariate score ($-Log(p_{value})$)', color='darkorange')
+        print(selector.get_support(indices=True))
+        fig = plt.subplots(1, 1)
+        plt.plot(sortedscores)
+        plt.show()
 
     # now do some stats!
     thesilavgs, thesilclusterstats = silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly)
     tide.writenpvecs(thesilavgs, outfilename + '_silhouettesegmentstats.txt')
 
     for segment in range(numsegs):
+        thesestatelabels = thestatelabels[segment * segsize:(segment + 1) * segsize]
+
+        outputaffine = np.eye(4)
+        thetransmat = maketransitionmat(thesestatelabels)
+        init_img=nib.Nifti1Image(thetransmat, outputaffine)
+        init_hdr=init_img.get_header()
+        init_sizes=init_hdr['pixdim']
+        tide.savetonifti(thetransmat, init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_transmat')
+
+        tide.writenpvecs(thesestatelabels, outfilename + '_seg_' + str(segment).zfill(4) + '_statelabels.txt')
         print('Segment %d average silhouette Coefficient: %0.3f'
               % (segment, thesilavgs[segment]))
+        statetimes = []
         for state in range(n_clusters):
-            tc = np.where(thestatelabels == state, 1, 0)
+            tc = np.where(thesestatelabels == state, 1, 0)
             tide.writenpvecs(tc,
                              outfilename + '_seg_' + str(segment).zfill(4) + '_instate_' + str(state).zfill(2) + '.txt')
+            statetimes.append(100.0 * np.sum(tc) / len(tc))
         tide.writenpvecs(thesilclusterstats[segment, :, :],
                          outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
+        tide.writenpvecs(np.asarray(statetimes, dtype='float'), outfilename + '_seg_' + str(segment).zfill(4) + '_stateoccupancy.txt')
 
     if doGBR:
         clf = GradientBoostingRegressor().fit(X, thestatelabels)
