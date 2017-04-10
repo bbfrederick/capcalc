@@ -186,8 +186,8 @@ def usage():
     print('    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)')
     print('    --nonorm                     - don\'t normalize timecourses')
     print('    --pctnorm                    - scale each timecourse to it\'s percentage of the mean')
-    print('    --varnorm                    - scale each timecourse to have a variance of 1.0')
-    print('    --stdnorm                    - scale each timecourse to have a standard deviation of 1.0 (default)')
+    print('    --varnorm                    - scale each timecourse to have a variance of 1.0 (default)')
+    print('    --stdnorm                    - scale each timecourse to have a standard deviation of 1.0')
     print('    --ppnorm                     - scale each timecourse to have a peak to peak range of 1.0')
     print('    --quality                    - perform a silhouette test to evaluate fit quality')
     print('    -v                           - turn on verbose mode')
@@ -203,7 +203,7 @@ def usage():
 # get the command line parameters
 summaryonly = True
 dodetrend = True
-normmethod = 'stdnorm'
+normmethod = 'varnorm'
 minibatch = False
 n_clusters = 8
 max_iter = 250
