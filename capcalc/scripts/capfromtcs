@@ -36,9 +36,9 @@ import numpy as np
 import nibabel as nib
 
 
-def statestats(thestates):
-    minlabel = np.min(thestates)
-    maxlabel = np.max(thestates)
+def statestats(thestates, numlabels, minlabel):
+    minlabel = minlabel
+    maxlabel = minlabel + numlabels - 1
     numlabels = maxlabel - minlabel + 1
     transmat = np.zeros((numlabels, numlabels), dtype='float')
     currentstate = thestates[0]
@@ -60,7 +60,14 @@ def statestats(thestates):
     thestats = []
     for i in range(numlabels):
         lenarray = np.asarray(lenlist[i], dtype='float')
-        thestats.append([len(lenarray), np.min(lenarray), np.max(lenarray), np.mean(lenarray), np.median(lenarray), np.std(lenarray)])
+        if len(lenarray) > 2:
+            thestats.append([len(lenarray), np.min(lenarray), np.max(lenarray), np.mean(lenarray), np.median(lenarray), np.std(lenarray)])
+        elif len(lenarray) > 1:
+            thestats.append([len(lenarray), np.min(lenarray), np.max(lenarray), np.mean(lenarray), lenarray[1], 0.0])
+        elif len(lenarray) > 0:
+            thestats.append([len(lenarray), lenarray[0], lenarray[0], lenarray[0], lenarray[0], 0.0])
+        else:
+            thestats.append([len(lenarray), 0.0, 0.0, 0.0, 0.0, 0.0])
     return transmat, np.asarray(thestats, dtype='float')
 
 
@@ -523,15 +530,17 @@ if analysistype == 'kmeans':
         thesestatelabels = thestatelabels[segment * segsize:(segment + 1) * segsize]
 
         outputaffine = np.eye(4)
-        rawtransmat, thestats = statestats(thesestatelabels)
+        rawtransmat, thestats = statestats(thesestatelabels, n_clusters, 0)
         normtransmat = 1.0 * rawtransmat
         offdiagtransmat = 1.0 * rawtransmat
         for i in range(n_clusters):
-            normtransmat[i, :] /= np.sum(rawtransmat[i, :])
+            if np.sum(rawtransmat[i, :]) > 0.0:
+                normtransmat[i, :] /= np.sum(rawtransmat[i, :])
         offdiagtransmat = 1.0 * rawtransmat
         for i in range(n_clusters):
             offdiagtransmat[i, i] = 0.0
-            offdiagtransmat[i, :] /= np.sum(offdiagtransmat[i, :])
+            if np.sum(offdiagtransmat[i, :]) > 0.0:
+                offdiagtransmat[i, :] /= np.sum(offdiagtransmat[i, :])
         init_img=nib.Nifti1Image(normtransmat, outputaffine)
         init_hdr=init_img.get_header()
         init_sizes=init_hdr['pixdim']
