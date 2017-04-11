@@ -30,10 +30,10 @@ from numpy import r_, zeros, ones, shape, where, sort
 from pylab import *
 
 def usage():
-    print('usage: maptoroi inputfile outputroot [-m] [-n NUMCLUSTER]')
+    print('usage: maptoroi inputfile templatefile outputroot')
     print('')
     print('required arguments:')
-    print('    inputfile        - the name of the file with the kmeans cluster centers')
+    print('    inputfile        - the name of the file with the roi values to be mapped back to image space')
     print('    templatefile     - the name of the template region file')
     print('    outputfile       - the name of the output nifti file')
     print('')
