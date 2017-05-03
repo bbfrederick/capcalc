@@ -61,13 +61,27 @@ print(numregions, 'regions, ', numclusters, 'clusters')
 xsize=thedims[1]
 ysize=thedims[2]
 numslices=thedims[3]
+numpatterns=thedims[4]
 numvoxels = int(xsize) * int(ysize) * int(numslices)
 output_data = zeros((numvoxels, numclusters), dtype='float')
-templatevoxels = reshape(template_data, (numvoxels)).astype(int)
+
+# check to see if the template file has ROIs or networks
+isroifile=True
+if numpatterns > 1:
+    # handle multipattern files
+    print('treating template as a network file')
+    templatevoxels = reshape(template_data, (numvoxels)).astype(int)
+    isroifile=False
+else:
+    print('treating template as an ROI file')
+    templatevoxels = reshape(template_data, (numvoxels, numpatterns))
 
 for thecluster in range(numclusters):
-    for i in range(1, numregions + 1):
-        output_data[where(templatevoxels == i), thecluster] = theclustercenters[i - 1, thecluster]
+    if isroifile:
+        for i in range(1, numregions + 1):
+            output_data[where(templatevoxels == i), thecluster] = theclustercenters[i - 1, thecluster]
+    else:
+        output_data[:, thecluster] += theclustercenters[i - 1, thecluster] * templatevoxels[:, i]
     
 theheader=template_hdr
 theheader['dim'][4] = numclusters
