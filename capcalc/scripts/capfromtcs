@@ -556,6 +556,9 @@ if analysistype == 'kmeans':
         tide.savetonifti(offdiagtransmat, init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_offdiagtransmat')
 
         tide.writenpvecs(np.transpose(thestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
+        thetimestats = 1.0 * thestats
+        thetimestats[:, 1:] *= sampletime
+        tide.writenpvecs(np.transpose(thetimestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
 
         tide.writenpvecs(thesestatelabels, outfilename + '_seg_' + str(segment).zfill(4) + '_statelabels.txt')
         print('Segment %d average silhouette Coefficient: %0.3f'
