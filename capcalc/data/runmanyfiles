@@ -13,7 +13,7 @@ echo 'extracting timecourses'
 #cp Resting_101309/REST1_LR/rapidtide/101309_rapidtide_Hutch17CortStriatAmyg_MNI_REST1_LR.txt output/rapidtide_hcptcs.txt
 
 echo 'calculating kmeans'
-capfromtcs -i manyfiles.txt -o output/manyfiles --sampletime=0.72 --GBR --varnorm -m -b 4800 -S 1200
+capfromtcs -i manyfiles.txt -o output/manyfiles --sampletime=0.72 --varnorm -m -b 4800 -S 1200 --quality
 
 echo 'projecting clusters back onto the brain'
 roirecompose output/manyfiles_clustercenters.txt Hutch17CortStriatAmyg_MNI.nii.gz output/manyfiles_states
