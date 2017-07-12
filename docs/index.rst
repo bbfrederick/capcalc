@@ -17,7 +17,7 @@ Introduction
       
 Python version compatibility: 
 -----------------------------
-This code has been tested in python 2.7, 3.5, and 3.6.  I try very hard not to use any version dependant features when I write programs, so it will probably work on any subversion of python 3.  I think there is some weirdness in the python's numerical routines in versions 2.6 and below, so no guarantees it will work in anythin lower than 2.7.
+This code has been tested in python 2.7, 3.5, and 3.6.  I try very hard not to use any version dependant features when I write programs, so it will probably work on any subversion of python 3.  I think there is some weirdness in the python's numerical routines in versions 2.6 and below, so no guarantees it will work in anything lower than 2.7.
       
 How do I cite this?
 -------------------
