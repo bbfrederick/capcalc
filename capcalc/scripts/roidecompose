@@ -101,7 +101,7 @@ elif normmethod == 'ppnorm':
 print('loading fmri data')
 input_img, input_data, input_hdr, thedims, thesizes = tide.readfromnifti(inputfilename)
 print('loading template data')
-template_img, template_data, template_hdr, templatedims, templatsizes = tide.readfromnifti(templatefile)
+template_img, template_data, template_hdr, templatedims, templatesizes = tide.readfromnifti(templatefile)
 
 print('checking dimensions')
 if not tide.checkspacematch(thedims, templatedims):
@@ -119,26 +119,34 @@ inputvoxels = np.reshape(input_data, (numvoxels, numtimepoints))
 numregions = np.max(templatevoxels)
 timecourses = np.zeros((numregions, numtimepoints), dtype='float')
 
-for theregion in range(1, numregions + 1):
-    thevoxels = inputvoxels[np.where(templatevoxels == theregion), :]
-    print('extracting', thevoxels.shape[1], 'voxels from region', theregion)
-    if thevoxels.shape[1] > 0:
-        regiontimecourse = np.nan_to_num(np.mean(thevoxels, axis=1))
-    else:
-        regiontimecourse = timecourses[0, :] * 0.0
-    if normmethod == 'none':
-        timecourses[theregion - 1, :] = regiontimecourse - np.mean(regiontimecourse)
-    elif normmethod == 'pctnorm':
-        timecourses[theregion - 1, :] = tide.pcnormalize(regiontimecourse)
-    elif normmethod == 'varnorm':
-        timecourses[theregion - 1, :] = tide.varnormalize(regiontimecourse)
-    elif normmethod == 'stdnorm':
-        timecourses[theregion - 1, :] = tide.stdnormalize(regiontimecourse)
-    elif normmethod == 'ppnorm':
-        timecourses[theregion - 1, :] = tide.ppnormalize(regiontimecourse)
-    else:
-        print('illegal normalization method')
-        usage()
-        sys.exit()
-
-tide.writenpvecs(timecourses, outputfile)
+if numtimepoints > 1:
+    for theregion in range(1, numregions + 1):
+        thevoxels = inputvoxels[np.where(templatevoxels == theregion), :]
+        print('extracting', thevoxels.shape[1], 'voxels from region', theregion)
+        if thevoxels.shape[1] > 0:
+            regiontimecourse = np.nan_to_num(np.mean(thevoxels, axis=1))
+        else:
+            regiontimecourse = timecourses[0, :] * 0.0
+        if normmethod == 'none':
+            timecourses[theregion - 1, :] = regiontimecourse - np.mean(regiontimecourse)
+        elif normmethod == 'pctnorm':
+            timecourses[theregion - 1, :] = tide.pcnormalize(regiontimecourse)
+        elif normmethod == 'varnorm':
+            timecourses[theregion - 1, :] = tide.varnormalize(regiontimecourse)
+        elif normmethod == 'stdnorm':
+            timecourses[theregion - 1, :] = tide.stdnormalize(regiontimecourse)
+        elif normmethod == 'ppnorm':
+            timecourses[theregion - 1, :] = tide.ppnormalize(regiontimecourse)
+        else:
+            print('illegal normalization method')
+            usage()
+            sys.exit()
+        else:
+            # special case - split an image by region
+    tide.writenpvecs(timecourses, outputfile)
+else:
+    outputvoxels = np.reshape(input_data, (numvoxels, numtimepoints))
+    for theregion in range(1, numregions + 1):
+        outputvoxels[np.where(templatevoxels == theregion, inputvoxels, 0.0), theregion)
+    template_hdr['dim4'] = numregions
+    tide.savetonifti(outputvoxels.reshape((xsize, ysize, numslices, numregions)), template_hdr, templatesizes, outputfile)
