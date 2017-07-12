@@ -50,29 +50,50 @@ Outputs:
 ^^^^^^^^
 	Outputs are space or space by time Nifti files (depending on the file), and some text files containing textual information, histograms, or numbers.  Output spatial dimensions and file type match the input dimensions and file type (Nifti1 in, Nifti1 out).  Depending on the file type of map, there can be no time dimension, a time dimension that matches the input file, or something else, such as a time lag dimension for a correlation map.
 	OUTPUT_normalized.txt
+	    This is a text file containing the input timecourses after applying the selected normalization.
+	    
 	OUTPUT_clustercenters.txt
+	    This is a text file with NUMCLUSTER lines, one for each state, specifying the center location of the cluster (each line has the same number of columns as the number of input timecourses.
+	    
 	OUTPUT_statelabels.txt
+	    This is a text file with one line per timepoint.  Each line is the assigned state for the given timepoint in the input data.
+	    
 	OUTPUT_silhouettesegmentstats.txt
+
 	
 	OUTPUT_seg_XXXX_statestats.txt
-	    a text file with one line per state, with the following columns:
-                total number of TRs in state
-                number of continuous runs in state
-                minimum number of TRs spent in state
-                maximum number of TRs spent in state
-                average number of TRs spent in state
-                median number of TRs spent in state
-                standard deviation of the number of TRs spent in state
+	    This is a text file with one line per cluster (state), with the following columns:
+	    
+                * total number of TRs in state
+                * number of continuous runs in state
+                * minimum number of TRs spent in state
+                * maximum number of TRs spent in state
+                * average number of TRs spent in state
+                * median number of TRs spent in state
+                * standard deviation of the number of TRs spent in state
 	    
 	OUTPUT_seg_XXXX_statetimestats.txt
-	     the equivalent of the statestats file, where the units are time in seconds rather than TRs
+	    This is the equivalent of the statestats file, where the units are time in seconds rather than TRs
 	     
 	OUTPUT_seg_XXXX_statelabels.txt
+	    This is a text file with one line per timepoint.  Each line is the assigned state for the given timepoint in the segment.
+	    
 	OUTPUT_seg_XXXX_silhouetteclusterstats.txt
+	    This is a text file with one line per cluster.  Each line has three columns:
+	    
+	        * the mean silhouette score for that cluster in that segment.
+		* the minimum silhouette score for that cluster in that segment.
+		* the maximum silhouette score for that cluster in thate segment.
+		
 	OUTPUT_seg_XXXX_stateoccupancy.txt
 	OUTPUT_seg_XXXX_rawtransmat.nii.gz
+	    This is a NIFTI file with dimentions n_states by n_states.  The number of transitions from state a to state b is in location [a, b]
+
 	OUTPUT_seg_XXXX_normtransmat.nii.gz
+	    This is a NIFTI file containing the same information as the rawtransmat file, but each row is normalized to sum to 1, making, so the numbers represent the transition probabilities, rather than the total number of transitions.
+	   
 	OUTPUT_seg_XXXX_offdiagtransmat.nii.gz
+	    his is a NIFTI file containing the same information as the normtransmat file, except that the diagonal elements have been set to zero.  This is therefore the relative probability transitioning to each possible destination state in the case where the state does not simply persist.
 	
     
 Usage:
