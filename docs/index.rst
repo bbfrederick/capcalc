@@ -53,19 +53,22 @@ Outputs:
 	    This is a text file containing the input timecourses after applying the selected normalization.
 	    
 	OUTPUT_clustercenters.txt
-	    This is a text file with NUMCLUSTER lines, one for each state, specifying the center location of the cluster (each line has the same number of columns as the number of input timecourses.
+	    This is a text file with NUMCLUSTER lines, one for each state, specifying the center location of the cluster (each line has the same number of columns as the number of input timecourses).
 	    
 	OUTPUT_statelabels.txt
 	    This is a text file with one line per timepoint.  Each line is the assigned state for the given timepoint in the input data.
 	    
 	OUTPUT_silhouettesegmentstats.txt
 
-	
+	OUTPUT_seg_XXXX_instate_YY.txt
+	    This is a text file with one line per timepoint in the segment.  The value is 1 if the system is in state YY, 0 otherwise.
+	    
 	OUTPUT_seg_XXXX_statestats.txt
 	    This is a text file with one line per cluster (state), with the following columns:
 	    
-                * total number of TRs in state
+                * percentage of segment spent in state
                 * number of continuous runs in state
+		* total number of TRs in state
                 * minimum number of TRs spent in state
                 * maximum number of TRs spent in state
                 * average number of TRs spent in state
@@ -79,13 +82,13 @@ Outputs:
 	    This is a text file with one line per timepoint.  Each line is the assigned state for the given timepoint in the segment.
 	    
 	OUTPUT_seg_XXXX_silhouetteclusterstats.txt
-	    This is a text file with one line per cluster.  Each line has three columns:
+	    This is a text file with one line per cluster.  Each line has four columns:
 	    
 	        * the mean silhouette score for that cluster in that segment.
+	        * the median silhouette score for that cluster in that segment.
 		* the minimum silhouette score for that cluster in that segment.
 		* the maximum silhouette score for that cluster in thate segment.
 		
-	OUTPUT_seg_XXXX_stateoccupancy.txt
 	OUTPUT_seg_XXXX_rawtransmat.nii.gz
 	    This is a NIFTI file with dimentions n_states by n_states.  The number of transitions from state a to state b is in location [a, b]
 
