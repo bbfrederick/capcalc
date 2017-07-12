@@ -37,6 +37,21 @@ import nibabel as nib
 
 
 def statestats(thestates, numlabels, minlabel):
+    # returns statestats and transmat
+    #
+    # statestats file columns:
+    #     percentage of TRs in state
+    #     number of continuous runs in state
+    #     total number of TRs in state
+    #     minimum number of TRs in state
+    #     maximum number of TRs in state
+    #     average number of TRs in state
+    #     median number of TRs in state
+    #     standard deviation of the number of TRs in state
+    #
+    # transmat contains an n_states by n_states matrix:
+    #     the number of transitions from state a to state b is in location [a, b]
+    #
     minlabel = minlabel
     maxlabel = minlabel + numlabels - 1
     numlabels = maxlabel - minlabel + 1
@@ -61,13 +76,13 @@ def statestats(thestates, numlabels, minlabel):
     for i in range(numlabels):
         lenarray = np.asarray(lenlist[i], dtype='float')
         if len(lenarray) > 2:
-            thestats.append([len(lenarray), np.min(lenarray), np.max(lenarray), np.mean(lenarray), np.median(lenarray), np.std(lenarray)])
+            thestats.append([100.0 * np.sum(lenarray)/len(thestates), len(lenarray), np.sum(lenarray), np.min(lenarray), np.max(lenarray), np.mean(lenarray), np.median(lenarray), np.std(lenarray)])
         elif len(lenarray) > 1:
-            thestats.append([len(lenarray), np.min(lenarray), np.max(lenarray), np.mean(lenarray), lenarray[1], 0.0])
+            thestats.append([100.0 * np.sum(lenarray)/len(thestates), len(lenarray), np.sum(lenarray), np.min(lenarray), np.max(lenarray), np.mean(lenarray), lenarray[1], 0.0])
         elif len(lenarray) > 0:
-            thestats.append([len(lenarray), lenarray[0], lenarray[0], lenarray[0], lenarray[0], 0.0])
+            thestats.append([100.0 * np.sum(lenarray)/len(thestates), len(lenarray), np.sum(lenarray), lenarray[0], lenarray[0], lenarray[0], lenarray[0], 0.0])
         else:
-            thestats.append([len(lenarray), 0.0, 0.0, 0.0, 0.0, 0.0])
+            thestats.append([0.0, len(lenarray), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     return transmat, np.asarray(thestats, dtype='float')
 
 
@@ -75,7 +90,7 @@ def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly, displa
     print('generating cluster labels')
     cluster_labels = kmeans.fit_predict(X)
     thesilavgs = np.zeros(numsegs, dtype='float')
-    thesilclusterstats = np.zeros((numsegs, 3, n_clusters), dtype='float')
+    thesilclusterstats = np.zeros((numsegs, 4, n_clusters), dtype='float')
     print('calculating silhouette stats')
     for segment in range(numsegs):
         seg_X = X[segment * segsize:(segment + 1) * segsize]
@@ -113,8 +128,9 @@ def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly, displa
     
                     ith_cluster_silhouette_values.sort()
                     thesilclusterstats[segment, 0, i] = np.mean(ith_cluster_silhouette_values)
-                    thesilclusterstats[segment, 1, i] = ith_cluster_silhouette_values[0]
-                    thesilclusterstats[segment, 2, i] = ith_cluster_silhouette_values[-1]
+                    thesilclusterstats[segment, 1, i] = np.median(ith_cluster_silhouette_values)
+                    thesilclusterstats[segment, 2, i] = ith_cluster_silhouette_values[0]
+                    thesilclusterstats[segment, 3, i] = ith_cluster_silhouette_values[-1]
     
                     size_cluster_i = ith_cluster_silhouette_values.shape[0]
     
@@ -421,6 +437,9 @@ elif normmethod == 'varnorm':
 elif normmethod == 'ppnorm':
     print('will normalize timecourses to p-p deviation of 1.0')
 
+# save the command line
+tide.writevec([' '.join(sys.argv)], outfilename + '_commandline.txt')
+
 # read in the files and get everything trimmed to the right length
 startpoint = max([int(starttime * Fs), 0])
 if len(infilename) == 1:
@@ -539,7 +558,6 @@ if analysistype == 'kmeans':
         outputaffine = np.eye(4)
         rawtransmat, thestats = statestats(thesestatelabels, n_clusters, 0)
         normtransmat = 1.0 * rawtransmat
-        offdiagtransmat = 1.0 * rawtransmat
         for i in range(n_clusters):
             if np.sum(rawtransmat[i, :]) > 0.0:
                 normtransmat[i, :] /= np.sum(rawtransmat[i, :])
@@ -554,24 +572,23 @@ if analysistype == 'kmeans':
         tide.savetonifti(rawtransmat, init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_rawtransmat')
         tide.savetonifti(normtransmat, init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_normtransmat')
         tide.savetonifti(offdiagtransmat, init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_offdiagtransmat')
+        # rawtransmat files are an n_clusters by n_clusters matrix with the total number of transitions from each state to each other state.
+        # normtransmat files are an n_clusters by n_clusters matrix with the total for of transitions from each state to each other state.
 
         tide.writenpvecs(np.transpose(thestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
         thetimestats = 1.0 * thestats
-        thetimestats[:, 1:] *= sampletime
+        thetimestats[:, 2:] *= sampletime
         tide.writenpvecs(np.transpose(thetimestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
 
         tide.writenpvecs(thesestatelabels, outfilename + '_seg_' + str(segment).zfill(4) + '_statelabels.txt')
         print('Segment %d average silhouette Coefficient: %0.3f'
               % (segment, thesilavgs[segment]))
-        statetimes = []
         for state in range(n_clusters):
             tc = np.where(thesestatelabels == state, 1, 0)
             tide.writenpvecs(tc,
                              outfilename + '_seg_' + str(segment).zfill(4) + '_instate_' + str(state).zfill(2) + '.txt')
-            statetimes.append(100.0 * np.sum(tc) / len(tc))
         tide.writenpvecs(thesilclusterstats[segment, :, :],
                          outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
-        tide.writenpvecs(np.asarray(statetimes, dtype='float'), outfilename + '_seg_' + str(segment).zfill(4) + '_stateoccupancy.txt')
 
     if doGBR:
         clf = GradientBoostingRegressor().fit(X, thestatelabels)
