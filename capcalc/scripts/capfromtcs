@@ -552,6 +552,9 @@ if analysistype == 'kmeans':
     thesilavgs, thesilclusterstats = silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly)
     tide.writenpvecs(thesilavgs, outfilename + '_silhouettesegmentstats.txt')
 
+    silinfo = []
+    for state in range(n_clusters):
+        silinfo.append([])
     for segment in range(numsegs):
         thesestatelabels = thestatelabels[segment * segsize:(segment + 1) * segsize]
 
@@ -590,6 +593,19 @@ if analysistype == 'kmeans':
         tide.writenpvecs(thesilclusterstats[segment, :, :],
                          outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
 
+        for state in range(n_clusters):
+            if thestats[state, 2] > 0:
+                silinfo[state].append(thesilclusterstats[segment, 0, state])
+
+    # now generate some summary information
+    silavgs = []
+    subjpcts = []
+    for state in range(n_clusters):
+        silavgs.append(np.mean(np.asarray(silinfo[state], dtype='float')))
+        subjpcts.append(100.0 * len(silinfo[state]) / numsegs)
+    tide.writenpvecs(np.asarray(silavgs, dtype='float'), outfilename + '_overallsilhouettemean.txt')
+    tide.writenpvecs(np.asarray(subjpcts, dtype='float'), outfilename + '_pctsegsinstate.txt')
+    
     if doGBR:
         clf = GradientBoostingRegressor().fit(X, thestatelabels)
         print('GBR fitting score is:', clf.score(X, thestatelabels))

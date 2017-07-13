@@ -60,6 +60,12 @@ Outputs:
 	    
 	OUTPUT_silhouettesegmentstats.txt
 
+	OUTPUT_overallsilhouettemean.txt
+            This text file has one line per cluster, giving the mean of the mean silhouette score of all the segments that spent any time in that state.
+
+	OUTPUT_pctsegsinstate.txt
+            This text file has one line per cluster, indicating what percentage of subjects (segments) spent any time in this state.
+
 	OUTPUT_seg_XXXX_instate_YY.txt
 	    This is a text file with one line per timepoint in the segment.  The value is 1 if the system is in state YY, 0 otherwise.
 	    
