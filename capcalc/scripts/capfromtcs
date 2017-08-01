@@ -544,10 +544,12 @@ if preprocessingtype == 'pca':
     tide.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
 elif preprocessingtype == 'ica':
     print('running FastICA')
+    if n_pca <= 1.0:
+        n_pca = int(0)
     theica = FastICA(n_components=n_pca, algorithm='deflation')
     thefit = theica.fit(X)
     thetransform = theica.transform(X)
-    X = theica.inverse_transform(X)
+    X = theica.inverse_transform(thetransform)
     tide.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
 
 tide.writenpvecs(reformdata, outfilename + '_preprocessed.txt')
