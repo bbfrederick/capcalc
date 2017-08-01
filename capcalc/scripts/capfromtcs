@@ -512,7 +512,6 @@ for feature in range(n_features):
             segnorm = segdata
 
         reformdata[feature, segstart:segstart + segsize] = theprefilter.apply(Fs, segnorm)
-tide.writenpvecs(reformdata, outfilename + '_normalized.txt')
 X = np.nan_to_num(np.transpose(reformdata))
 
 if preprocessingtype == 'pca':
@@ -522,7 +521,7 @@ if preprocessingtype == 'pca':
         pca = IncrementalPCA(batch_size=batch_size, n_components=n_pca).fit(X)
     else:
         pca = PCA(n_components=n_pca).fit(X)
-    X = pca.transform(X)
+    X = pca.inverse_transform(X)
     print('shape coming out:', X.shape)
     for i in range(n_pca):
         print('component', i, 'explained variance:', pca.explained_variance_[i], 'explained variance %:',
@@ -531,8 +530,10 @@ if preprocessingtype == 'pca':
 elif preprocessingtype == 'ica':
     print('running FastICA')
     ica = FastICA(n_components=n_pca, algorithm='deflation').fit(X)
-    X = ica.transform(X)
+    X = ica.inverse_transform(X)
     tide.writenpvecs(ica.components_, outfilename + "_icacomponents.txt")
+
+tide.writenpvecs(reformdata, outfilename + '_preprocessed.txt')
 
 if analysistype == 'kmeans':
     print('setting up kmeans')
