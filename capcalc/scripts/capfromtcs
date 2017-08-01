@@ -522,7 +522,7 @@ X = np.nan_to_num(np.transpose(reformdata))
 if preprocessingtype == 'pca':
     print('running PCA')
     print('shape going in:', X.shape)
-    if minibatch:
+    if False:
         if n_pca <=0:
             n_pca = None
         thepca = IncrementalPCA(batch_size=batch_size, n_components=n_pca)
