@@ -528,8 +528,9 @@ if preprocessingtype == 'pca':
         thepca = IncrementalPCA(batch_size=batch_size, n_components=n_pca)
     else:
         if n_pca <=0:
-            n_pca = 'mle'
-        thepca = PCA(n_components=n_pca)
+            thepca = PCA(n_components='mle', svd_solver='full')
+        else:
+            thepca = PCA(n_components=n_pca)
     thefit = thepca.fit(X)
     thetransform = thepca.transform(X)
     X = thepca.inverse_transform(thetransform)
