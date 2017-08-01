@@ -518,20 +518,24 @@ if preprocessingtype == 'pca':
     print('running PCA')
     print('shape going in:', X.shape)
     if minibatch:
-        pca = IncrementalPCA(batch_size=batch_size, n_components=n_pca).fit(X)
+        thepca = IncrementalPCA(batch_size=batch_size, n_components=n_pca)
     else:
-        pca = PCA(n_components=n_pca).fit(X)
-    X = pca.inverse_transform(X)
+        thepca = PCA(n_components=n_pca)
+    thefit = thepca.fit(X)
+    thetransform = thepca.transform(X)
+    X = thepca.inverse_transform(thetransform)
     print('shape coming out:', X.shape)
     for i in range(n_pca):
-        print('component', i, 'explained variance:', pca.explained_variance_[i], 'explained variance %:',
-              100.0 * pca.explained_variance_ratio_[i])
-    tide.writenpvecs(pca.components_, outfilename + "_pcacomponents.txt")
+        print('component', i, 'explained variance:', thepca.explained_variance_[i], 'explained variance %:',
+              100.0 * thepca.explained_variance_ratio_[i])
+    tide.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
 elif preprocessingtype == 'ica':
     print('running FastICA')
-    ica = FastICA(n_components=n_pca, algorithm='deflation').fit(X)
-    X = ica.inverse_transform(X)
-    tide.writenpvecs(ica.components_, outfilename + "_icacomponents.txt")
+    theica = FastICA(n_components=n_pca, algorithm='deflation')
+    thefit = theica.fit(X)
+    thetransform = theica.transform(X)
+    X = theica.inverse_transform(X)
+    tide.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
 
 tide.writenpvecs(reformdata, outfilename + '_preprocessed.txt')
 
