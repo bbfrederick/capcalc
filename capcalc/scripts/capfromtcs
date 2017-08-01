@@ -517,12 +517,13 @@ X = np.nan_to_num(np.transpose(reformdata))
 
 if preprocessingtype == 'pca':
     print('running PCA')
+    print('shape going in:', X.shape)
     if minibatch:
         pca = IncrementalPCA(batch_size=batch_size, n_components=n_pca).fit(X)
-        X = pca.transform(X)
     else:
         pca = PCA(n_components=n_pca).fit(X)
-        X = pca.transform(X)
+    X = pca.transform(X)
+    print('shape coming out:', X.shape)
     for i in range(n_pca):
         print('component', i, 'explained variance:', pca.explained_variance_[i], 'explained variance %:',
               100.0 * pca.explained_variance_ratio_[i])
