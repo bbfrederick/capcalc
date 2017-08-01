@@ -419,7 +419,6 @@ for o, a in opts:
     elif o == "-p":
         n_pca = int(a)
         if n_pca <= 0:
-            n_pca = 'mle'
             print('will estimate the number of pca components for dimensionality reduction')
         else:
             print('will use', n_pca, 'pca components for dimensionality reduction')
@@ -524,14 +523,18 @@ if preprocessingtype == 'pca':
     print('running PCA')
     print('shape going in:', X.shape)
     if minibatch:
+        if n_pca <=0:
+            n_pca = None
         thepca = IncrementalPCA(batch_size=batch_size, n_components=n_pca)
     else:
+        if n_pca <=0:
+            n_pca = 'mle'
         thepca = PCA(n_components=n_pca)
     thefit = thepca.fit(X)
     thetransform = thepca.transform(X)
     X = thepca.inverse_transform(thetransform)
     print('shape coming out:', X.shape)
-    for i in len(thepca.components_):
+    for i in range(thepca.n_components_):
         print('component', i, 'explained variance:', thepca.explained_variance_[i], 'explained variance %:',
               100.0 * thepca.explained_variance_ratio_[i])
     tide.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
