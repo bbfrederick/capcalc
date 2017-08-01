@@ -215,8 +215,8 @@ def usage():
     print('    --quality                    - perform a silhouette test to evaluate fit quality')
     print('    -v                           - turn on verbose mode')
     print('    --dbscan                     - perform dbscan clustering')
-    print('    --pca                        - perform PCA analysis')
-    print('    --ica                        - perform ICA analysis')
+    print('    --pca                        - perform PCA dimensionality reduction prior to analysis')
+    print('    --ica                        - perform ICA dimensionality reduction prior to analysis')
     print('    --GBR                        - apply gradient boosting regressor testing on clusters')
     print('    -d                           - display some quality metrics')
     print("")
@@ -229,6 +229,7 @@ dodetrend = True
 normmethod = 'varnorm'
 minibatch = False
 n_clusters = 8
+n_pca = 8
 max_iter = 250
 n_init = 100
 batch_size = 1000
@@ -238,12 +239,13 @@ usebutterworthfilter = False
 filtorder = 3
 verbose = False
 analysistype = 'kmeans'
+preprocessingtype = None
 doGBR = False
 display = False
 
 # scan the command line arguments
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "di:o:s:D:F:S:VLRCmn:b:I:v", ["infile=", "outfile=",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "di:o:s:D:F:S:VLRCmn:p:b:I:v", ["infile=", "outfile=",
                                                                               "nodetrend",
                                                                               "dbscan",
                                                                               "GBR",
@@ -338,17 +340,17 @@ for o, a in opts:
         if verbose:
             print('verbose mode enabled')
     elif o == "--ica":
-        analysistype = 'ica'
+        preprocessingtype = 'ica'
         if verbose:
-            print('switching to ica analysis')
+            print('will perform ica dimensionality reduction step')
     elif o == "--GBR":
         doGBR = True
         if verbose:
             print('will do GBR on clusters')
     elif o == "--pca":
-        analysistype = 'pca'
+        preprocessingtype = 'pca'
         if verbose:
-            print('switching to pca analysis')
+            print('will perform pca dimensionality reduction step')
     elif o == "--dbscan":
         analysistype = 'dbscan'
         if verbose:
@@ -412,6 +414,9 @@ for o, a in opts:
     elif o == "-n":
         n_clusters = int(a)
         print('will use', n_clusters, 'clusters')
+    elif o == "-p":
+        n_pca = int(a)
+        print('will use', n_pca, 'pca components for dimensionality reduction')
     else:
         assert False, "unhandled option"
 
@@ -509,6 +514,21 @@ for feature in range(n_features):
         reformdata[feature, segstart:segstart + segsize] = theprefilter.apply(Fs, segnorm)
 tide.writenpvecs(reformdata, outfilename + '_normalized.txt')
 X = np.nan_to_num(np.transpose(reformdata))
+
+if preprocessingtype == 'pca':
+    print('running PCA')
+    if minibatch:
+        pca = IncrementalPCA(batch_size=batch_size, n_components=n_pca).fit_transform(X)
+    else:
+        pca = PCA(n_components=n_pca).fit_transform(X)
+    for i in range(n_pca):
+        print('component', i, 'explained variance:', pca.explained_variance_[i], 'explained variance %:',
+              100.0 * pca.explained_variance_ratio_[i])
+    tide.writenpvecs(pca.components_, outfilename + "_pcacomponents.txt")
+elif preprocessingtype == 'ica':
+    print('running FastICA')
+    ica = FastICA(n_components=n_pca, algorithm='deflation').fit_transform(X)
+    tide.writenpvecs(ica.components_, outfilename + "_icacomponents.txt")
 
 if analysistype == 'kmeans':
     print('setting up kmeans')
@@ -610,22 +630,6 @@ if analysistype == 'kmeans':
         clf = GradientBoostingRegressor().fit(X, thestatelabels)
         print('GBR fitting score is:', clf.score(X, thestatelabels))
         tide.writenpvecs(np.reshape(clf.feature_importances_, (n_features, 1)), outfilename + '_featureimportances.txt')
-
-elif analysistype == 'ica':
-    print('running FastICA')
-    ica = FastICA(n_components=n_clusters, algorithm='deflation').fit(X)
-    tide.writenpvecs(ica.components_, outfilename + "_icacomponents.txt")
-
-elif analysistype == 'pca':
-    print('running PCA')
-    if minibatch:
-        pca = IncrementalPCA(batch_size=batch_size, n_components=n_clusters).fit(X)
-    else:
-        pca = PCA(n_components=n_clusters).fit(X)
-    for i in range(n_clusters):
-        print('component', i, 'explained variance:', pca.explained_variance_[i], 'explained variance %:',
-              100.0 * pca.explained_variance_ratio_[i])
-    tide.writenpvecs(pca.components_, outfilename + "_pcacomponents.txt")
 
 else:  # DBSCAN
     print('setting up DBSCAN')
