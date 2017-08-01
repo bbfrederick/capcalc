@@ -417,10 +417,13 @@ for o, a in opts:
         n_clusters = int(a)
         print('will use', n_clusters, 'clusters')
     elif o == "-p":
-        n_pca = int(a)
-        if n_pca <= 0:
+        n_pca = float(a)
+        if n_pca <= 0.0:
             print('will estimate the number of pca components for dimensionality reduction')
+        elif n_pca < 1.0:
+            print('will use enough pca components to explain at least', 100.0 * n_pca, '% of the variance')
         else:
+            n_pca = int(a)
             print('will use', n_pca, 'pca components for dimensionality reduction')
     else:
         assert False, "unhandled option"
