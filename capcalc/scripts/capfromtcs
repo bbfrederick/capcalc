@@ -218,7 +218,7 @@ def usage():
     print('    --dbscan                     - perform dbscan clustering')
     print('    --pca                        - perform PCA dimensionality reduction prior to analysis')
     print('    --ica                        - perform ICA dimensionality reduction prior to analysis')
-    print('    -p NUMCOMPONENTS             - set the number of p/ica components to NUMCOMPONENTS (default is 8)')
+    print('    -p NUMCOMPONENTS             - set the number of p/ica components to NUMCOMPONENTS (default is 8).  Set to -1 to estimate')
     print('    --GBR                        - apply gradient boosting regressor testing on clusters')
     print('    -d                           - display some quality metrics')
     print("")
@@ -418,7 +418,11 @@ for o, a in opts:
         print('will use', n_clusters, 'clusters')
     elif o == "-p":
         n_pca = int(a)
-        print('will use', n_pca, 'pca components for dimensionality reduction')
+        if n_pca <= 0:
+            n_pca = 'mle'
+            print('will estimate the number of pca components for dimensionality reduction')
+        else:
+            print('will use', n_pca, 'pca components for dimensionality reduction')
     else:
         assert False, "unhandled option"
 
@@ -527,7 +531,7 @@ if preprocessingtype == 'pca':
     thetransform = thepca.transform(X)
     X = thepca.inverse_transform(thetransform)
     print('shape coming out:', X.shape)
-    for i in range(n_pca):
+    for i in len(thepca.components_):
         print('component', i, 'explained variance:', thepca.explained_variance_[i], 'explained variance %:',
               100.0 * thepca.explained_variance_ratio_[i])
     tide.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
