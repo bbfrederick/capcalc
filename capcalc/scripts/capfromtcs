@@ -189,9 +189,23 @@ def usage():
     print("                                   the same thing.")
     print("")
     print("optional arguments:")
-    print("    --nodetrend                  - do not detrend the data before correlation")
+    print("")
+    print("  Data selection/partition:")
     print("    -s STARTTIME                 - time of first datapoint to use in seconds in the first file")
     print("    -D DURATION                  - amount of data to use in seconds")
+    print(
+        '    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
+    print('                                   Default segmentsize is the entire length')
+    print("  Clustering:")
+    print(
+        '    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets')
+    print('    -n NUMCLUSTER                - set the number of clusters to NUMCLUSTER (default is 8)')
+    print(
+        '    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 1000')
+    print('    --dbscan                     - perform dbscan clustering')
+    print('    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)')
+    print("")
+    print('  Preprocessing:')
     print("    -F                           - filter data and regressors from LOWERFREQ to UPPERFREQ.")
     print(
         "                                   LOWERSTOP and UPPERSTOP can be specified, or will be calculated automatically")
@@ -199,51 +213,61 @@ def usage():
     print("    -L                           - filter data and regressors to LFO band")
     print("    -R                           - filter data and regressors to respiratory band")
     print("    -C                           - filter data and regressors to cardiac band")
-    print(
-        '    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets')
-    print('    -n NUMCLUSTER                - set the number of clusters to NUMCLUSTER (default is 8)')
-    print(
-        '    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 1000')
-    print(
-        '    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
-    print('                                   Default segmentsize is the entire length')
-    print('    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)')
+    print("    --nodetrend                  - do not detrend the data before correlation")
     print('    --nonorm                     - don\'t normalize timecourses')
     print('    --pctnorm                    - scale each timecourse to it\'s percentage of the mean')
     print('    --varnorm                    - scale each timecourse to have a variance of 1.0 (default)')
     print('    --stdnorm                    - scale each timecourse to have a standard deviation of 1.0')
     print('    --ppnorm                     - scale each timecourse to have a peak to peak range of 1.0')
-    print('    --quality                    - perform a silhouette test to evaluate fit quality')
-    print('    -v                           - turn on verbose mode')
-    print('    --dbscan                     - perform dbscan clustering')
     print('    --pca                        - perform PCA dimensionality reduction prior to analysis')
     print('    --ica                        - perform ICA dimensionality reduction prior to analysis')
     print('    -p NUMCOMPONENTS             - set the number of p/ica components to NUMCOMPONENTS (default is 8).  Set to -1 to estimate')
+    print('    --noscale                    - do not apply standard scaler befor cluster fitting')
+    print("")
+    print('  Other:')
     print('    --GBR                        - apply gradient boosting regressor testing on clusters')
     print('    -d                           - display some quality metrics')
+    print('    --quality                    - perform a silhouette test to evaluate fit quality')
+    print('    -v                           - turn on verbose mode')
     print("")
     return ()
 
 
 # get the command line parameters
 summaryonly = True
+
+# preprocessing options
+preprocessingtype = None
 dodetrend = True
 normmethod = 'varnorm'
+
+# clustering/partitioning options
 minibatch = False
 n_clusters = 8
 n_pca = 8
 max_iter = 250
 n_init = 100
 batch_size = 1000
+clustertype = 'kmeans'
+clustertype = 'kmeans'
+connfilename = None
+affinity='euclidean'
+linkage='ward'
+eps = 0.3
+min_samples = 100
+alpha = 1.0
+standardscale = True
+
 duration = 1000000.0
 starttime = 0.0
 usebutterworthfilter = False
 filtorder = 3
 verbose = False
-analysistype = 'kmeans'
-preprocessingtype = None
+
 doGBR = False
 display = False
+
+
 
 # scan the command line arguments
 try:
@@ -354,7 +378,7 @@ for o, a in opts:
         if verbose:
             print('will perform pca dimensionality reduction step')
     elif o == "--dbscan":
-        analysistype = 'dbscan'
+        clustertype = 'dbscan'
         if verbose:
             print('switching to dbscan clustering')
     elif o == "--nodetrend":
@@ -522,6 +546,9 @@ for feature in range(n_features):
         reformdata[feature, segstart:segstart + segsize] = theprefilter.apply(Fs, segnorm)
 X = np.nan_to_num(np.transpose(reformdata))
 
+if standardscale:
+    X = StandardScaler().fit_transform(X)
+
 if preprocessingtype == 'pca':
     print('running PCA')
     print('shape going in:', X.shape)
@@ -554,7 +581,7 @@ elif preprocessingtype == 'ica':
 
 tide.writenpvecs(reformdata, outfilename + '_preprocessed.txt')
 
-if analysistype == 'kmeans':
+if clustertype == 'kmeans':
     print('setting up kmeans')
     if minibatch:
         kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter).fit(X)
@@ -655,23 +682,40 @@ if analysistype == 'kmeans':
         print('GBR fitting score is:', clf.score(X, thestatelabels))
         tide.writenpvecs(np.reshape(clf.feature_importances_, (n_features, 1)), outfilename + '_featureimportances.txt')
 
-else:  # DBSCAN
-    print('setting up DBSCAN')
-    db = DBSCAN(eps=100.0, min_samples=5).fit(X)
-    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-    core_samples_mask[db.core_sample_indices_] = True
-    labels = db.labels_
+elif clustertype == 'dbscan':
+    db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(X)
+    print('dbscan done')
+
+    #core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+    #core_samples_mask[db.core_sample_indices_] = True
+
+    thestatelabels = db.labels_
+    print(thestatelabels)
+    print('thestatelabels shape', thestatelabels.shape)
+    tide.writenpvecs(thestatelabels, outfilename + '_statelabels.txt')
+
+    core_centers = np.transpose(X[core_sample_indices_, :])
+    tide.writenpvecs(core_centers, outfilename + '_core_centers.txt')
 
     # Number of clusters in labels, ignoring noise if present.
-    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+    n_clusters_ = len(set(thestatelabels)) - (1 if -1 in thestatelabels else 0)
+    print('Estimated number of clusters: %d' % n_clusters_)
+
+    methodname = 'dbscan_' + str(n_clusters).zfill(2)
+
+elif clustertype == 'hdbscan':
+    hdb = hdbs.HDBSCAN(min_samples=min_samples,
+                        alpha=alpha, 
+                        memory='/Users/frederic/Documents/MR_data/connectome/movies').fit(X)
+    thestatelabels = hdb.labels_
+    print(thestatelabels)
+
+    # Number of clusters in labels, ignoring noise if present.
+    n_clusters_ = len(set(thestatelabels)) - (1 if -1 in thestatelabels else 0)
 
     print('Estimated number of clusters: %d' % n_clusters_)
-    # print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels))
-    # print("Completeness: %0.3f" % metrics.completeness_score(labels_true, labels))
-    # print("V-measure: %0.3f" % metrics.v_measure_score(labels_true, labels))
-    # print("Adjusted Rand Index: %0.3f"
-    # % metrics.adjusted_rand_score(labels_true, labels))
-    # print("Adjusted Mutual Information: %0.3f"
-    # % metrics.adjusted_mutual_info_score(labels_true, labels))
-    print("Silhouette Coefficient: %0.3f"
-          % metrics.silhouette_score(X, labels))
+    methodname = 'hdbscan_' + str(n_clusters).zfill(2)
+
+else:  
+    print('unknown clustering type')
+    sys.exit()

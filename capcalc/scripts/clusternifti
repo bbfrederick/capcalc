@@ -1,0 +1,363 @@
+#!/usr/bin/env python
+#
+#   Copyright 2016 Blaise Frederick
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+#
+#       $Author: frederic $
+#       $Date: 2016/06/14 12:04:50 $
+#       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
+#
+from __future__ import print_function, division
+import sys
+import getopt
+import string
+import platform
+import rapidtide.tide_funcs as tide
+
+import numpy as np
+from pylab import *
+import nibabel as nib
+from sklearn.feature_extraction.image import img_to_graph
+from sklearn import metrics
+from sklearn.cluster import AgglomerativeClustering, KMeans, MiniBatchKMeans, DBSCAN
+from sklearn.neighbors import kneighbors_graph
+from sklearn.decomposition import FastICA, PCA, SparsePCA
+from sklearn.preprocessing import StandardScaler
+import scipy.sparse as ss
+from matplotlib import pyplot as plt
+from scipy.cluster.hierarchy import dendrogram
+
+try:
+    import hdbscan as hdbs
+    hdbpresent = True
+    print('hdbscan is present')
+except:
+    hdbpresent = False
+
+def plot_dendrogram(model, **kwargs):
+
+    # Children of hierarchical clustering
+    children = model.children_
+
+    # Distances between each pair of children
+    # Since we don't have this information, we can use a uniform one for plotting
+    distance = np.arange(children.shape[0])
+
+    # The number of observations contained in each cluster level
+    no_of_observations = np.arange(2, children.shape[0]+2)
+
+    # Create linkage matrix and then plot the dendrogram
+    linkage_matrix = np.column_stack([children, distance, no_of_observations]).astype(float)
+
+    # Plot the corresponding dendrogram
+    dendrogram(linkage_matrix, **kwargs)
+
+
+def save_sparse_csr(filename,array):
+    np.savez(filename,data = array.data ,indices=array.indices,
+             indptr =array.indptr, shape=array.shape )
+
+
+def load_sparse_csr(filename):
+    loader = np.load(filename)
+    return ss.csr_matrix((  loader['data'], loader['indices'], loader['indptr']),
+                         shape = loader['shape'])
+
+
+def N2one(loc, strides):
+    retval = 0
+    for i in range(len(loc) - 1):
+        retval += loc[i] * strides[1 - i]
+    retval += loc[-1]
+    return retval
+
+
+def three2one(loc, strides):
+    return loc[0] * strides[1] + loc[1] * strides[0] + loc[2]
+
+
+def one2N(index, strides):
+    coords = []
+    localindex = index + 0
+    for i in range(len(strides)):
+        coords.append(int(np.floor(localindex / strides[i - 1])))
+        localindex -= coords[-1] * strides[i - 1]
+    coords.append(np.mod(localindex, strides[0]))
+    return coords
+
+
+def one2three(index, strides):
+    x = int(np.floor(index / strides[1]))
+    y = int(np.floor((index - x * strides[1]) / strides[0]))
+    z = int(np.mod(index, strides[0]))
+    return [x, y, z]
+
+
+def mkconnectivity(ptlist, radius, theshape, dodiag=False, dims=None):
+    # convert the 1d index list to Nd locations
+    ndmods = [theshape[-1]]
+    for i in range(1, len(theshape) - 1):
+        ndmods.append(theshape[-1 - i] * ndmods[i - 1])
+    ptlistconv = []
+    if len(theshape) != 3:
+        # special case, 3d array
+        for thepoint in ptlist:
+            ptlistconv.append(one2three(thepoint, ndmods))
+    else:
+        for thepoint in ptlist:
+            ptlistconv.append(one2N(thepoint, ndmods))
+    
+    # now make the connectivity matrix for nearest neighbors with given radius
+    print('len ptlist =',len(ptlist))
+    sm = ss.lil_matrix((len(ptlist), len(ptlist)), dtype='int')
+
+    # sanity check first
+    rangeinpts = int(np.floor(radius))
+    if rangeinpts < 1:
+        print('radius too small - no points in connectivity matrix')
+        sys.exit()
+
+    # now iterate over every pair
+    nonzeroelems = 0
+    radsq = radius * radius
+    ptlistnp = np.asarray(ptlistconv)
+    reportstep = 1000
+    checkpointstep = 20000
+    for ridx in range(len(ptlist)):
+        if ridx % reportstep == 0:
+            print('row:', ridx, ', nonzero elements:', nonzeroelems, ', loc:', ptlistconv[ridx])
+        if ridx % checkpointstep == 0:
+            print('checkpoint file')
+            save_sparse_csr('connectivity_checkpoint', sm.tocsr())
+        distarray = np.sum(np.square(ptlistnp[:, :] - ptlistnp[ridx, :]), axis=1)
+        print
+        matchlocs = np.where(distarray < radsq)[0]
+        sm[ridx,matchlocs] = 1
+        nonzeroelems += len(matchlocs)
+    print(nonzeroelems, 'nonzero elements')
+
+    # now stuff this into a sparse matrix
+    #sm = ss.lil_matrix((len(ptlist), len(ptlist)), dtype='int')
+    #for thepair in pairlist:
+    #    sm[thepair[0], thepair[1]] = 1
+    return sm.tocsr()
+
+
+def usage():
+    print("usage: clusternifti datafile outputroot")
+    print("")
+    print("required arguments:")
+    print("    datafile      - the name of the 4 dimensional nifti file to cluster")
+    print("    outputroot    - the root name of the output nifti files")
+    print("")
+    print("optional arguments:")
+    print('    --nclusters=NCLUSTERS      - set the number of clusters to NCLUSTERS (default is 8)')
+    print('    --type=CLUSTERTYPE         - set the clustering type (options are agglomerative, kmeans,')
+    print('                                 dbscan (and hdbscan if installed). Default is kmeans)')
+    print('    --connfile=CONNECTIVITY    - use a precomputed connectivity file)')
+    print('    --eps=EPS                  - set eps to EPS')
+    print('    --alpha=ALPHA              - set alpha to ALPHA')
+    print('    --min_samples=MINSAMPLES   - set min_samples to MINSAMPLES')
+    print('    --affinity=AFFINITY        - set affinity to AFFINITY')
+    print('    --linkage=LINKAGE          - set linkage to LINKAGE')
+    print('    --radius=RADIUS            - set connectivity radius to RADIUS')
+    print('    --noconn                   - do not use a connectivity matrix')
+    print("")
+    return()
+
+
+# set default variable values
+n_clusters = 8
+max_iter = 250
+n_init = 100
+batch_size = 1000
+minibatch = True
+clustertype = 'kmeans'
+connfilename = None
+affinity='euclidean'
+linkage='ward'
+eps = 0.3
+radius = 1.0
+min_samples = 100
+alpha = 1.0
+
+# parse command line arguments
+try:
+    opts, args = getopt.gnu_getopt(sys.argv, 'h', ["help",
+                                                    "linkage=",
+                                                    "radius=",
+                                                    "eps=",
+                                                    "noconn",
+                                                    "min_samples",
+                                                    "alpha=",
+                                                    "affinity=",
+                                                    "nclusters=",
+                                                    "type=",
+                                                    "connfile="])
+except getopt.GetoptError as err:
+    # print(help information and exit:
+    print(str(err)) # will print something like "option -a not recognized"
+    usage()
+    sys.exit(2)
+
+# handle required args first
+if len(args) < 3:
+    print('spatial fit has 2 required arguments - ', len(args) - 1, 'found')
+    usage()
+    sys.exit()
+
+datafilename=args[1]
+outputrootname=args[2]
+
+for o, a in opts:
+    if o == "--nclusters":
+        n_clusters = int(a)
+        print('will use', n_clusters, 'clusters')
+    elif o == "--connfile":
+        connfilename = a
+        print('will use connectivity information from', connfilename)
+    elif o == "--radius":
+        radius = float(a)
+        print('will use connectivity radius of', radius)
+    elif o == "--eps":
+        eps = float(a)
+        print('will use eps of', eps)
+    elif o == "--alpha":
+        alpha = float(a)
+        print('will use alpha of', alpha)
+    elif o == "--min_samples":
+        min_samples = int(a)
+        print('will use min_samples of', min_samples)
+    elif o == "--linkage":
+        linkage = a
+        print('will use linkage', linkage)
+    elif o == "--affinity":
+        affinity = a
+        print('will use affinity', affinity)
+    elif o == "--type":
+        clustertype = a
+        if clustertype != 'kmeans' and \
+            clustertype != 'agglomerative' and \
+            clustertype != 'hdbscan' and \
+            clustertype != 'dbscan':
+            print('illegal clustering mode - must be kmeans, (h)dbscan, or agglomerative')
+            sys.exit()
+    elif o in ("-h", "--help"):
+        usage()
+        sys.exit()
+    else:
+        assert False, "unhandled option"
+
+
+print('Will perform', clustertype, 'clustering')
+    
+# read in data
+print("reading in data arrays")
+datafile_img, datafile_data, datafile_hdr, datafiledims, datafilesizes = tide.readfromnifti(datafilename)
+xsize, ysize, numslices, timepoints = tide.parseniftidims(datafiledims)
+xdim, ydim, slicethickness, tr = tide.parseniftisizes(datafilesizes)
+    
+# save the command line
+tide.writevec([' '.join(sys.argv)], outputrootname + '_commandline.txt')
+
+# allocating arrays
+print("reshaping arrays")
+numspatiallocs = int(xsize) * int(ysize) * int(numslices)
+rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
+
+print("masking arrays")
+datamaskdims = [1, xsize, ysize, numslices, 1]
+themaxes = np.max(rs_datafile, axis=1)
+themins = np.min(rs_datafile, axis=1)
+thediffs = (themaxes - themins).reshape((numspatiallocs))
+proclocs = np.where(thediffs > 0.0)
+procdata = rs_datafile[proclocs, :][0]
+print(rs_datafile.shape, procdata.shape)
+
+# now cluster the data
+coefficients = procdata
+coefficients = StandardScaler().fit_transform(procdata)
+if clustertype == 'agglomerative':
+    theshape = (xsize, ysize, numslices)
+    if connfilename is not None:
+        print('reading connectivity information...') 
+        connectivity = load_sparse_csr(connfilename)
+        print('done')
+    else:
+        print('computing connectivity information...') 
+        connectivity = mkconnectivity(proclocs[0], radius, theshape, dims=None)
+        save_sparse_csr(outputrootname + '_connectivity', connectivity)
+        print('done')
+    agg = AgglomerativeClustering(n_clusters=n_clusters, 
+                                    memory='/Users/frederic/Documents/MR_data/connectome/movies',
+                                    compute_full_tree=False,
+                                    linkage=linkage,
+                                    affinity=affinity,
+                                    connectivity=connectivity)
+    agg.fit(coefficients)
+    theregionlabels = agg.labels_
+    print('there are', agg.n_components_, 'components and', agg.n_leaves_, 'leaves')
+    methodname = 'agg_' + linkage + '_' + affinity + '_' + str(n_clusters).zfill(2)
+    print(agg.children_)
+    #ii = itertools.count(coefficients.shape[0])
+    #[{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
+
+elif clustertype == 'dbscan':
+    db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(coefficients)
+    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+    core_samples_mask[db.core_sample_indices_] = True
+    theregionlabels = db.labels_
+    print(theregionlabels)
+
+    # Number of clusters in labels, ignoring noise if present.
+    n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
+
+    print('Estimated number of clusters: %d' % n_clusters_)
+    methodname = 'dbscan_' + str(n_clusters).zfill(2)
+
+elif clustertype == 'hdbscan':
+    hdb = hdbs.HDBSCAN(min_samples=min_samples,
+                        alpha=alpha, 
+                        memory='/Users/frederic/Documents/MR_data/connectome/movies').fit(coefficients)
+    theregionlabels = hdb.labels_
+    print(theregionlabels)
+
+    # Number of clusters in labels, ignoring noise if present.
+    n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
+
+    print('Estimated number of clusters: %d' % n_clusters_)
+    methodname = 'hdbscan_' + str(n_clusters).zfill(2)
+
+else:
+    print('coefficients shape:', coefficients.shape)
+    if minibatch:
+        kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter).fit(coefficients)
+    else:
+        kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(coefficients)
+
+    theclusters = np.transpose(kmeans.cluster_centers_)
+    print('cluster_centers shape', theclusters.shape)
+    theregionlabels = kmeans.labels_
+    #print("Silhouette Coefficient: %0.3f"
+          #% metrics.silhouette_score(coefficients, theregionlabels))
+    methodname = 'kmeans_' + str(n_clusters).zfill(2)
+print('theregionlabels shape', theregionlabels.shape)
+print('clustering done')
+theheader = datafile_hdr
+theheader['dim'][4] = 1
+tempout = np.zeros((numspatiallocs), dtype='float')
+tempout[proclocs] = theregionlabels[:] + 1
+tide.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
+    outputrootname + '_' + methodname + '_regions')
