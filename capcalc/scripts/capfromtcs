@@ -34,7 +34,12 @@ from sklearn.feature_selection import SelectFdr, SelectKBest, SelectPercentile, 
 from scipy import sin, arange, pi, randn
 import numpy as np
 import nibabel as nib
-
+try:
+    import hdbscan as hdbs
+    hdbpresent = True
+    print('hdbscan is present')
+except:
+    hdbpresent = False
 
 def statestats(thestates, numlabels, minlabel):
     # returns statestats and transmat
@@ -175,7 +180,7 @@ def usage():
     print("                  [--nodetrend] [-s STARTTIME] [-D DURATION]")
     print("                  [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C]")
     print("                  [-m] [-n NUMCLUSTER] [-b BATCHSIZE] [-S SEGMENTSIZE] [-I INITIALIZATIONS]")
-    print("                  [--nonorm] [--pctnorm] [--varnorm] [--stdnorm] [--ppnorm] [--quality]")
+    print("                  [--noscale] [--nonorm] [--pctnorm] [--varnorm] [--stdnorm] [--ppnorm] [--quality]")
     print("                  [--pca] [--ica] [-p NUMCOMPONENTS]")
     print("")
     print("required arguments:")
@@ -203,6 +208,7 @@ def usage():
     print(
         '    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 1000')
     print('    --dbscan                     - perform dbscan clustering')
+    print('    --hdbscan                    - perform hdbscan clustering')
     print('    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)')
     print("")
     print('  Preprocessing:')
@@ -214,6 +220,7 @@ def usage():
     print("    -R                           - filter data and regressors to respiratory band")
     print("    -C                           - filter data and regressors to cardiac band")
     print("    --nodetrend                  - do not detrend the data before correlation")
+    print('    --noscale                    - don\'t perform vector magnitude scaling')
     print('    --nonorm                     - don\'t normalize timecourses')
     print('    --pctnorm                    - scale each timecourse to it\'s percentage of the mean')
     print('    --varnorm                    - scale each timecourse to have a variance of 1.0 (default)')
@@ -239,7 +246,7 @@ summaryonly = True
 # preprocessing options
 preprocessingtype = None
 dodetrend = True
-normmethod = 'varnorm'
+timenormmethod = 'varnorm'
 
 # clustering/partitioning options
 minibatch = False
@@ -274,9 +281,11 @@ try:
     opts, args = getopt.gnu_getopt(sys.argv[1:], "di:o:s:D:F:S:VLRCmn:p:b:I:v", ["infile=", "outfile=",
                                                                               "nodetrend",
                                                                               "dbscan",
+                                                                              "hdbscan",
                                                                               "GBR",
                                                                               "pca",
                                                                               "ica",
+                                                                              "noscale",
                                                                               "nonorm",
                                                                               "pctnorm",
                                                                               "varnorm",
@@ -337,24 +346,28 @@ for o, a in opts:
         display = True
         if verbose:
             print('will display quality metrics')
+    elif o == "--noscale":
+        standardscale = False
+        if verbose:
+            print('will not magnitude scale feature vectors')
     elif o == "--nonorm":
-        normmethod = 'none'
+        timenormmethod = 'none'
         if verbose:
             print('will do no normalization')
     elif o == "--pctnorm":
-        normmethod = 'pctnorm'
+        timenormmethod = 'pctnorm'
         if verbose:
             print('will do percent normalization')
     elif o == "--stdnorm":
-        normmethod = 'stdnorm'
+        timenormmethod = 'stdnorm'
         if verbose:
             print('will do std dev normalization')
     elif o == "--varnorm":
-        normmethod = 'varnorm'
+        timenormmethod = 'varnorm'
         if verbose:
             print('will do variance normalization')
     elif o == "--ppnorm":
-        normmethod = 'ppnorm'
+        timenormmethod = 'ppnorm'
         if verbose:
             print('will do p-p normalization')
     elif o == "--quality":
@@ -377,6 +390,13 @@ for o, a in opts:
         preprocessingtype = 'pca'
         if verbose:
             print('will perform pca dimensionality reduction step')
+    elif o == "--hdbscan":
+        clustertype = 'hdbscan'
+        if not hdbpresent:
+            print('hdbs is not installed, cannot perform hdbscan clustering.  Exiting')
+            sys.exit()
+        if verbose:
+            print('switching to hdbscan clustering')
     elif o == "--dbscan":
         clustertype = 'dbscan'
         if verbose:
@@ -463,15 +483,15 @@ if sampletime is None:
     usage()
     sys.exit()
 
-if normmethod == 'none':
+if timenormmethod == 'none':
     print('will not normalize timecourses')
-elif normmethod == 'pctnorm':
+elif timenormmethod == 'pctnorm':
     print('will normalize timecourses to percentage of mean')
-elif normmethod == 'stdnorm':
+elif timenormmethod == 'stdnorm':
     print('will normalize timecourses to standard deviation of 1.0')
-elif normmethod == 'varnorm':
+elif timenormmethod == 'varnorm':
     print('will normalize timecourses to variance of 1.0')
-elif normmethod == 'ppnorm':
+elif timenormmethod == 'ppnorm':
     print('will normalize timecourses to p-p deviation of 1.0')
 
 # save the command line
@@ -530,15 +550,15 @@ for feature in range(n_features):
         else:
             segdata = reformdata[feature, segstart:segstart + segsize]
 
-        if normmethod == 'none':
+        if timenormmethod == 'none':
             segnorm = segdata - np.mean(segdata)
-        elif normmethod == 'pctnorm':
+        elif timenormmethod == 'pctnorm':
             segnorm = tide.pcnormalize(segdata)
-        elif normmethod == 'varnorm':
+        elif timenormmethod == 'varnorm':
             segnorm = tide.varnormalize(segdata)
-        elif normmethod == 'stdnorm':
+        elif timenormmethod == 'stdnorm':
             segnorm = tide.stdnormalize(segdata)
-        elif normmethod == 'ppnorm':
+        elif timenormmethod == 'ppnorm':
             segnorm = tide.ppnormalize(segdata)
         else:
             segnorm = segdata
@@ -694,7 +714,8 @@ elif clustertype == 'dbscan':
     print('thestatelabels shape', thestatelabels.shape)
     tide.writenpvecs(thestatelabels, outfilename + '_statelabels.txt')
 
-    core_centers = np.transpose(X[core_sample_indices_, :])
+    print('core_sample_indices:', db.core_sample_indices_)
+    core_centers = np.transpose(X[db.core_sample_indices_, :])
     tide.writenpvecs(core_centers, outfilename + '_core_centers.txt')
 
     # Number of clusters in labels, ignoring noise if present.
