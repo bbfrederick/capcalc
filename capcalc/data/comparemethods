@@ -1,0 +1,33 @@
+capfromtcs -i manyfiles.txt \
+    --sampletime=0.72 -b 4800 -S 1200 --varnorm \
+    -m --quality \
+    -o output/manyfiles_kmeans_nopca 
+
+capfromtcs -i manyfiles.txt \
+    --sampletime=0.72 -b 4800 -S 1200 --varnorm \
+    --dbscan \
+    -o output/manyfiles_dbscan_nopca 
+
+capfromtcs -i manyfiles.txt \
+    --sampletime=0.72 -b 4800 -S 1200 --varnorm \
+    --hdbscan \
+    -o output/manyfiles_hdbscan_nopca 
+
+capfromtcs -i manyfiles.txt \
+    --sampletime=0.72 -b 4800 -S 1200 --varnorm \
+    --pca -p 20 \
+    -m --quality \
+    -o output/manyfiles_kmeans_pca 
+
+capfromtcs -i manyfiles.txt \
+    --sampletime=0.72 -b 4800 -S 1200 --varnorm \
+    --pca -p 20 \
+    --dbscan \
+    -o output/manyfiles_dbscan_pca 
+
+capfromtcs -i manyfiles.txt \
+    --sampletime=0.72 -b 4800 -S 1200 --varnorm \
+    --pca -p 20 \
+    --hdbscan \
+    -o output/manyfiles_hdbscan_pca 
+
