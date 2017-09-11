@@ -199,7 +199,9 @@ def usage():
     print("    -s STARTTIME                 - time of first datapoint to use in seconds in the first file")
     print("    -D DURATION                  - amount of data to use in seconds")
     print(
-        '    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
+        '    -S SEGMENTSIZE,[SEGSIZE2,...SEGSIZEN]')
+    print('                                 - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
+    print('                                   If there are multiple, comma separated numbers, treat these as subsegment lengths.')
     print('                                   Default segmentsize is the entire length')
     print("  Clustering:")
     print(
@@ -307,6 +309,7 @@ if len(args) > 1:
 # unset all required arguments
 infilename = []
 segsize = -1
+subsegs = []
 sampletime = None
 Fs = None
 outfilename = None
@@ -327,7 +330,10 @@ for o, a in opts:
         if verbose:
             print('will use', outfilename, 'as output file')
     elif o == '-S':
-        segsize = int(a)
+        for seg in a.split(','):
+            subsegs.append(int(seg))
+        segsize = np.sum(np.asarray(subsegs))
+        print('SUBSEGS:', subsegs)
         if verbose:
             print('Setting segment size to ', segsize)
     elif o == '--samplefreq':
@@ -532,7 +538,10 @@ n_features = thedims[0]
 n_samples = thedims[1]
 if segsize < 0:
     segsize = n_samples
+    subsegs.append(segsize)
 print('input dataset has', n_features, 'features and', n_samples, 'samples in segments of size', segsize)
+if len(subsegs) > 1:
+    print('    segment is broken into', len(subsegs), 'subsegments of length', subsegs)
 reformdata = np.reshape(trimmeddata, (n_features, n_samples))
 if n_samples % segsize > 0:
     print('segment size is not an even divisor of the total length - exiting')
@@ -544,26 +553,28 @@ for feature in range(n_features):
     if verbose:
         print('preprocessing feature', feature)
     for segment in range(numsegs):
-        segstart = segment * segsize
-        if dodetrend:
-            segdata = tide.detrend(reformdata[feature, segstart:segstart + segsize])
-        else:
-            segdata = reformdata[feature, segstart:segstart + segsize]
+        subsegstart = segment * segsize
+        for subseglen in subsegs:
+            if dodetrend:
+                segdata = tide.detrend(reformdata[feature, subsegstart:subsegstart + subseglen])
+            else:
+                segdata = reformdata[feature, subsegstart:subsegstart + subseglen]
+    
+            if timenormmethod == 'none':
+                segnorm = segdata - np.mean(segdata)
+            elif timenormmethod == 'pctnorm':
+                segnorm = tide.pcnormalize(segdata)
+            elif timenormmethod == 'varnorm':
+                segnorm = tide.varnormalize(segdata)
+            elif timenormmethod == 'stdnorm':
+                segnorm = tide.stdnormalize(segdata)
+            elif timenormmethod == 'ppnorm':
+                segnorm = tide.ppnormalize(segdata)
+            else:
+                segnorm = segdata
 
-        if timenormmethod == 'none':
-            segnorm = segdata - np.mean(segdata)
-        elif timenormmethod == 'pctnorm':
-            segnorm = tide.pcnormalize(segdata)
-        elif timenormmethod == 'varnorm':
-            segnorm = tide.varnormalize(segdata)
-        elif timenormmethod == 'stdnorm':
-            segnorm = tide.stdnormalize(segdata)
-        elif timenormmethod == 'ppnorm':
-            segnorm = tide.ppnormalize(segdata)
-        else:
-            segnorm = segdata
-
-        reformdata[feature, segstart:segstart + segsize] = theprefilter.apply(Fs, segnorm)
+            reformdata[feature, subsegstart:subsegstart + subseglen] = theprefilter.apply(Fs, segnorm)
+            subsegstart += subseglen
 X = np.nan_to_num(np.transpose(reformdata))
 
 if standardscale:
