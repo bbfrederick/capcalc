@@ -201,6 +201,10 @@ def usage():
     print(
         '    -S SEGMENTSIZE,[SEGSIZE2,...SEGSIZEN]')
     print('                                 - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
+    print(
+        '    -E SEGTYPE,SEGTYPE2[,...SEGTYPEN]')
+    print('                                 - group subsegments for summary statistics.  SEGTYPEs must be consecutive numbers')
+    print('                                   starting at 0, and all subsegments must be the same length')
     print('                                   If there are multiple, comma separated numbers, treat these as subsegment lengths.')
     print('                                   Default segmentsize is the entire length')
     print("  Clustering:")
@@ -657,6 +661,17 @@ if clustertype == 'kmeans':
     silinfo = []
     for state in range(n_clusters):
         silinfo.append([])
+    print('shape going in:', thestatelabels.shape)
+    statelabelsbysegment = np.reshape(thestatelabels, (-1, segsize))
+    print('shape coming out:', statelabelsbysegment.shape)
+    meaninstate = np.zeros((n_clusters, segsize), dtype='float')
+    stdinstate = np.zeros((n_clusters, segsize), dtype='float')
+    for state in range(n_clusters):
+        tcbyseg = np.where(statelabelsbysegment == state, 1, 0)
+        meaninstate[state, :] = np.mean(tcbyseg, axis=0)
+        stdinstate[state, :] = np.std(tcbyseg, axis=0)
+    tide.writenpvecs(meaninstate, outfilename + '_meaninstate.txt')
+    tide.writenpvecs(stdinstate, outfilename + '_stdinstate.txt')
     for segment in range(numsegs):
         thesestatelabels = thestatelabels[segment * segsize:(segment + 1) * segsize]
 
