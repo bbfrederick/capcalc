@@ -203,8 +203,7 @@ def usage():
     print('                                 - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.')
     print(
         '    -E SEGTYPE,SEGTYPE2[,...SEGTYPEN]')
-    print('                                 - group subsegments for summary statistics.  SEGTYPEs must be consecutive numbers')
-    print('                                   starting at 0, and all subsegments must be the same length')
+    print('                                 - group subsegments for summary statistics.  All subsegments in the same group must be the same length')
     print('                                   If there are multiple, comma separated numbers, treat these as subsegment lengths.')
     print('                                   Default segmentsize is the entire length')
     print("  Clustering:")
@@ -284,7 +283,7 @@ display = False
 
 # scan the command line arguments
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "di:o:s:D:F:S:VLRCmn:p:b:I:v", ["infile=", "outfile=",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "di:o:s:D:F:S:E:VLRCmn:p:b:I:v", ["infile=", "outfile=",
                                                                               "nodetrend",
                                                                               "dbscan",
                                                                               "hdbscan",
@@ -314,6 +313,7 @@ if len(args) > 1:
 infilename = []
 segsize = -1
 subsegs = []
+subseggroups = []
 sampletime = None
 Fs = None
 outfilename = None
@@ -340,6 +340,10 @@ for o, a in opts:
         print('SUBSEGS:', subsegs)
         if verbose:
             print('Setting segment size to ', segsize)
+    elif o == '-E':
+        for seg in a.split(','):
+            subseggroups.append(seg)
+        print('SUBSEGGROUPS:', subseggroups)
     elif o == '--samplefreq':
         Fs = float(a)
         sampletime = 1.0 / Fs
@@ -481,6 +485,29 @@ for o, a in opts:
             print('will use', n_pca, 'pca components for dimensionality reduction')
     else:
         assert False, "unhandled option"
+
+# check to make sure groups and subsegments are in agreement
+groups = {}
+if subseggroups is not None:
+    if len(subsegs) != len(subseggroups):
+        print('number of subsegment group IDs must match number of subsegs')
+        sys.exit()
+    for segnum in range(len(subseggroups)):
+        try:
+            groups[subseggroups[segnum]]['segnum'].append(int(segnum))
+        except:
+            groups[subseggroups[segnum]] = {}
+            groups[subseggroups[segnum]]['seglen'] = []
+            groups[subseggroups[segnum]]['segstart'] = []
+            groups[subseggroups[segnum]]['segnum'] = [int(segnum)]
+        groups[subseggroups[segnum]]['seglen'].append(subsegs[segnum])
+        groups[subseggroups[segnum]]['segstart'].append(int(np.sum(subsegs[0:segnum])))
+    for key in groups:
+        groupsegs = groups[key]['seglen']
+        if not all(x==groupsegs[0] for x in groupsegs):
+            print('all subsegments in a group must have the same length')
+            sys.exit()
+    print(groups)
 
 # check that required arguments are set
 if outfilename is None:
@@ -666,12 +693,21 @@ if clustertype == 'kmeans':
     print('shape coming out:', statelabelsbysegment.shape)
     meaninstate = np.zeros((n_clusters, segsize), dtype='float')
     stdinstate = np.zeros((n_clusters, segsize), dtype='float')
-    for state in range(n_clusters):
-        tcbyseg = np.where(statelabelsbysegment == state, 1, 0)
-        meaninstate[state, :] = np.mean(tcbyseg, axis=0)
-        stdinstate[state, :] = np.std(tcbyseg, axis=0)
-    tide.writenpvecs(meaninstate, outfilename + '_meaninstate.txt')
-    tide.writenpvecs(stdinstate, outfilename + '_stdinstate.txt')
+
+    # do the subsegment summaries
+    for key in groups:
+        groups[key]['meaninstate'] = np.zeros((n_clusters, groups[key]['seglen'][0]), dtype='float')
+        groups[key]['stdinstate'] = np.zeros((n_clusters, groups[key]['seglen'][0]), dtype='float')
+        for state in range(n_clusters):
+            tcbyseg = []
+            for seginstance in range(len(groups[key]['segnum'])):
+                startpos = groups[key]['segstart'][seginstance]
+                endpos = startpos + groups[key]['seglen'][seginstance]
+                tcbyseg.append(np.where(statelabelsbysegment[:, startpos:endpos] == state, 1, 0))
+            groups[key]['meaninstate'][state, :] = np.mean(np.concatenate(tcbyseg, axis=0), axis=0)
+            groups[key]['stdinstate'][state, :] = np.std(np.concatenate(tcbyseg, axis=0), axis=0)
+        tide.writenpvecs(groups[key]['meaninstate'], outfilename + '_' + str(key) + '_meaninstate.txt')
+        tide.writenpvecs(groups[key]['stdinstate'], outfilename + '_' + str(key) + '_stdinstate.txt')
     for segment in range(numsegs):
         thesestatelabels = thestatelabels[segment * segsize:(segment + 1) * segsize]
 
