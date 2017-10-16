@@ -313,7 +313,7 @@ if len(args) > 1:
 infilename = []
 segsize = -1
 subsegs = []
-subseggroups = []
+subseggroupIDs = []
 sampletime = None
 Fs = None
 outfilename = None
@@ -342,8 +342,8 @@ for o, a in opts:
             print('Setting segment size to ', segsize)
     elif o == '-E':
         for seg in a.split(','):
-            subseggroups.append(seg)
-        print('SUBSEGGROUPS:', subseggroups)
+            subseggroupIDs.append(seg)
+        print('SUBSEGGROUPIDS:', subseggroupIDs)
     elif o == '--samplefreq':
         Fs = float(a)
         sampletime = 1.0 / Fs
@@ -488,20 +488,23 @@ for o, a in opts:
 
 # check to make sure groups and subsegments are in agreement
 groups = {}
-if subseggroups is not None:
-    if len(subsegs) != len(subseggroups):
+if subsegs is not None:
+    if subseggroupIDs is None:
+        for i in range(len(subsegs)):
+            subseggroupIDs.append("group_" + str(i))
+    if len(subsegs) != len(subseggroupIDs):
         print('number of subsegment group IDs must match number of subsegs')
         sys.exit()
-    for segnum in range(len(subseggroups)):
+    for segnum in range(len(subseggroupIDs)):
         try:
-            groups[subseggroups[segnum]]['segnum'].append(int(segnum))
+            groups[subseggroupIDs[segnum]]['segnum'].append(int(segnum))
         except:
-            groups[subseggroups[segnum]] = {}
-            groups[subseggroups[segnum]]['seglen'] = []
-            groups[subseggroups[segnum]]['segstart'] = []
-            groups[subseggroups[segnum]]['segnum'] = [int(segnum)]
-        groups[subseggroups[segnum]]['seglen'].append(subsegs[segnum])
-        groups[subseggroups[segnum]]['segstart'].append(int(np.sum(subsegs[0:segnum])))
+            groups[subseggroupIDs[segnum]] = {}
+            groups[subseggroupIDs[segnum]]['seglen'] = []
+            groups[subseggroupIDs[segnum]]['segstart'] = []
+            groups[subseggroupIDs[segnum]]['segnum'] = [int(segnum)]
+        groups[subseggroupIDs[segnum]]['seglen'].append(subsegs[segnum])
+        groups[subseggroupIDs[segnum]]['segstart'].append(int(np.sum(subsegs[0:segnum])))
     for key in groups:
         groupsegs = groups[key]['seglen']
         if not all(x==groupsegs[0] for x in groupsegs):
