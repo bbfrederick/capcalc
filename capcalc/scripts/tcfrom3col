@@ -64,6 +64,7 @@ def usage():
     return ()
 
 # get the command line parameters
+debug = False
 nargs = len(sys.argv)
 if nargs != 5:
     usage()
@@ -77,5 +78,5 @@ outfilename = sys.argv[4]
 inputdata = tide.readvecs(infilename)
 timeaxis = np.arange(0.0, numpoints * timestep, timestep)
 outputdata = 0.0 * timeaxis
-outputdata = maketcfrom3col(inputdata, timeaxis, outputdata, debug=True)
+outputdata = maketcfrom3col(inputdata, timeaxis, outputdata, debug=debug)
 tide.writenpvecs(outputdata, outfilename)
