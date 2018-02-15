@@ -115,8 +115,9 @@ Usage:
 		usage: capfromtcs -i timecoursefile -o outputfile --samplefreq=FREQ --sampletime=TSTEP
 				  [--nodetrend] [-s STARTTIME] [-D DURATION]
 				  [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C]
-				  [-m] [-n NUMCLUSTER] [-b BATCHSIZE] [-S SEGMENTSIZE] [-I INITIALIZATIONS]
-				  [--nonorm] [--pctnorm] [--varnorm] [--stdnorm] [--ppnorm] [--quality]
+				  [-m] [-n NUMCLUSTER] [-b BATCHSIZE] [-S SEGMENTSIZE] [-E SEGMENTTYPE] [-I INITIALIZATIONS]
+				  [--noscale] [--nonorm] [--pctnorm] [--varnorm] [--stdnorm] [--ppnorm] [--quality]
+				  [--pca] [--ica] [-p NUMCOMPONENTS]
 
 		required arguments:
 		    -i, --infile=TIMECOURSEFILE  - text file mulitple timeseries
@@ -129,51 +130,63 @@ Usage:
 						   the same thing.
 
 		optional arguments:
-		    --nodetrend                  - do not detrend the data before correlation
+
+		  Data selection/partition:
 		    -s STARTTIME                 - time of first datapoint to use in seconds in the first file
 		    -D DURATION                  - amount of data to use in seconds
+		    -S SEGMENTSIZE,[SEGSIZE2,...SEGSIZEN]
+						 - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.
+		    -E SEGTYPE,SEGTYPE2[,...SEGTYPEN]
+						 - group subsegments for summary statistics.  All subsegments in the same group must be the same length
+						   If there are multiple, comma separated numbers, treat these as subsegment lengths.
+						   Default segmentsize is the entire length
+		  Clustering:
+		    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets
+		    -n NUMCLUSTER                - set the number of clusters to NUMCLUSTER (default is 8)
+		    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 1000
+		    --dbscan                     - perform dbscan clustering
+		    --hdbscan                    - perform hdbscan clustering
+		    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)
+
+		  Preprocessing:
 		    -F                           - filter data and regressors from LOWERFREQ to UPPERFREQ.
 						   LOWERSTOP and UPPERSTOP can be specified, or will be calculated automatically
 		    -V                           - filter data and regressors to VLF band
 		    -L                           - filter data and regressors to LFO band
 		    -R                           - filter data and regressors to respiratory band
 		    -C                           - filter data and regressors to cardiac band
-		    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets
-		    -n NUMCLUSTER                - set the number of clusters to NUMCLUSTER (default is 8)
-		    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 1000
-		    -S SEGMENTSIZE               - treat the timecourses as segments of length SEGMENTSIZE for preprocessing.
-						   Default segmentsize is the entire length
-		    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)
+		    --nodetrend                  - do not detrend the data before correlation
+		    --noscale                    - don't perform vector magnitude scaling
 		    --nonorm                     - don't normalize timecourses
 		    --pctnorm                    - scale each timecourse to it's percentage of the mean
 		    --varnorm                    - scale each timecourse to have a variance of 1.0 (default)
 		    --stdnorm                    - scale each timecourse to have a standard deviation of 1.0
 		    --ppnorm                     - scale each timecourse to have a peak to peak range of 1.0
-		    --quality                    - perform a silhouette test to evaluate fit quality
-		    -v                           - turn on verbose mode
-		    --dbscan                     - perform dbscan clustering
-		    --pca                        - perform PCA analysis
-		    --ica                        - perform ICA analysis
+		    --pca                        - perform PCA dimensionality reduction prior to analysis
+		    --ica                        - perform ICA dimensionality reduction prior to analysis
+		    -p NUMCOMPONENTS             - set the number of p/ica components to NUMCOMPONENTS (default is 8).  Set to -1 to estimate
+		    --noscale                    - do not apply standard scaler befor cluster fitting
+
+		  Other:
 		    --GBR                        - apply gradient boosting regressor testing on clusters
 		    -d                           - display some quality metrics
+		    --quality                    - perform a silhouette test to evaluate fit quality
+		    -v                           - turn on verbose mode
         
 	These options are somewhat self-explanatory.  I will be expanding this section of the manual going forward, but I want to put something here to get this out here.
 
 
-showxcorr
----------
+maptoroi
+--------
 
 Description:
 ^^^^^^^^^^^^
 
-	Like rapidtide2, but for single time courses.  Takes two text files as input, calculates and displays 
-	the time lagged crosscorrelation between them, fits the maximum time lag, and estimates
-	the significance of the correlation.  It has a range of filtering,
-	windowing, and correlation options.
+	maptoroi takes ROI values from a text file and maps them back onto a NIFTI image for display.
 
 Inputs:
 ^^^^^^^
-	showxcorr requires two text files containing timecourses with the same sample rate, one timepoint per line, which are to be correlated, and the sample rate.
+	maptoroi requires an input text file with 1 column per region giving the value of the ROI.  If there are multiple rows, each row corresponds to a time point.  It also requires a template NIFTI file.
 
 Outputs:
 ^^^^^^^^
@@ -184,43 +197,12 @@ Usage:
 
 	::
 
-		showxcorr - calculate and display crosscorrelation between two timeseries
+		usage: maptoroi inputfile templatefile outputroot
 
-		usage: showxcorr timecourse1 timecourse2 samplerate 
-			[-l LABEL] [-s STARTTIME] [-D DURATION] [-d] [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C] [-t] [-w] [-f] [-g] [-z FILENAME] [-N TRIALS]
-	
 		required arguments:
-			timecoursefile1     - text file containing a timeseries
-			timecoursefile2     - text file containing a timeseries
-			samplerate          - the sample rate of the timecourses, in Hz
-
-		optional arguments:
-			-t 	     - detrend the data
-			-w 	     - prewindow the data
-			-g 	     - perform phase alignment transform (phat) rather than 
-							standard crosscorrelation
-			-l LABEL	     - label for the delay value
-			-s STARTTIME  - time of first datapoint to use in seconds in the first file
-			-D DURATION   - amount of data to use in seconds
-			-r RANGE      - restrict peak search range to +/- RANGE seconds (default is 
-							+/-15)
-			-d            - turns off display of graph
-			-F            - filter data and regressors from LOWERFREQ to UPPERFREQ.
-							LOWERSTOP and UPPERSTOP can be specified, or will be 
-							calculated automatically
-			-V            - filter data and regressors to VLF band
-			-L            - filter data and regressors to LFO band
-			-R            - filter data and regressors to respiratory band
-			-C            - filter data and regressors to cardiac band
-			-T            - trim data to match
-			-A            - print data on a single summary line
-			-a            - if summary mode is on, add a header line showing what values 
-							mean
-			-f            - negate (flip) second regressor
-			-z FILENAME   - use the columns of FILENAME as controlling variables and 
-							return the partial correlation
-			-N TRIALS     - estimate significance thresholds by Monte Carlo with TRIALS 
-							repetition
+		    inputfile        - the name of the file with the roi values to be mapped back to image space
+		    templatefile     - the name of the template region file
+		    outputfile       - the name of the output nifti file
 
 
 tidepool
