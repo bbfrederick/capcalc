@@ -711,11 +711,13 @@ if clustertype == 'kmeans':
             groups[key]['stdinstate'][state, :] = np.std(np.concatenate(tcbyseg, axis=0), axis=0)
         tide.writenpvecs(groups[key]['meaninstate'], outfilename + '_' + str(key) + '_meaninstate.txt')
         tide.writenpvecs(groups[key]['stdinstate'], outfilename + '_' + str(key) + '_stdinstate.txt')
+    allstatestats = []
     for segment in range(numsegs):
         thesestatelabels = thestatelabels[segment * segsize:(segment + 1) * segsize]
 
         outputaffine = np.eye(4)
         rawtransmat, thestats = statestats(thesestatelabels, n_clusters, 0)
+        allstatestats.append(thestats)
         normtransmat = 1.0 * rawtransmat
         for i in range(n_clusters):
             if np.sum(rawtransmat[i, :]) > 0.0:
@@ -746,7 +748,8 @@ if clustertype == 'kmeans':
             tc = np.where(thesestatelabels == state, 1, 0)
             tide.writenpvecs(tc,
                              outfilename + '_seg_' + str(segment).zfill(4) + '_instate_' + str(state).zfill(2) + '.txt')
-        tide.writenpvecs(thesilclusterstats[segment, :, :],
+        if not summaryonly:
+            tide.writenpvecs(thesilclusterstats[segment, :, :],
                          outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
 
         for state in range(n_clusters):
@@ -755,12 +758,12 @@ if clustertype == 'kmeans':
 
     # now generate some summary information
     silavgs = []
-    subjpcts = []
-    for state in range(n_clusters):
-        silavgs.append(np.mean(np.asarray(silinfo[state], dtype='float')))
-        subjpcts.append(100.0 * len(silinfo[state]) / numsegs)
-    tide.writenpvecs(np.asarray(silavgs, dtype='float'), outfilename + '_overallsilhouettemean.txt')
-    tide.writenpvecs(np.asarray(subjpcts, dtype='float'), outfilename + '_pctsegsinstate.txt')
+    if not summaryonly:
+        for state in range(n_clusters):
+            silavgs.append(np.mean(np.asarray(silinfo[state], dtype='float')))
+        tide.writenpvecs(np.asarray(silavgs, dtype='float'), outfilename + '_overallsilhouettemean.txt')
+    pctarray = np.asarray(allstatestats[:], dtype='float')
+    tide.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), outfilename + '_overallmeanstats.txt')
     
     if doGBR:
         clf = GradientBoostingRegressor().fit(X, thestatelabels)
