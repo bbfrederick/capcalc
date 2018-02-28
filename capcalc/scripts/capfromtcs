@@ -34,6 +34,7 @@ from sklearn.feature_selection import SelectFdr, SelectKBest, SelectPercentile, 
 from scipy import sin, arange, pi, randn
 import numpy as np
 import nibabel as nib
+import pandas as pd
 try:
     import hdbscan as hdbs
     hdbpresent = True
@@ -76,6 +77,11 @@ def statestats(thestates, numlabels, minlabel):
         sourcestate = thestates[state - 1] - minlabel
         deststate = thestates[state] - minlabel
         transmat[sourcestate, deststate] += 1.0
+
+    # for debugging - remove!
+    #for i in range(numlabels):
+    #    transmat[0, i] = i
+
     lenlist[currentstate - minlabel].append(currentlen)
     thestats = []
     for i in range(numlabels):
@@ -730,16 +736,52 @@ if clustertype == 'kmeans':
         init_img=nib.Nifti1Image(normtransmat, outputaffine)
         init_hdr=init_img.get_header()
         init_sizes=init_hdr['pixdim']
-        tide.savetonifti(rawtransmat, init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_rawtransmat')
-        tide.savetonifti(normtransmat, init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_normtransmat')
-        tide.savetonifti(offdiagtransmat, init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_offdiagtransmat')
+        tide.savetonifti(np.transpose(rawtransmat), init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_rawtransmat')
+        tide.savetonifti(np.transpose(normtransmat), init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_normtransmat')
+        tide.savetonifti(np.transpose(offdiagtransmat), init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_offdiagtransmat')
+
+        # write as text as well
+        rows = []
+        cols = []
+        for i in range(n_clusters):
+            rows.append('from state ' + str(i + 1))
+            cols.append('to state ' + str(i + 1))
+        df = pd.DataFrame(data=rawtransmat, columns=cols)
+        df.insert(0, 'sources', pd.Series(rows))
+        df.to_csv(outfilename + '_seg_' + str(segment).zfill(4) + '_rawtransmat.csv', index=False)
+        df = pd.DataFrame(data=normtransmat, columns=cols)
+        df.insert(0, 'sources', pd.Series(rows))
+        df.to_csv(outfilename + '_seg_' + str(segment).zfill(4) + '_normtransmat.csv', index=False)
+        df = pd.DataFrame(data=offdiagtransmat, columns=cols)
+        df.insert(0, 'sources', pd.Series(rows))
+        df.to_csv(outfilename + '_seg_' + str(segment).zfill(4) + '_offdiagtransmat.csv', index=False)
         # rawtransmat files are an n_clusters by n_clusters matrix with the total number of transitions from each state to each other state.
         # normtransmat files are an n_clusters by n_clusters matrix with the total for of transitions from each state to each other state.
 
-        tide.writenpvecs(np.transpose(thestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
+        cols = ['% TRs in state',
+                'Number of runs in state',
+                'Total TRs in state',
+                'Min run (TRs)',
+                'Max run (TRs)',
+                'Mean run (TRs)',
+                'Median run (TRs)',
+                'StdDev run (TRs)']
+        df = pd.DataFrame(data=thestats, columns=cols)
+        df.to_csv(outfilename + '_seg_' + str(segment).zfill(4) + '_statestats.csv', index=False)
+        #tide.writenpvecs(np.transpose(thestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
         thetimestats = 1.0 * thestats
         thetimestats[:, 2:] *= sampletime
-        tide.writenpvecs(np.transpose(thetimestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
+        cols = ['% Seconds in state',
+                'Number of runs in state',
+                'Total seconds in state',
+                'Min run (sec)',
+                'Max run (sec)',
+                'Mean run (sec)',
+                'Median run (sec)',
+                'StdDev run (sec)']
+        df = pd.DataFrame(data=thetimestats, columns=cols)
+        df.to_csv(outfilename + '_seg_' + str(segment).zfill(4) + '_statetimestats.csv', index=False)
+        #tide.writenpvecs(np.transpose(thetimestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
 
         tide.writenpvecs(thesestatelabels, outfilename + '_seg_' + str(segment).zfill(4) + '_statelabels.txt')
         print('Segment %d average silhouette Coefficient: %0.3f'
@@ -749,8 +791,11 @@ if clustertype == 'kmeans':
             tide.writenpvecs(tc,
                              outfilename + '_seg_' + str(segment).zfill(4) + '_instate_' + str(state).zfill(2) + '.txt')
         if not summaryonly:
-            tide.writenpvecs(thesilclusterstats[segment, :, :],
-                         outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
+            cols = ['Mean', 'Median', 'Min', 'Max']
+            df = pd.DataFrame(data=np.transpose(thesilclusterstats[segment, :, :]), columns=cols)
+            df.to_csv(outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.csv', index=False)
+            #tide.writenpvecs(thesilclusterstats[segment, :, :],
+            #             outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
 
         for state in range(n_clusters):
             if thestats[state, 2] > 0:
@@ -763,7 +808,17 @@ if clustertype == 'kmeans':
             silavgs.append(np.mean(np.asarray(silinfo[state], dtype='float')))
         tide.writenpvecs(np.asarray(silavgs, dtype='float'), outfilename + '_overallsilhouettemean.txt')
     pctarray = np.asarray(allstatestats[:], dtype='float')
-    tide.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), outfilename + '_overallmeanstats.txt')
+    cols = ['% TRs in state',
+            'Number of runs in state',
+            'Total TRs in state',
+            'Min run (TRs)',
+            'Max run (TRs)',
+            'Mean run (TRs)',
+            'Median run (TRs)',
+            'StdDev run (TRs)']
+    df = pd.DataFrame(data=np.mean(pctarray, axis=0), columns=cols)
+    df.to_csv(outfilename + '_seg_' + str(segment).zfill(4) + '_overallmeanstats.csv', index=False)
+    #tide.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), outfilename + '_overallmeanstats.txt')
     
     if doGBR:
         clf = GradientBoostingRegressor().fit(X, thestatelabels)

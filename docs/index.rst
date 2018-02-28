@@ -58,9 +58,9 @@ Outputs:
 	OUTPUT_statelabels.txt
 	    This is a text file with one line per timepoint.  Each line is the assigned state for the given timepoint in the input data.
 	    
-	OUTPUT_silhouettesegmentstats.txt
+	OUTPUT_silhouettesegmentstats.csv
 
-	OUTPUT_overallsilhouettemean.txt
+	OUTPUT_overallsilhouettemean.csv
             This text file has one line per cluster, giving the mean of the mean silhouette score of all the segments that spent any time in that state.
 
 	OUTPUT_pctsegsinstate.txt
@@ -69,7 +69,7 @@ Outputs:
 	OUTPUT_seg_XXXX_instate_YY.txt
 	    This is a text file with one line per timepoint in the segment.  The value is 1 if the system is in state YY, 0 otherwise.
 	    
-	OUTPUT_seg_XXXX_statestats.txt
+	OUTPUT_seg_XXXX_statestats.csv
 	    This is a text file with one line per cluster (state), with the following columns:
 	    
                 * percentage of segment spent in state
@@ -81,13 +81,13 @@ Outputs:
                 * median number of TRs spent in state
                 * standard deviation of the number of TRs spent in state
 	    
-	OUTPUT_seg_XXXX_statetimestats.txt
+	OUTPUT_seg_XXXX_statetimestats.csv
 	    This is the equivalent of the statestats file, where the units are time in seconds rather than TRs
 	     
 	OUTPUT_seg_XXXX_statelabels.txt
 	    This is a text file with one line per timepoint.  Each line is the assigned state for the given timepoint in the segment.
 	    
-	OUTPUT_seg_XXXX_silhouetteclusterstats.txt
+	OUTPUT_seg_XXXX_silhouetteclusterstats.csv
 	    This is a text file with one line per cluster.  Each line has four columns:
 	    
 	        * the mean silhouette score for that cluster in that segment.
@@ -96,15 +96,19 @@ Outputs:
 		* the maximum silhouette score for that cluster in thate segment.
 		
 	OUTPUT_seg_XXXX_rawtransmat.nii.gz
-	    This is a NIFTI file with dimentions n_states by n_states.  The number of transitions from state a to state b is in location [a, b]
+	    This is a NIFTI file with dimensions n_states by n_states.  The number of transitions from state a to state b is in location [a, b]
 
 	OUTPUT_seg_XXXX_normtransmat.nii.gz
 	    This is a NIFTI file containing the same information as the rawtransmat file, but each row is normalized to sum to 1, making, so the numbers represent the transition probabilities, rather than the total number of transitions.
 	   
 	OUTPUT_seg_XXXX_offdiagtransmat.nii.gz
-	    his is a NIFTI file containing the same information as the normtransmat file, except that the diagonal elements have been set to zero.  This is therefore the relative probability transitioning to each possible destination state in the case where the state does not simply persist.
+	    This is a NIFTI file containing the same information as the normtransmat file, except that the diagonal elements have been set to zero.  This is therefore the relative probability transitioning to each possible destination state in the case where the state does not simply persist.
 	
     
+	OUTPUT_seg_XXXX_rawtransmat.csv
+	OUTPUT_seg_XXXX_normtransmat.csv
+	OUTPUT_seg_XXXX_offdiagtransmat.csv
+            The same data as the above NIFTI files, but as a csv file.
 Usage:
 ^^^^^^
 
