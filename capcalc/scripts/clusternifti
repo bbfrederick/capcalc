@@ -163,6 +163,7 @@ def usage():
     print("    outputroot    - the root name of the output nifti files")
     print("")
     print("optional arguments:")
+    print("    --dmask=DATAMASK           - use DATAMASK to specify which voxels in the data to use")
     print('    --nclusters=NCLUSTERS      - set the number of clusters to NCLUSTERS (default is 8)')
     print('    --type=CLUSTERTYPE         - set the clustering type (options are agglomerative, kmeans,')
     print('                                 dbscan (and hdbscan if installed). Default is kmeans)')
@@ -179,6 +180,7 @@ def usage():
 
 
 # set default variable values
+usedmask = False
 n_clusters = 8
 max_iter = 250
 n_init = 100
@@ -197,6 +199,7 @@ alpha = 1.0
 try:
     opts, args = getopt.gnu_getopt(sys.argv, 'h', ["help",
                                                     "linkage=",
+                                                    "dmask=",
                                                     "radius=",
                                                     "eps=",
                                                     "noconn",
@@ -225,6 +228,10 @@ for o, a in opts:
     if o == "--nclusters":
         n_clusters = int(a)
         print('will use', n_clusters, 'clusters')
+    elif o == "--dmask":
+        usedmask = True
+        datamaskname = a
+        print('using', datamaskname, 'as data mask')
     elif o == "--connfile":
         connfilename = a
         print('will use connectivity information from', connfilename)
@@ -266,9 +273,22 @@ print('Will perform', clustertype, 'clustering')
 # read in data
 print("reading in data arrays")
 datafile_img, datafile_data, datafile_hdr, datafiledims, datafilesizes = tide.readfromnifti(datafilename)
+if usedmask:
+    datamask_img, datamask_data, datamask_hdr, datamaskdims, datamasksizes = tide.readfromnifti(datamaskname)
+
 xsize, ysize, numslices, timepoints = tide.parseniftidims(datafiledims)
 xdim, ydim, slicethickness, tr = tide.parseniftisizes(datafilesizes)
     
+# check dimensions
+if usedmask:
+    print("checking mask dimensions")
+    if not tide.checkspacematch(datafiledims, datamaskdims):
+        print('input mask spatial dimensions do not match image')
+        exit()
+    if not datamaskdims[4] == 1:
+        print('input mask time must have time dimension of 1')
+        exit()
+
 # save the command line
 tide.writevec([' '.join(sys.argv)], outputrootname + '_commandline.txt')
 
@@ -278,11 +298,14 @@ numspatiallocs = int(xsize) * int(ysize) * int(numslices)
 rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
 
 print("masking arrays")
-datamaskdims = [1, xsize, ysize, numslices, 1]
-themaxes = np.max(rs_datafile, axis=1)
-themins = np.min(rs_datafile, axis=1)
-thediffs = (themaxes - themins).reshape((numspatiallocs))
-proclocs = np.where(thediffs > 0.0)
+if usedmask:
+    proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.9)
+else:
+    datamaskdims = [1, xsize, ysize, numslices, 1]
+    themaxes = np.max(rs_datafile, axis=1)
+    themins = np.min(rs_datafile, axis=1)
+    thediffs = (themaxes - themins).reshape((numspatiallocs))
+    proclocs = np.where(thediffs > 0.0)
 procdata = rs_datafile[proclocs, :][0]
 print(rs_datafile.shape, procdata.shape)
 
