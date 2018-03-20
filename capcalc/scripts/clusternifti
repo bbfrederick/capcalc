@@ -25,6 +25,7 @@ import getopt
 import string
 import platform
 import rapidtide.tide_funcs as tide
+import os
 
 import numpy as np
 from pylab import *
@@ -324,7 +325,7 @@ if clustertype == 'agglomerative':
         save_sparse_csr(outputrootname + '_connectivity', connectivity)
         print('done')
     agg = AgglomerativeClustering(n_clusters=n_clusters, 
-                                    memory='/Users/frederic/Documents/MR_data/connectome/movies',
+                                    memory=os.getcwd(), 
                                     compute_full_tree=False,
                                     linkage=linkage,
                                     affinity=affinity,
@@ -353,7 +354,7 @@ elif clustertype == 'dbscan':
 elif clustertype == 'hdbscan':
     hdb = hdbs.HDBSCAN(min_samples=min_samples,
                         alpha=alpha, 
-                        memory='/Users/frederic/Documents/MR_data/connectome/movies').fit(coefficients)
+                        memory=os.getcwd()).fit(coefficients)
     theregionlabels = hdb.labels_
     print(theregionlabels)
 
