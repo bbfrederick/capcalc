@@ -203,7 +203,7 @@ display = False
 try:
     opts, args = getopt.gnu_getopt(sys.argv, 'h', ["help",
                                                     "linkage=",
-                                                    "diaplay",
+                                                    "display",
                                                     "dmask=",
                                                     "radius=",
                                                     "eps=",
