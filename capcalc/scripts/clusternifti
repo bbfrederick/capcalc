@@ -332,7 +332,7 @@ if display:
 if clustertype == 'agglomerative':
     theshape = (xsize, ysize, numslices)
     print('computing connectivity matrix')
-    themask = np.array((xsize, ysize, numslices), dtype=bool).reshape((numspatiallocs))
+    themask = np.zeros((xsize, ysize, numslices), dtype=bool).reshape((numspatiallocs))
     themask[proclocs] = True
     thecartmask = themask.reshape((xsize, ysize, numslices))
     connectivity = grid_to_graph(nx=xsize, ny=ysize, nz=numslices, mask=thecartmask)
