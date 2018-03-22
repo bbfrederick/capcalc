@@ -32,7 +32,9 @@ from pylab import *
 import nibabel as nib
 from sklearn.feature_extraction.image import img_to_graph
 from sklearn import metrics
-from sklearn.cluster import AgglomerativeClustering, KMeans, MiniBatchKMeans, DBSCAN
+from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
 from sklearn.neighbors import kneighbors_graph
 from sklearn.decomposition import FastICA, PCA, SparsePCA
@@ -158,20 +160,18 @@ def mkconnectivity(ptlist, radius, theshape, dodiag=False, dims=None):
 
 
 def usage():
-    print("usage: clusternifti datafile outputroot")
+    print("usage: supercluster datafile classes outputroot")
     print("")
     print("required arguments:")
     print("    datafile      - the name of the 4 dimensional nifti file to cluster")
+    print("    classes       - the name of the 3 dimensional nifti file of the class labels")
     print("    outputroot    - the root name of the output nifti files")
     print("")
     print("optional arguments:")
-    print("    --dmask=DATAMASK           - use DATAMASK to specify which voxels in the data to use")
+    print("    --dmask=DATAMASK           - use DATAMASK to specify which voxels in the data to classify")
     print('    --nclusters=NCLUSTERS      - set the number of clusters to NCLUSTERS (default is 8)')
-    print('    --type=CLUSTERTYPE         - set the clustering type (options are agglomerative, kmeans,')
-    print('                                 dbscan (and hdbscan if installed). Default is kmeans)')
-    print('    --connfile=CONNECTIVITY    - use a precomputed connectivity file)')
-    print('    --eps=EPS                  - set eps to EPS')
-    print('    --alpha=ALPHA              - set alpha to ALPHA')
+    print('    --type=CLASSIFIERTYPE      - set the classifier type (options are randomforest, svm,')
+    print('                                 gradientboost. Default is randomforest)')
     print('    --min_samples=MINSAMPLES   - set min_samples to MINSAMPLES')
     print('    --affinity=AFFINITY        - set affinity to AFFINITY')
     print('    --linkage=LINKAGE          - set linkage to LINKAGE')
@@ -184,20 +184,8 @@ def usage():
 
 # set default variable values
 usedmask = False
-n_clusters = 8
-max_iter = 250
-n_init = 100
-batch_size = 1000
-minibatch = True
-clustertype = 'kmeans'
-connfilename = None
-affinity='euclidean'
-linkage='ward'
-eps = 0.3
-radius = 1.0
-min_samples = 100
-min_cluster_size = 20
-alpha = 1.0
+classifiertype = 'randomforest'
+n_estimators = 20
 display = False
 
 # parse command line arguments
@@ -222,13 +210,14 @@ except getopt.GetoptError as err:
     sys.exit(2)
 
 # handle required args first
-if len(args) < 3:
-    print('spatial fit has 2 required arguments - ', len(args) - 1, 'found')
+if len(args) < 4:
+    print('spatial fit has 3 required arguments - ', len(args) - 1, 'found')
     usage()
     sys.exit()
 
 datafilename=args[1]
-outputrootname=args[2]
+classfilename=args[2]
+outputrootname=args[3]
 
 for o, a in opts:
     if o == "--nclusters":
@@ -263,12 +252,11 @@ for o, a in opts:
         affinity = a
         print('will use affinity', affinity)
     elif o == "--type":
-        clustertype = a
-        if clustertype != 'kmeans' and \
-            clustertype != 'agglomerative' and \
-            clustertype != 'hdbscan' and \
-            clustertype != 'dbscan':
-            print('illegal clustering mode - must be kmeans, (h)dbscan, or agglomerative')
+        classifiertype = a
+        if classifiertype != 'randomforest' and \
+            classifiertype != 'svm' and \
+            classifiertype != 'gradientboost':
+            print('illegal classifier mode - must be randomforest, svm, or gradientboost')
             sys.exit()
     elif o in ("-h", "--help"):
         usage()
@@ -277,11 +265,12 @@ for o, a in opts:
         assert False, "unhandled option"
 
 
-print('Will perform', clustertype, 'clustering')
+print('Will perform', classifiertype, 'classification')
     
 # read in data
 print("reading in data arrays")
 datafile_img, datafile_data, datafile_hdr, datafiledims, datafilesizes = tide.readfromnifti(datafilename)
+classfile_img, classfile_data, classfile_hdr, classfiledims, classfilesizes = tide.readfromnifti(classfilename)
 if usedmask:
     datamask_img, datamask_data, datamask_hdr, datamaskdims, datamasksizes = tide.readfromnifti(datamaskname)
 
@@ -289,6 +278,14 @@ xsize, ysize, numslices, timepoints = tide.parseniftidims(datafiledims)
 xdim, ydim, slicethickness, tr = tide.parseniftisizes(datafilesizes)
     
 # check dimensions
+print("checking class dimensions")
+if not tide.checkspacematch(datafiledims, classfiledims):
+    print('input mask spatial dimensions do not match image')
+    exit()
+if not classfiledims[4] == 1:
+    print('class file must have time dimension of 1')
+    exit()
+
 if usedmask:
     print("checking mask dimensions")
     if not tide.checkspacematch(datafiledims, datamaskdims):
@@ -305,6 +302,8 @@ tide.writevec([' '.join(sys.argv)], outputrootname + '_commandline.txt')
 print("reshaping arrays")
 numspatiallocs = int(xsize) * int(ysize) * int(numslices)
 rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
+rs_classfile = classfile_data.reshape((numspatiallocs))
+trainlocs = np.where(rs_classfile > 0)
 
 print("masking arrays")
 if usedmask:
@@ -315,45 +314,32 @@ else:
     themins = np.min(rs_datafile, axis=1)
     thediffs = (themaxes - themins).reshape((numspatiallocs))
     proclocs = np.where(thediffs > 0.0)
+traindata = rs_datafile[trainlocs, :][0]
 procdata = rs_datafile[proclocs, :][0]
-print(rs_datafile.shape, procdata.shape)
+y = rs_classfile[trainlocs]
+print(rs_datafile.shape, traindata.shape, procdata.shape, y.shape)
 
 # Scale the data
-coefficients = procdata
-coefficients = StandardScaler().fit_transform(procdata)
+X_train = StandardScaler().fit_transform(traindata)
 
 # take a look at it
 if display:
-    projection = TSNE().fit_transform(coefficients)
+    projection = TSNE().fit_transform(X_train)
     plt.scatter(*projection.T, **plot_kwds)
     plt.show()
 
-# now cluster the data
-if clustertype == 'agglomerative':
+# now classify the data
+if classifiertype == 'randomforest':
     theshape = (xsize, ysize, numslices)
-    #if connfilename is not None:
-    #    print('reading connectivity information...') 
-    #    connectivity = load_sparse_csr(connfilename)
-    #    print('done')
-    #else:
-    #    print('computing connectivity information...') 
-    #    connectivity = mkconnectivity(proclocs[0], radius, theshape, dims=None)
-    #    save_sparse_csr(outputrootname + '_connectivity', connectivity)
-    #    print('done')
-    agg = AgglomerativeClustering(n_clusters=n_clusters, 
-                                    memory=os.getcwd(), 
-                                    compute_full_tree=False,
-                                    linkage=linkage,
-                                    affinity=affinity)
-    agg.fit(coefficients)
-    theregionlabels = agg.labels_
-    print('there are', agg.n_components_, 'components and', agg.n_leaves_, 'leaves')
-    methodname = 'agg_' + linkage + '_' + affinity + '_' + str(n_clusters).zfill(2)
-    print(agg.children_)
-    #ii = itertools.count(coefficients.shape[0])
-    #[{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
+    clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=None,
+        min_samples_split=2, random_state=0, n_jobs=-1)
+    clf.fit(X_train, y)
+    scores = cross_val_score(clf, X_train, y)
+    print('scores mean:', scores.mean())
+    plt.plot(clf.feature_importances_)
+    plt.show()
 
-elif clustertype == 'dbscan':
+elif classifiertype == 'dbscan':
     db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(coefficients)
     core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
     core_samples_mask[db.core_sample_indices_] = True
