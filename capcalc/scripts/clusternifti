@@ -335,7 +335,7 @@ if clustertype == 'agglomerative':
     themask = np.zeros((xsize, ysize, numslices), dtype=bool).reshape((numspatiallocs))
     themask[proclocs] = True
     thecartmask = themask.reshape((xsize, ysize, numslices))
-    connectivity = grid_to_graph(nx=xsize, ny=ysize, nz=numslices, mask=thecartmask)
+    connectivity = grid_to_graph(n_x=xsize, n_y=ysize, n_z=numslices, mask=thecartmask)
     print(connectivity.shape)
     print('Done')
     agg = AgglomerativeClustering(n_clusters=n_clusters, 
