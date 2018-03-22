@@ -30,7 +30,7 @@ import os
 import numpy as np
 from pylab import *
 import nibabel as nib
-from sklearn.feature_extraction.image import img_to_graph
+from sklearn.feature_extraction.image import grid_to_graph
 from sklearn import metrics
 from sklearn.cluster import AgglomerativeClustering, KMeans, MiniBatchKMeans, DBSCAN
 from sklearn.manifold import TSNE
@@ -331,19 +331,18 @@ if display:
 # now cluster the data
 if clustertype == 'agglomerative':
     theshape = (xsize, ysize, numslices)
-    #if connfilename is not None:
-    #    print('reading connectivity information...') 
-    #    connectivity = load_sparse_csr(connfilename)
-    #    print('done')
-    #else:
-    #    print('computing connectivity information...') 
-    #    connectivity = mkconnectivity(proclocs[0], radius, theshape, dims=None)
-    #    save_sparse_csr(outputrootname + '_connectivity', connectivity)
-    #    print('done')
+    print('computing connectivity matrix')
+    themask = np.array((xsize, ysize, numslices), dtype=bool).reshape((numspatiallocs))
+    themask[proclocs] = True
+    thecartmask = themask.reshape((xsize, ysize, numslices))
+    connectivity = grid_to_graph(nx=xsize, ny=ysize, nz=numslices, mask=thecartmask)
+    print(connectivity.shape)
+    print('Done')
     agg = AgglomerativeClustering(n_clusters=n_clusters, 
                                     memory=os.getcwd(), 
                                     compute_full_tree=False,
                                     linkage=linkage,
+                                    connectivity=connectivity,
                                     affinity=affinity)
     agg.fit(coefficients)
     theregionlabels = agg.labels_
