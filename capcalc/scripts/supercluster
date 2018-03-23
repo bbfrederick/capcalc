@@ -33,7 +33,7 @@ import nibabel as nib
 from sklearn.feature_extraction.image import img_to_graph
 from sklearn import metrics
 from sklearn.model_selection import cross_val_score
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingRegressor, AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsClassifier
@@ -355,7 +355,7 @@ if classifiertype == 'randomforest':
     theregionlabels = clf.predict(X_proc)
     print('prediction complete')
 
-elif classifiertype == 'gradientboost':
+elif classifiertype == 'adaboost':
     ada = AdaBoostClassifier(n_estimators=n_estimators)
     ada.fit(X_train, y)
     print('model fit complete')
@@ -366,7 +366,7 @@ elif classifiertype == 'gradientboost':
     theregionlabels = ada.predict(X_proc)
     print('prediction complete')
 
-elif classifiertype == 'adaboost':
+elif classifiertype == 'gradientboost':
     gbc = GradientBoostingClassifier(n_estimators=n_estimators)
     gbc.fit(X_train, y)
     print('model fit complete')
