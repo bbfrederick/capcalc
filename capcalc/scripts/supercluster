@@ -33,7 +33,7 @@ import nibabel as nib
 from sklearn.feature_extraction.image import img_to_graph
 from sklearn import metrics
 from sklearn.model_selection import cross_val_score
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingRegressor, AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsClassifier
@@ -261,8 +261,9 @@ for o, a in opts:
         classifiertype = a
         if classifiertype != 'randomforest' and \
             classifiertype != 'knn' and \
+            classifiertype != 'adaboost' and \
             classifiertype != 'gradientboost':
-            print('illegal classifier mode - must be randomforest, svm, or gradientboost')
+            print('illegal classifier mode - must be randomforest, knn, adaboost, or gradientboost')
             sys.exit()
     elif o in ("-h", "--help"):
         usage()
@@ -352,6 +353,28 @@ if classifiertype == 'randomforest':
     plt.show()
     methodname = 'randomforest_' + str(n_estimators).zfill(2)
     theregionlabels = clf.predict(X_proc)
+    print('prediction complete')
+
+elif classifiertype == 'gradientboost':
+    ada = AdaBoostClassifier(n_estimators=n_estimators)
+    ada.fit(X_train, y)
+    print('model fit complete')
+    scores = cross_val_score(ada, X_train, y)
+    print('score calculation complete')
+    print('scores mean:', scores.mean())
+    methodname = 'ada_' + weights + '_' + str(n_neighbors).zfill(2)
+    theregionlabels = ada.predict(X_proc)
+    print('prediction complete')
+
+elif classifiertype == 'adaboost':
+    gbc = GradientBoostingClassifier(n_estimators=n_estimators)
+    gbc.fit(X_train, y)
+    print('model fit complete')
+    scores = cross_val_score(gbc, X_train, y)
+    print('score calculation complete')
+    print('scores mean:', scores.mean())
+    methodname = 'gbc_' + weights + '_' + str(n_neighbors).zfill(2)
+    theregionlabels = gbc.predict(X_proc)
     print('prediction complete')
 
 elif classifiertype == 'knn':
