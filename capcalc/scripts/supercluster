@@ -36,7 +36,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
-from sklearn.neighbors import kneighbors_graph
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.decomposition import FastICA, PCA, SparsePCA
 from sklearn.preprocessing import StandardScaler
 import scipy.sparse as ss
@@ -169,7 +169,8 @@ def usage():
     print("")
     print("optional arguments:")
     print("    --dmask=DATAMASK           - use DATAMASK to specify which voxels in the data to classify")
-    print('    --nclusters=NCLUSTERS      - set the number of clusters to NCLUSTERS (default is 8)')
+    print('    --n_estimators=ESIMATORS   - set ESTIMATORS (default is 10)')
+    print('    --n_neighbors=NEIGHBORS    - use NEIGHBORS (default is 5)')
     print('    --type=CLASSIFIERTYPE      - set the classifier type (options are randomforest, svm,')
     print('                                 gradientboost. Default is randomforest)')
     print('    --min_samples=MINSAMPLES   - set min_samples to MINSAMPLES')
@@ -185,8 +186,15 @@ def usage():
 # set default variable values
 usedmask = False
 classifiertype = 'randomforest'
-n_estimators = 20
 display = False
+
+# random forest variables
+n_estimators = 20
+
+
+# knn variables
+weights = 'distance'
+n_neighbors = 5
 
 # parse command line arguments
 try:
@@ -198,11 +206,10 @@ try:
                                                     "eps=",
                                                     "noconn",
                                                     "min_samples=",
-                                                    "alpha=",
                                                     "affinity=",
-                                                    "nclusters=",
-                                                    "type=",
-                                                    "connfile="])
+                                                    "n_estimators=",
+                                                    "n_neighbors=",
+                                                    "type="])
 except getopt.GetoptError as err:
     # print(help information and exit:
     print(str(err)) # will print something like "option -a not recognized"
@@ -220,25 +227,22 @@ classfilename=args[2]
 outputrootname=args[3]
 
 for o, a in opts:
-    if o == "--nclusters":
-        n_clusters = int(a)
-        print('will use', n_clusters, 'clusters')
+    if o == "--n_estimators":
+        n_estimators = int(a)
+        print('will use', n_estimators, 'estimators')
+    elif o == "--n_neighbors":
+        n_neighbors = int(a)
+        print('will use n_neighbors of', n_neighbors)
     elif o == "--dmask":
         usedmask = True
         datamaskname = a
         print('using', datamaskname, 'as data mask')
-    elif o == "--connfile":
-        connfilename = a
-        print('will use connectivity information from', connfilename)
     elif o == "--radius":
         radius = float(a)
         print('will use connectivity radius of', radius)
     elif o == "--eps":
         eps = float(a)
         print('will use eps of', eps)
-    elif o == "--alpha":
-        alpha = float(a)
-        print('will use alpha of', alpha)
     elif o == "--min_samples":
         min_samples = int(a)
         print('will use min_samples of', min_samples)
@@ -254,7 +258,7 @@ for o, a in opts:
     elif o == "--type":
         classifiertype = a
         if classifiertype != 'randomforest' and \
-            classifiertype != 'svm' and \
+            classifiertype != 'knn' and \
             classifiertype != 'gradientboost':
             print('illegal classifier mode - must be randomforest, svm, or gradientboost')
             sys.exit()
@@ -321,6 +325,7 @@ print(rs_datafile.shape, traindata.shape, procdata.shape, y.shape)
 
 # Scale the data
 X_train = StandardScaler().fit_transform(traindata)
+X_proc = StandardScaler().fit_transform(procdata)
 
 # take a look at it
 if display:
@@ -330,55 +335,34 @@ if display:
 
 # now classify the data
 if classifiertype == 'randomforest':
-    theshape = (xsize, ysize, numslices)
     clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=None,
         min_samples_split=2, random_state=0, n_jobs=-1)
     clf.fit(X_train, y)
+    print('model fit complete')
     scores = cross_val_score(clf, X_train, y)
+    print('score calculation complete')
     print('scores mean:', scores.mean())
     plt.plot(clf.feature_importances_)
     plt.show()
+    methodname = 'randomforest_' + str(n_estimators).zfill(2)
+    theregionlabels = clf.predict(X_proc)
+    print('prediction complete')
 
-elif classifiertype == 'dbscan':
-    db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(coefficients)
-    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-    core_samples_mask[db.core_sample_indices_] = True
-    theregionlabels = db.labels_
-    print(theregionlabels)
-
-    # Number of clusters in labels, ignoring noise if present.
-    n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
-
-    print('Estimated number of clusters: %d' % n_clusters_)
-    methodname = 'dbscan_' + str(n_clusters).zfill(2)
-
-elif clustertype == 'hdbscan':
-    hdb = hdbs.HDBSCAN(min_samples=min_samples,
-                        min_cluster_size=min_cluster_size,
-                        alpha=alpha, 
-                        memory=os.getcwd()).fit(coefficients)
-    theregionlabels = hdb.labels_
-    print(theregionlabels)
-
-    # Number of clusters in labels, ignoring noise if present.
-    n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
-
-    print('Estimated number of clusters: %d' % n_clusters_)
-    methodname = 'hdbscan_' + str(n_clusters).zfill(2)
+elif classifiertype == 'knn':
+    knn = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, n_jobs=-1)
+    knn.fit(X_train, y)
+    print('model fit complete')
+    scores = cross_val_score(knn, X_train, y)
+    print('score calculation complete')
+    print('scores mean:', scores.mean())
+    methodname = 'knn_' + weights + '_' + str(n_neighbors).zfill(2)
+    theregionlabels = knn.predict(X_proc)
+    print('prediction complete')
 
 else:
-    print('coefficients shape:', coefficients.shape)
-    if minibatch:
-        kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter).fit(coefficients)
-    else:
-        kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(coefficients)
+    print('illegal classifier type')
+    sys.exit()
 
-    theclusters = np.transpose(kmeans.cluster_centers_)
-    print('cluster_centers shape', theclusters.shape)
-    theregionlabels = kmeans.labels_
-    #print("Silhouette Coefficient: %0.3f"
-          #% metrics.silhouette_score(coefficients, theregionlabels))
-    methodname = 'kmeans_' + str(n_clusters).zfill(2)
 print('theregionlabels shape', theregionlabels.shape)
 print('clustering done')
 theheader = datafile_hdr
