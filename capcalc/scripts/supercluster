@@ -33,7 +33,9 @@ import nibabel as nib
 from sklearn.feature_extraction.image import img_to_graph
 from sklearn import metrics
 from sklearn.model_selection import cross_val_score
+from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier
+from sklearn.semi_supervised import LabelPropagation
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsClassifier
@@ -261,9 +263,10 @@ for o, a in opts:
         classifiertype = a
         if classifiertype != 'randomforest' and \
             classifiertype != 'knn' and \
+            classifiertype != 'labelprop' and \
             classifiertype != 'adaboost' and \
             classifiertype != 'gradientboost':
-            print('illegal classifier mode - must be randomforest, knn, adaboost, or gradientboost')
+            print('illegal classifier mode - must be randomforest, knn, labelprop, adaboost, or gradientboost')
             sys.exit()
     elif o in ("-h", "--help"):
         usage()
@@ -340,60 +343,59 @@ if display:
     plt.scatter(*projection.T, **plot_kwds)
     plt.show()
 
-# now classify the data
+# set up the classifier
 if classifiertype == 'randomforest':
-    clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=None,
+    theclassifier = RandomForestClassifier(n_estimators=n_estimators, max_depth=None,
         min_samples_split=2, random_state=0, n_jobs=-1)
-    clf.fit(X_train, y)
-    print('model fit complete')
-    scores = cross_val_score(clf, X_train, y)
-    print('score calculation complete')
-    print('scores mean:', scores.mean())
-    plt.plot(clf.feature_importances_)
-    plt.show()
     methodname = 'randomforest_' + str(n_estimators).zfill(2)
-    theregionlabels = clf.predict(X_proc)
-    print('prediction complete')
+
+#elif classifiertype == 'labelprop':
+#    labelprop = AdaBoostClassifier(n_estimators=n_estimators)
+#    labelprop.fit(X_train, y)
+#    print('model fit complete')
+#    scores = cross_val_score(labelprop, X_train, y)
+#    print('score calculation complete')
+#    print('scores mean:', scores.mean())
+#    methodname = 'labelprop_' + weights + '_' + str(n_neighbors).zfill(2)
+#    theregionlabels = labelprop.predict(X_proc)
+#    print('prediction complete')
 
 elif classifiertype == 'adaboost':
     ada = AdaBoostClassifier(n_estimators=n_estimators)
-    ada.fit(X_train, y)
-    print('model fit complete')
-    scores = cross_val_score(ada, X_train, y)
-    print('score calculation complete')
-    print('scores mean:', scores.mean())
-    methodname = 'ada_' + weights + '_' + str(n_neighbors).zfill(2)
-    theregionlabels = ada.predict(X_proc)
-    print('prediction complete')
+    methodname = 'ada_' + str(n_neighbors).zfill(2)
 
 elif classifiertype == 'gradientboost':
     gbc = GradientBoostingClassifier(n_estimators=n_estimators)
-    gbc.fit(X_train, y)
-    print('model fit complete')
-    scores = cross_val_score(gbc, X_train, y)
-    print('score calculation complete')
-    print('scores mean:', scores.mean())
-    methodname = 'gbc_' + weights + '_' + str(n_neighbors).zfill(2)
-    theregionlabels = gbc.predict(X_proc)
-    print('prediction complete')
+    methodname = 'gbc_' + str(n_neighbors).zfill(2)
 
 elif classifiertype == 'knn':
     knn = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, n_jobs=-1)
-    knn.fit(X_train, y)
-    print('model fit complete')
-    scores = cross_val_score(knn, X_train, y)
-    print('score calculation complete')
-    print('scores mean:', scores.mean())
     methodname = 'knn_' + weights + '_' + str(n_neighbors).zfill(2)
-    theregionlabels = knn.predict(X_proc)
-    print('prediction complete')
 
 else:
     print('illegal classifier type')
     sys.exit()
 
-print('theregionlabels shape', theregionlabels.shape)
-print('clustering done')
+# evaluate the accuracy
+scores = cross_val_score(theclassifier, X_train, y, n_jobs=-1)
+print('score calculation complete')
+print('scores mean, min, max:', scores.mean(), scores.min(), scores.max())
+
+
+# train on the training set
+theclassifier.fit(X_train, y)
+print('model fit complete')
+
+# now classify the entire image
+theregionlabels = theclassifier.predict(X_proc)
+print('prediction complete')
+
+# run other classifier-specific metrics
+if classifiertype == 'randomforest' or classifiertype == 'adaboost' or classifiertype == 'gradientboost':
+    plt.plot(theclassifier.feature_importances_)
+    plt.show()
+
+# save the data
 theheader = datafile_hdr
 theheader['dim'][4] = 1
 tempout = np.zeros((numspatiallocs), dtype='float')
