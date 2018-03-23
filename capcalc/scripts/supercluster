@@ -187,6 +187,7 @@ def usage():
 usedmask = False
 classifiertype = 'randomforest'
 display = False
+doscale = False
 
 # random forest variables
 n_estimators = 20
@@ -201,6 +202,7 @@ try:
     opts, args = getopt.gnu_getopt(sys.argv, 'h', ["help",
                                                     "linkage=",
                                                     "display",
+                                                    "prescale",
                                                     "dmask=",
                                                     "radius=",
                                                     "eps=",
@@ -246,9 +248,9 @@ for o, a in opts:
     elif o == "--min_samples":
         min_samples = int(a)
         print('will use min_samples of', min_samples)
-    elif o == "--display":
-        display = True
-        print('will display representation of data')
+    elif o == "--prescale":
+        doscale = True
+        print('will prescale data')
     elif o == "--linkage":
         linkage = a
         print('will use linkage', linkage)
@@ -324,8 +326,12 @@ y = rs_classfile[trainlocs]
 print(rs_datafile.shape, traindata.shape, procdata.shape, y.shape)
 
 # Scale the data
-X_train = StandardScaler().fit_transform(traindata)
-X_proc = StandardScaler().fit_transform(procdata)
+if doscale:
+    X_train = StandardScaler().fit_transform(traindata)
+    X_proc = StandardScaler().fit_transform(procdata)
+else:
+    X_train = traindata
+    X_proc = procdata
 
 # take a look at it
 if display:
