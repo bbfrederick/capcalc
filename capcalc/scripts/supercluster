@@ -33,6 +33,7 @@ import nibabel as nib
 from sklearn.feature_extraction.image import img_to_graph
 from sklearn import metrics
 from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.semi_supervised import LabelPropagation
@@ -190,6 +191,7 @@ usedmask = False
 classifiertype = 'randomforest'
 display = False
 doscale = False
+numtests = 5
 
 # random forest variables
 n_estimators = 20
@@ -313,7 +315,7 @@ print("reshaping arrays")
 numspatiallocs = int(xsize) * int(ysize) * int(numslices)
 rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
 rs_classfile = classfile_data.reshape((numspatiallocs))
-trainlocs = np.where(rs_classfile > 0)
+knownlocs = np.where(rs_classfile > 0)
 
 print("masking arrays")
 if usedmask:
@@ -324,70 +326,72 @@ else:
     themins = np.min(rs_datafile, axis=1)
     thediffs = (themaxes - themins).reshape((numspatiallocs))
     proclocs = np.where(thediffs > 0.0)
-traindata = rs_datafile[trainlocs, :][0]
-procdata = rs_datafile[proclocs, :][0]
-y = rs_classfile[trainlocs]
-print(rs_datafile.shape, traindata.shape, procdata.shape, y.shape)
+X_known = rs_datafile[knownlocs, :][0]
+y_known = rs_classfile[knownlocs]
+X_predict = rs_datafile[proclocs, :][0]
+print(rs_datafile.shape, X_known.shape, X_predict.shape, y_known.shape)
 
 # Scale the data
 if doscale:
-    X_train = StandardScaler().fit_transform(traindata)
-    X_proc = StandardScaler().fit_transform(procdata)
-else:
-    X_train = traindata
-    X_proc = procdata
+    X_known = StandardScaler().fit_transform(X_known)
+    X_predict = StandardScaler().fit_transform(X_predict)
 
 # take a look at it
 if display:
-    projection = TSNE().fit_transform(X_train)
+    projection = TSNE().fit_transform(X_known)
     plt.scatter(*projection.T, **plot_kwds)
     plt.show()
 
 # set up the classifier
 if classifiertype == 'randomforest':
-    theclassifier = RandomForestClassifier(n_estimators=n_estimators, max_depth=None,
-        min_samples_split=2, random_state=0, n_jobs=-1)
+    theclassifier = RandomForestClassifier( \
+        n_estimators=n_estimators, \
+        max_depth=None,
+        min_samples_split=2, \
+        random_state=0, \
+        n_jobs=-1)
     methodname = 'randomforest_' + str(n_estimators).zfill(2)
 
-#elif classifiertype == 'labelprop':
-#    labelprop = AdaBoostClassifier(n_estimators=n_estimators)
-#    labelprop.fit(X_train, y)
-#    print('model fit complete')
-#    scores = cross_val_score(labelprop, X_train, y)
-#    print('score calculation complete')
-#    print('scores mean:', scores.mean())
-#    methodname = 'labelprop_' + weights + '_' + str(n_neighbors).zfill(2)
-#    theregionlabels = labelprop.predict(X_proc)
-#    print('prediction complete')
-
 elif classifiertype == 'adaboost':
-    ada = AdaBoostClassifier(n_estimators=n_estimators)
+    theclassifier = AdaBoostClassifier(n_estimators=n_estimators)
     methodname = 'ada_' + str(n_neighbors).zfill(2)
 
 elif classifiertype == 'gradientboost':
-    gbc = GradientBoostingClassifier(n_estimators=n_estimators)
+    theclassifier = GradientBoostingClassifier(n_estimators=n_estimators)
     methodname = 'gbc_' + str(n_neighbors).zfill(2)
 
 elif classifiertype == 'knn':
-    knn = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, n_jobs=-1)
+    theclassifier = KNeighborsClassifier( \
+        n_neighbors=n_neighbors, \
+        weights=weights, \
+        n_jobs=-1)
     methodname = 'knn_' + weights + '_' + str(n_neighbors).zfill(2)
 
 else:
     print('illegal classifier type')
     sys.exit()
 
-# evaluate the accuracy
-scores = cross_val_score(theclassifier, X_train, y, n_jobs=-1)
-print('score calculation complete')
-print('scores mean, min, max:', scores.mean(), scores.min(), scores.max())
+# check the accuracy of the model
+accuracies = []
+for testrun in range(numtests):
+    X_train, X_test, y_train, y_test = train_test_split(X_known, y_known, test_size=0.2)
+    theclassifier.fit(X_train, y_train)
+    print('model fit complete')
 
+    # now make predictions on the test data
+    y_predict = theclassifier.predict(X_test)
+    accuracies.append(accuracy_score(y_test, y_predict))
 
-# train on the training set
-theclassifier.fit(X_train, y)
-print('model fit complete')
+if len(accuracies) > 0:
+    theaccuracies = np.asarray(accuracies, dtype=np.float)
+    print('Accuracies:')
+    print('\tall:', theaccuracies)
+    print('\tmean:', np.mean(theaccuracies))
+    print('\tmin:', np.min(theaccuracies))
+    print('\tmax:', np.max(theaccuracies))
 
 # now classify the entire image
-theregionlabels = theclassifier.predict(X_proc)
+theregionlabels = theclassifier.predict(X_predict)
 print('prediction complete')
 
 # run other classifier-specific metrics
@@ -395,10 +399,15 @@ if classifiertype == 'randomforest' or classifiertype == 'adaboost' or classifie
     plt.plot(theclassifier.feature_importances_)
     plt.show()
 
+# evaluate the accuracy with cross_val_score
+#scores = cross_val_score(theclassifier, X_known, y_known, n_jobs=-1)
+#print('score calculation complete')
+#print('scores mean, min, max:', scores.mean(), scores.min(), scores.max())
+
 # save the data
 theheader = datafile_hdr
 theheader['dim'][4] = 1
 tempout = np.zeros((numspatiallocs), dtype='float')
-tempout[proclocs] = theregionlabels[:] + 1
+tempout[proclocs] = theregionlabels[:]
 tide.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
     outputrootname + '_' + methodname + '_regions')
