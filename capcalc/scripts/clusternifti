@@ -166,6 +166,7 @@ def usage():
     print("")
     print("optional arguments:")
     print("    --dmask=DATAMASK           - use DATAMASK to specify which voxels in the data to use")
+    print('    --prescale                 - prescale data prior to clustering')
     print('    --nclusters=NCLUSTERS      - set the number of clusters to NCLUSTERS (default is 8)')
     print('    --type=CLUSTERTYPE         - set the clustering type (options are agglomerative, kmeans,')
     print('                                 dbscan (and hdbscan if installed). Default is kmeans)')
@@ -199,6 +200,7 @@ min_samples = 100
 min_cluster_size = 20
 alpha = 1.0
 display = False
+prescale = False
 
 # parse command line arguments
 try:
@@ -209,6 +211,7 @@ try:
                                                     "radius=",
                                                     "eps=",
                                                     "noconn",
+                                                    "prescale",
                                                     "min_samples=",
                                                     "alpha=",
                                                     "affinity=",
@@ -253,6 +256,9 @@ for o, a in opts:
     elif o == "--min_samples":
         min_samples = int(a)
         print('will use min_samples of', min_samples)
+    elif o == "--prescale":
+        prescale = True
+        print('will prescale data prior to fitting')
     elif o == "--display":
         display = True
         print('will display representation of data')
@@ -319,8 +325,12 @@ procdata = rs_datafile[proclocs, :][0]
 print(rs_datafile.shape, procdata.shape)
 
 # Scale the data
-coefficients = procdata
-coefficients = StandardScaler().fit_transform(procdata)
+if prescale:
+    coefficients = StandardScaler().fit_transform(procdata)
+    prescalename = 'prescale_'
+else:
+    coefficients = procdata
+    prescalename = ''
 
 # take a look at it
 if display:
@@ -347,7 +357,7 @@ if clustertype == 'agglomerative':
     agg.fit(coefficients)
     theregionlabels = agg.labels_
     print('there are', agg.n_components_, 'components and', agg.n_leaves_, 'leaves')
-    methodname = 'agg_' + linkage + '_' + affinity + '_' + str(n_clusters).zfill(2)
+    methodname = 'agg_' + prescalename + linkage + '_' + affinity + '_' + str(n_clusters).zfill(2)
     print(agg.children_)
     #ii = itertools.count(coefficients.shape[0])
     #[{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
@@ -363,7 +373,7 @@ elif clustertype == 'dbscan':
     n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
 
     print('Estimated number of clusters: %d' % n_clusters_)
-    methodname = 'dbscan_' + str(n_clusters).zfill(2)
+    methodname = 'dbscan_' + prescalename + str(n_clusters).zfill(2)
 
 elif clustertype == 'hdbscan':
     hdb = hdbs.HDBSCAN(min_samples=min_samples,
@@ -377,7 +387,7 @@ elif clustertype == 'hdbscan':
     n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
 
     print('Estimated number of clusters: %d' % n_clusters_)
-    methodname = 'hdbscan_' + str(n_clusters).zfill(2)
+    methodname = 'hdbscan_' + prescalename + str(n_clusters).zfill(2)
 
 else:
     print('coefficients shape:', coefficients.shape)
@@ -391,7 +401,7 @@ else:
     theregionlabels = kmeans.labels_
     #print("Silhouette Coefficient: %0.3f"
           #% metrics.silhouette_score(coefficients, theregionlabels))
-    methodname = 'kmeans_' + str(n_clusters).zfill(2)
+    methodname = 'kmeans_' + prescalename + str(n_clusters).zfill(2)
 print('theregionlabels shape', theregionlabels.shape)
 print('clustering done')
 theheader = datafile_hdr
