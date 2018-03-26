@@ -399,11 +399,6 @@ if classifiertype == 'randomforest' or classifiertype == 'adaboost' or classifie
     plt.plot(theclassifier.feature_importances_)
     plt.show()
 
-# evaluate the accuracy with cross_val_score
-#scores = cross_val_score(theclassifier, X_known, y_known, n_jobs=-1)
-#print('score calculation complete')
-#print('scores mean, min, max:', scores.mean(), scores.min(), scores.max())
-
 # save the data
 theheader = datafile_hdr
 theheader['dim'][4] = 1
