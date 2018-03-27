@@ -31,17 +31,16 @@ import numpy as np
 from pylab import *
 import nibabel as nib
 from sklearn.feature_extraction.image import img_to_graph
-from sklearn import metrics
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.semi_supervised import LabelPropagation
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.decomposition import FastICA, PCA, SparsePCA
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, RobustScaler
 import scipy.sparse as ss
 from matplotlib import pyplot as plt
 from scipy.cluster.hierarchy import dendrogram
@@ -191,6 +190,7 @@ usedmask = False
 classifiertype = 'randomforest'
 display = False
 doscale = False
+scaler = 'robust'
 numtests = 5
 
 # random forest variables
@@ -326,22 +326,36 @@ else:
     themins = np.min(rs_datafile, axis=1)
     thediffs = (themaxes - themins).reshape((numspatiallocs))
     proclocs = np.where(thediffs > 0.0)
-X_known = rs_datafile[knownlocs, :][0]
+
+# construct the arrays 
 y_known = rs_classfile[knownlocs]
+
+X_known = rs_datafile[knownlocs, :][0]
 X_predict = rs_datafile[proclocs, :][0]
 print(rs_datafile.shape, X_known.shape, X_predict.shape, y_known.shape)
 
 # Scale the data
+intlist = [10, 10]
 if doscale:
-    X_known = StandardScaler().fit_transform(X_known)
-    X_predict = StandardScaler().fit_transform(X_predict)
+    thepos = 0
+    for interval in intlist:
+        if scaler == 'standard':
+            X_known[:, thepos:(thepos + interval)] = StandardScaler().fit_transform(X_known[:, thepos:(thepos + interval)])
+            X_predict[:, thepos:(thepos + interval)] = StandardScaler().fit_transform(X_predict[:, thepos:(thepos + interval)])
+        else:
+            X_known[:, thepos:(thepos + interval)] = RobustScaler().fit_transform(X_known[:, thepos:(thepos + interval)])
+            X_predict[:, thepos:(thepos + interval)] = RobustScaler().fit_transform(X_predict[:, thepos:(thepos + interval)])
+        thepos += interval
+    prescalename = 'prescale_'
+else:
+    prescalename = ''
 
 # take a look at it
 if display:
     projection = TSNE().fit_transform(X_known)
     plt.scatter(*projection.T, **plot_kwds)
     plt.show()
-
+    
 # set up the classifier
 if classifiertype == 'randomforest':
     theclassifier = RandomForestClassifier( \
@@ -350,49 +364,56 @@ if classifiertype == 'randomforest':
         min_samples_split=2, \
         random_state=0, \
         n_jobs=-1)
-    methodname = 'randomforest_' + str(n_estimators).zfill(2)
+    methodname = 'randomforest_' + prescalename + str(n_estimators).zfill(2)
 
 elif classifiertype == 'adaboost':
     theclassifier = AdaBoostClassifier(n_estimators=n_estimators)
-    methodname = 'ada_' + str(n_neighbors).zfill(2)
+    methodname = 'ada_' + prescalename + str(n_neighbors).zfill(2)
 
 elif classifiertype == 'gradientboost':
     theclassifier = GradientBoostingClassifier(n_estimators=n_estimators)
-    methodname = 'gbc_' + str(n_neighbors).zfill(2)
+    methodname = 'gbc_' + prescalename + str(n_neighbors).zfill(2)
 
 elif classifiertype == 'knn':
     theclassifier = KNeighborsClassifier( \
         n_neighbors=n_neighbors, \
         weights=weights, \
         n_jobs=-1)
-    methodname = 'knn_' + weights + '_' + str(n_neighbors).zfill(2)
+    methodname = 'knn_' + prescalename + weights + '_' + str(n_neighbors).zfill(2)
 
 else:
     print('illegal classifier type')
     sys.exit()
 
+# check accuracy vs. number of components
+ncomps = timepoints
+
 # check the accuracy of the model
 accuracies = []
 for testrun in range(numtests):
-    X_train, X_test, y_train, y_test = train_test_split(X_known, y_known, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X_known[:, 0:ncomps], y_known, test_size=0.2)
     theclassifier.fit(X_train, y_train)
-    print('model fit complete')
-
+   
     # now make predictions on the test data
     y_predict = theclassifier.predict(X_test)
     accuracies.append(accuracy_score(y_test, y_predict))
-
+  
 if len(accuracies) > 0:
     theaccuracies = np.asarray(accuracies, dtype=np.float)
-    print('Accuracies:')
-    print('\tall:', theaccuracies)
-    print('\tmean:', np.mean(theaccuracies))
-    print('\tmin:', np.min(theaccuracies))
-    print('\tmax:', np.max(theaccuracies))
+    print('Accuracies for', ncomps, 'components (mean, min, max):', \
+        np.mean(theaccuracies), np.min(theaccuracies), np.max(theaccuracies))
+
+# now classify all the known data
+y_predict_known = theclassifier.predict(X_known)
+print('prediction of known locations complete')
+confusion = confusion_matrix(y_known, y_predict_known)
+classreport = classification_report(y_known, y_predict_known)
+tide.writenpvecs(confusion, outputrootname + '_' + methodname + '_predict_all_confusion_matrix.txt')
+print(classreport)
 
 # now classify the entire image
-theregionlabels = theclassifier.predict(X_predict)
-print('prediction complete')
+y_predict_all = theclassifier.predict(X_predict)
+print('prediction of all locations complete')
 
 # run other classifier-specific metrics
 if classifiertype == 'randomforest' or classifiertype == 'adaboost' or classifiertype == 'gradientboost':
@@ -402,7 +423,15 @@ if classifiertype == 'randomforest' or classifiertype == 'adaboost' or classifie
 # save the data
 theheader = datafile_hdr
 theheader['dim'][4] = 1
+
+# output classification of all known data
 tempout = np.zeros((numspatiallocs), dtype='float')
-tempout[proclocs] = theregionlabels[:]
+tempout[knownlocs] = y_predict_known[:]
 tide.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
-    outputrootname + '_' + methodname + '_regions')
+    outputrootname + '_' + methodname + '_predict_known')
+
+# output classification of all known data
+tempout = np.zeros((numspatiallocs), dtype='float')
+tempout[proclocs] = y_predict_all[:]
+tide.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
+    outputrootname + '_' + methodname + '_predict_all')
