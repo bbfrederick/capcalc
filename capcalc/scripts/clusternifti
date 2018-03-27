@@ -346,7 +346,7 @@ if clustertype == 'agglomerative':
     themask[proclocs] = True
     thecartmask = themask.reshape((xsize, ysize, numslices))
     #connectivity = grid_to_graph(n_x=np.uint32(xsize), n_y=np.uint32(ysize), n_z=np.uint32(numslices), mask=thecartmask)
-    connectivity = kneighbors_graph(5)
+    connectivity = kneighbors_graph(n_neighbors=5)
     print('Done')
     agg = AgglomerativeClustering(n_clusters=n_clusters, 
                                     memory=os.getcwd(), 
