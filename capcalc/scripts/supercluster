@@ -181,7 +181,9 @@ def usage():
     print('    --radius=RADIUS             - set connectivity radius to RADIUS')
     print('    --noconn                    - do not use a connectivity matrix')
     print('    --display                   - display a 2d representation of the input data')
+    print('    --prescale                  - prescale input data prior to clustering')
     print('    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently')
+    print('                                  NOTE: turns on prescaling')
     print("")
     return()
 
@@ -259,6 +261,7 @@ for o, a in opts:
         prescale = True
         print('will prescale data')
     elif o == "--scaleintervals":
+        prescale = True
         intlist = map(int, a.split(','))
         print('will use intervals', intlist)
     elif o == "--linkage":
