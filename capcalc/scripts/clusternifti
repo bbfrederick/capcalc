@@ -338,6 +338,7 @@ print(rs_datafile.shape, procdata.shape)
 if intlist is None:
     intlist = [timepoints]
 if prescale:
+    coefficients = procdata * 0.0
     thepos = 0
     for interval in intlist:
         if scaler == 'standard':
@@ -347,6 +348,7 @@ if prescale:
         thepos += interval
     prescalename = 'prescale_'
 else:
+    coefficients = procdata
     prescalename = ''
 
 # take a look at it
