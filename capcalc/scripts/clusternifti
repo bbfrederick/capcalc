@@ -36,7 +36,7 @@ from sklearn.cluster import AgglomerativeClustering, KMeans, MiniBatchKMeans, DB
 from sklearn.manifold import TSNE
 from sklearn.neighbors import kneighbors_graph
 from sklearn.decomposition import FastICA, PCA, SparsePCA
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, RobustScaler
 import scipy.sparse as ss
 from matplotlib import pyplot as plt
 from scipy.cluster.hierarchy import dendrogram
@@ -165,20 +165,21 @@ def usage():
     print("    outputroot    - the root name of the output nifti files")
     print("")
     print("optional arguments:")
-    print("    --dmask=DATAMASK           - use DATAMASK to specify which voxels in the data to use")
-    print('    --prescale                 - prescale data prior to clustering')
-    print('    --nclusters=NCLUSTERS      - set the number of clusters to NCLUSTERS (default is 8)')
-    print('    --type=CLUSTERTYPE         - set the clustering type (options are agglomerative, kmeans,')
-    print('                                 dbscan (and hdbscan if installed). Default is kmeans)')
-    print('    --connfile=CONNECTIVITY    - use a precomputed connectivity file)')
-    print('    --eps=EPS                  - set eps to EPS')
-    print('    --alpha=ALPHA              - set alpha to ALPHA')
-    print('    --min_samples=MINSAMPLES   - set min_samples to MINSAMPLES')
-    print('    --affinity=AFFINITY        - set affinity to AFFINITY')
-    print('    --linkage=LINKAGE          - set linkage to LINKAGE')
-    print('    --radius=RADIUS            - set connectivity radius to RADIUS')
-    print('    --noconn                   - do not use a connectivity matrix')
-    print('    --display                  - display a 2d representation of the input data')
+    print("    --dmask=DATAMASK            - use DATAMASK to specify which voxels in the data to use")
+    print('    --prescale                  - prescale data prior to clustering')
+    print('    --nclusters=NCLUSTERS       - set the number of clusters to NCLUSTERS (default is 8)')
+    print('    --type=CLUSTERTYPE          - set the clustering type (options are agglomerative, kmeans,')
+    print('                                  dbscan (and hdbscan if installed). Default is kmeans)')
+    print('    --connfile=CONNECTIVITY     - use a precomputed connectivity file)')
+    print('    --eps=EPS                   - set eps to EPS')
+    print('    --alpha=ALPHA               - set alpha to ALPHA')
+    print('    --min_samples=MINSAMPLES    - set min_samples to MINSAMPLES')
+    print('    --affinity=AFFINITY         - set affinity to AFFINITY')
+    print('    --linkage=LINKAGE           - set linkage to LINKAGE')
+    print('    --radius=RADIUS             - set connectivity radius to RADIUS')
+    print('    --noconn                    - do not use a connectivity matrix')
+    print('    --display                   - display a 2d representation of the input data')
+    print('    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently')
     print("")
     return()
 
@@ -201,11 +202,14 @@ min_cluster_size = 20
 alpha = 1.0
 display = False
 prescale = False
+scaler = 'robust'
+intlist = None
 
 # parse command line arguments
 try:
     opts, args = getopt.gnu_getopt(sys.argv, 'h', ["help",
                                                     "linkage=",
+                                                    "scaleintervals=",
                                                     "display",
                                                     "dmask=",
                                                     "radius=",
@@ -262,6 +266,9 @@ for o, a in opts:
     elif o == "--display":
         display = True
         print('will display representation of data')
+    elif o == "--scaleintervals":
+        intlist = map(int, a.split(','))
+        print('will use intervals', intlist)
     elif o == "--linkage":
         linkage = a
         print('will use linkage', linkage)
@@ -325,11 +332,18 @@ procdata = rs_datafile[proclocs, :][0]
 print(rs_datafile.shape, procdata.shape)
 
 # Scale the data
+if intlist is None:
+    intlist = [timepoints]
 if prescale:
-    coefficients = StandardScaler().fit_transform(procdata)
+    thepos = 0
+    for interval in intlist:
+        if scaler == 'standard':
+            coefficients[:, thepos:(thepos + interval)] = StandardScaler().fit_transform(procdata[:, thepos:(thepos + interval)])
+        else:
+            coefficients[:, thepos:(thepos + interval)] = RobustScaler().fit_transform(procdata[:, thepos:(thepos + interval)])
+        thepos += interval
     prescalename = 'prescale_'
 else:
-    coefficients = procdata
     prescalename = ''
 
 # take a look at it

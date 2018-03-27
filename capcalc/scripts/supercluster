@@ -170,17 +170,18 @@ def usage():
     print("    outputroot    - the root name of the output nifti files")
     print("")
     print("optional arguments:")
-    print("    --dmask=DATAMASK           - use DATAMASK to specify which voxels in the data to classify")
-    print('    --n_estimators=ESIMATORS   - set ESTIMATORS (default is 10)')
-    print('    --n_neighbors=NEIGHBORS    - use NEIGHBORS (default is 5)')
-    print('    --type=CLASSIFIERTYPE      - set the classifier type (options are randomforest, svm,')
-    print('                                 gradientboost. Default is randomforest)')
-    print('    --min_samples=MINSAMPLES   - set min_samples to MINSAMPLES')
-    print('    --affinity=AFFINITY        - set affinity to AFFINITY')
-    print('    --linkage=LINKAGE          - set linkage to LINKAGE')
-    print('    --radius=RADIUS            - set connectivity radius to RADIUS')
-    print('    --noconn                   - do not use a connectivity matrix')
-    print('    --display                  - display a 2d representation of the input data')
+    print("    --dmask=DATAMASK            - use DATAMASK to specify which voxels in the data to classify")
+    print('    --n_estimators=ESIMATORS    - set ESTIMATORS (default is 10)')
+    print('    --n_neighbors=NEIGHBORS     - use NEIGHBORS (default is 5)')
+    print('    --type=CLASSIFIERTYPE       - set the classifier type (options are randomforest, svm,')
+    print('                                  gradientboost. Default is randomforest)')
+    print('    --min_samples=MINSAMPLES    - set min_samples to MINSAMPLES')
+    print('    --affinity=AFFINITY         - set affinity to AFFINITY')
+    print('    --linkage=LINKAGE           - set linkage to LINKAGE')
+    print('    --radius=RADIUS             - set connectivity radius to RADIUS')
+    print('    --noconn                    - do not use a connectivity matrix')
+    print('    --display                   - display a 2d representation of the input data')
+    print('    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently')
     print("")
     return()
 
@@ -189,9 +190,10 @@ def usage():
 usedmask = False
 classifiertype = 'randomforest'
 display = False
-doscale = False
+prescale = False
 scaler = 'robust'
 numtests = 5
+intlist = None
 
 # random forest variables
 n_estimators = 20
@@ -205,6 +207,7 @@ n_neighbors = 5
 try:
     opts, args = getopt.gnu_getopt(sys.argv, 'h', ["help",
                                                     "linkage=",
+                                                    "scaleintervals=",
                                                     "display",
                                                     "prescale",
                                                     "dmask=",
@@ -253,8 +256,11 @@ for o, a in opts:
         min_samples = int(a)
         print('will use min_samples of', min_samples)
     elif o == "--prescale":
-        doscale = True
+        prescale = True
         print('will prescale data')
+    elif o == "--scaleintervals":
+        intlist = map(int, a.split(','))
+        print('will use intervals', intlist)
     elif o == "--linkage":
         linkage = a
         print('will use linkage', linkage)
@@ -335,8 +341,9 @@ X_predict = rs_datafile[proclocs, :][0]
 print(rs_datafile.shape, X_known.shape, X_predict.shape, y_known.shape)
 
 # Scale the data
-intlist = [10, 10]
-if doscale:
+if intlist is None:
+    intlist = [timepoints]
+if prescale:
     thepos = 0
     for interval in intlist:
         if scaler == 'standard':
