@@ -262,7 +262,7 @@ for o, a in opts:
         print('will prescale data')
     elif o == "--scaleintervals":
         prescale = True
-        intlist = map(int, a.split(','))
+        intlist = list(map(int, a.split(',')))
         print('will use intervals', intlist)
     elif o == "--linkage":
         linkage = a
