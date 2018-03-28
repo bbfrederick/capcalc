@@ -179,6 +179,7 @@ def usage():
     print('    --affinity=AFFINITY         - set affinity to AFFINITY')
     print('    --linkage=LINKAGE           - set linkage to LINKAGE')
     print('    --radius=RADIUS             - set connectivity radius to RADIUS')
+    print('    --weights=WEIGHTS           - use WEIGHTS weighting for knn (options are uniform and distance (default))')
     print('    --noconn                    - do not use a connectivity matrix')
     print('    --display                   - display a 2d representation of the input data')
     print('    --prescale                  - prescale input data prior to clustering')
@@ -200,7 +201,6 @@ intlist = None
 # random forest variables
 n_estimators = 20
 
-
 # knn variables
 weights = 'distance'
 n_neighbors = 5
@@ -214,6 +214,7 @@ try:
                                                     "prescale",
                                                     "dmask=",
                                                     "radius=",
+                                                    "weights=",
                                                     "eps=",
                                                     "noconn",
                                                     "min_samples=",
@@ -248,6 +249,9 @@ for o, a in opts:
         usedmask = True
         datamaskname = a
         print('using', datamaskname, 'as data mask')
+    elif o == "--weights":
+        radius = a
+        print('will use ', weights, 'weighting')
     elif o == "--radius":
         radius = float(a)
         print('will use connectivity radius of', radius)
