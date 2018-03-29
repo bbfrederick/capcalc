@@ -34,7 +34,7 @@ from sklearn.feature_extraction.image import img_to_graph
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier, BaggingClassifier
 from sklearn.semi_supervised import LabelPropagation
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
@@ -194,9 +194,11 @@ usedmask = False
 classifiertype = 'randomforest'
 display = False
 prescale = False
+multirun = False
 scaler = 'robust'
-numtests = 5
+numtests = 10
 intlist = None
+bagging = True
 
 # random forest variables
 n_estimators = 20
@@ -213,6 +215,8 @@ try:
                                                     "display",
                                                     "prescale",
                                                     "dmask=",
+                                                    "numtests=",
+                                                    "multirun",
                                                     "radius=",
                                                     "weights=",
                                                     "eps=",
@@ -255,12 +259,18 @@ for o, a in opts:
     elif o == "--radius":
         radius = float(a)
         print('will use connectivity radius of', radius)
+    elif o == "--numtests":
+         numtests = int(a)
+         print('will run', numtests, 'accuracy checks')
     elif o == "--eps":
         eps = float(a)
         print('will use eps of', eps)
     elif o == "--min_samples":
         min_samples = int(a)
         print('will use min_samples of', min_samples)
+    elif o == "--multirun":
+        multirun = True
+        print('will run multiplle classifications')
     elif o == "--prescale":
         prescale = True
         print('will prescale data')
@@ -320,9 +330,6 @@ if usedmask:
         print('input mask time must have time dimension of 1')
         exit()
 
-# save the command line
-tide.writevec([' '.join(sys.argv)], outputrootname + '_commandline.txt')
-
 # allocating arrays
 print("reshaping arrays")
 numspatiallocs = int(xsize) * int(ysize) * int(numslices)
@@ -351,6 +358,7 @@ print(rs_datafile.shape, X_known.shape, X_predict.shape, y_known.shape)
 if intlist is None:
     intlist = [timepoints]
 if prescale:
+    print('prescaling...')
     thepos = 0
     for interval in intlist:
         if scaler == 'standard':
@@ -360,25 +368,36 @@ if prescale:
             X_known[:, thepos:(thepos + interval)] = RobustScaler().fit_transform(X_known[:, thepos:(thepos + interval)])
             X_predict[:, thepos:(thepos + interval)] = RobustScaler().fit_transform(X_predict[:, thepos:(thepos + interval)])
         thepos += interval
-    prescalename = 'prescale_'
+    prescalename = 'prescale_' + scaler + '_'
+    print('Done')
 else:
     prescalename = ''
 
 # take a look at it
-if display:
+if display and False:
     projection = TSNE().fit_transform(X_known)
     plt.scatter(*projection.T, **plot_kwds)
     plt.show()
     
 # set up the classifier
 if classifiertype == 'randomforest':
-    theclassifier = RandomForestClassifier( \
-        n_estimators=n_estimators, \
-        max_depth=None,
-        min_samples_split=2, \
-        random_state=0, \
-        n_jobs=-1)
-    methodname = 'randomforest_' + prescalename + str(n_estimators).zfill(2)
+    if bagging:
+        theclassifier = BaggingClassifier( \
+            RandomForestClassifier( \
+                n_estimators=n_estimators, \
+                max_depth=None,
+                min_samples_split=2, \
+                n_jobs=-1),
+            max_samples=0.5, max_features=0.5)
+        methodname = 'randomforest_bagging_' + prescalename + str(n_estimators).zfill(2)
+    else:
+        theclassifier = RandomForestClassifier( \
+            n_estimators=n_estimators, \
+            max_depth=None,
+            min_samples_split=2, \
+            random_state=0, \
+            n_jobs=-1)
+        methodname = 'randomforest_' + prescalename + str(n_estimators).zfill(2)
 
 elif classifiertype == 'adaboost':
     theclassifier = AdaBoostClassifier(n_estimators=n_estimators)
@@ -389,11 +408,20 @@ elif classifiertype == 'gradientboost':
     methodname = 'gbc_' + prescalename + str(n_neighbors).zfill(2)
 
 elif classifiertype == 'knn':
-    theclassifier = KNeighborsClassifier( \
-        n_neighbors=n_neighbors, \
-        weights=weights, \
-        n_jobs=-1)
-    methodname = 'knn_' + prescalename + weights + '_' + str(n_neighbors).zfill(2)
+    if bagging:
+        theclassifier = BaggingClassifier( \
+            KNeighborsClassifier( \
+                n_neighbors=n_neighbors, \
+                weights=weights, \
+                n_jobs=-1),
+            max_samples=0.5, max_features=0.5)
+        methodname = 'knn_bagging_' + prescalename + weights + '_' + str(n_neighbors).zfill(2)
+    else:
+        theclassifier = KNeighborsClassifier( \
+            n_neighbors=n_neighbors, \
+            weights=weights, \
+            n_jobs=-1)
+        methodname = 'knn_' + prescalename + weights + '_' + str(n_neighbors).zfill(2)
 
 else:
     print('illegal classifier type')
@@ -404,6 +432,8 @@ ncomps = timepoints
 
 # check the accuracy of the model
 accuracies = []
+if multirun:
+    y_predict_all = np.zeros((X_predict.shape[0],numtests), dtype=np.float)
 for testrun in range(numtests):
     X_train, X_test, y_train, y_test = train_test_split(X_known[:, 0:ncomps], y_known, test_size=0.2)
     theclassifier.fit(X_train, y_train)
@@ -411,13 +441,21 @@ for testrun in range(numtests):
     # now make predictions on the test data
     y_predict = theclassifier.predict(X_test)
     accuracies.append(accuracy_score(y_test, y_predict))
+
+    # if we are doing multirun, make a prediction on all known data for each training
+    if multirun:
+        print('predicting all data for test', testrun)
+        y_predict_all[:, testrun] = theclassifier.predict(X_predict)
   
 if len(accuracies) > 0:
     theaccuracies = np.asarray(accuracies, dtype=np.float)
-    print('Accuracies for', ncomps, 'components (mean, min, max):', \
-        np.mean(theaccuracies), np.min(theaccuracies), np.max(theaccuracies))
+    print('Accuracies for', ncomps, 'components (mean, std, min, max):', \
+        np.mean(theaccuracies), np.std(theaccuracies), np.min(theaccuracies), np.max(theaccuracies))
+    with open(outputrootname + '_' + methodname + '_accuracy.csv', "w") as text_file:
+        fieldlist = [methodname, str(np.mean(theaccuracies)), str(np.std(theaccuracies)), str(np.min(theaccuracies)), str(np.max(theaccuracies))]
+        text_file.write(','.join(fieldlist))
 
-# now classify all the known data
+# now classify all the known data to calculate metrics
 y_predict_known = theclassifier.predict(X_known)
 print('prediction of known locations complete')
 confusion = confusion_matrix(y_known, y_predict_known)
@@ -425,14 +463,16 @@ classreport = classification_report(y_known, y_predict_known)
 tide.writenpvecs(confusion, outputrootname + '_' + methodname + '_predict_all_confusion_matrix.txt')
 print(classreport)
 
-# now classify the entire image
-y_predict_all = theclassifier.predict(X_predict)
-print('prediction of all locations complete')
+if not multirun:
+    # now classify the entire image
+    y_predict_all = theclassifier.predict(X_predict)
+    print('prediction of all locations complete')
 
 # run other classifier-specific metrics
-if classifiertype == 'randomforest' or classifiertype == 'adaboost' or classifiertype == 'gradientboost':
-    plt.plot(theclassifier.feature_importances_)
-    plt.show()
+if display:
+    if classifiertype == 'randomforest' or classifiertype == 'adaboost' or classifiertype == 'gradientboost':
+        plt.plot(theclassifier.feature_importances_)
+        plt.show()
 
 # save the data
 theheader = datafile_hdr
@@ -444,8 +484,19 @@ tempout[knownlocs] = y_predict_known[:]
 tide.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
     outputrootname + '_' + methodname + '_predict_known')
 
+# save the command line
+tide.writevec([' '.join(sys.argv)], outputrootname + '_' + methodname + '_commandline.txt')
+
 # output classification of all known data
-tempout = np.zeros((numspatiallocs), dtype='float')
-tempout[proclocs] = y_predict_all[:]
-tide.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
-    outputrootname + '_' + methodname + '_predict_all')
+if multirun:
+    tempout = np.zeros((numspatiallocs, numtests), dtype='float')
+    tempout[proclocs, :] = y_predict_all[:, :]
+    theheader = datafile_hdr
+    theheader['dim'][4] = numtests
+    tide.savetonifti(tempout.reshape((xsize, ysize, numslices, numtests)), theheader, datafilesizes,
+        outputrootname + '_' + methodname + '_predict_all')
+else:
+    tempout = np.zeros((numspatiallocs), dtype='float')
+    tempout[proclocs] = y_predict_all[:]
+    tide.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
+        outputrootname + '_' + methodname + '_predict_all')
