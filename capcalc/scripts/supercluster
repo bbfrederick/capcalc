@@ -173,8 +173,8 @@ def usage():
     print("    --dmask=DATAMASK            - use DATAMASK to specify which voxels in the data to classify")
     print('    --n_estimators=ESIMATORS    - set ESTIMATORS (default is 10)')
     print('    --n_neighbors=NEIGHBORS     - use NEIGHBORS (default is 5)')
-    print('    --type=CLASSIFIERTYPE       - set the classifier type (options are randomforest, svm,')
-    print('                                  gradientboost. Default is randomforest)')
+    print('    --type=CLASSIFIERTYPE       - set the classifier type (options are randomforest, knn,')
+    print('                                  gradientboost, adaboost, extratrees. Default is randomforest)')
     print('    --min_samples=MINSAMPLES    - set min_samples to MINSAMPLES')
     print('    --affinity=AFFINITY         - set affinity to AFFINITY')
     print('    --linkage=LINKAGE           - set linkage to LINKAGE')
@@ -183,6 +183,7 @@ def usage():
     print('    --noconn                    - do not use a connectivity matrix')
     print('    --display                   - display a 2d representation of the input data')
     print('    --prescale                  - prescale input data prior to clustering')
+    print('    --bagging                   - construct a bagging classifier')
     print('    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently')
     print('                                  NOTE: turns on prescaling')
     print("")
@@ -288,10 +289,10 @@ for o, a in opts:
         classifiertype = a
         if classifiertype != 'randomforest' and \
             classifiertype != 'knn' and \
-            classifiertype != 'labelprop' and \
+            classifiertype != 'extratrees' and \
             classifiertype != 'adaboost' and \
             classifiertype != 'gradientboost':
-            print('illegal classifier mode - must be randomforest, knn, labelprop, adaboost, or gradientboost')
+            print('illegal classifier mode - must be randomforest, extratrees, knn, adaboost, or gradientboost')
             sys.exit()
     elif o in ("-h", "--help"):
         usage()
@@ -398,6 +399,25 @@ if classifiertype == 'randomforest':
             random_state=0, \
             n_jobs=-1)
         methodname = 'randomforest_' + prescalename + str(n_estimators).zfill(2)
+
+elif classifiertype == 'extratrees':
+    if bagging:
+        theclassifier = BaggingClassifier( \
+            ExtraTreesClassifier( \
+                n_estimators=n_estimators, \
+                max_depth=None,
+                min_samples_split=2, \
+                n_jobs=-1),
+            max_samples=0.5, max_features=0.5)
+        methodname = 'extratrees_bagging_' + prescalename + str(n_estimators).zfill(2)
+    else:
+        theclassifier = ExtraTreesClassifier( \
+            n_estimators=n_estimators, \
+            max_depth=None,
+            min_samples_split=2, \
+            random_state=0, \
+            n_jobs=-1)
+        methodname = 'extratrees_' + prescalename + str(n_estimators).zfill(2)
 
 elif classifiertype == 'adaboost':
     theclassifier = AdaBoostClassifier(n_estimators=n_estimators)
