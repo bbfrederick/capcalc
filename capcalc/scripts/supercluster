@@ -472,8 +472,10 @@ if len(accuracies) > 0:
     print('Accuracies for', ncomps, 'components (mean, std, min, max):', \
         np.mean(theaccuracies), np.std(theaccuracies), np.min(theaccuracies), np.max(theaccuracies))
     with open(outputrootname + '_' + methodname + '_accuracy.csv', "w") as text_file:
-        fieldlist = [methodname, str(np.mean(theaccuracies)), str(np.std(theaccuracies)), str(np.min(theaccuracies)), str(np.max(theaccuracies))]
-        text_file.write(','.join(fieldlist))
+        dpath, dfile = os.path.split(datafilename)
+        cpath, cfile = os.path.split(classfilename)
+        fieldlist = [dfile, cfile, methodname, str(np.mean(theaccuracies)), str(np.std(theaccuracies)), str(np.min(theaccuracies)), str(np.max(theaccuracies))]
+        text_file.write(','.join(fieldlist) + '\n')
 
 # now classify all the known data to calculate metrics
 y_predict_known = theclassifier.predict(X_known)
