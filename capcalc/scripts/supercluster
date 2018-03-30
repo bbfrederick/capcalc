@@ -30,7 +30,7 @@ import os
 import numpy as np
 from pylab import *
 import nibabel as nib
-from sklearn.feature_extraction.image import img_to_graph
+
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
@@ -39,127 +39,9 @@ from sklearn.semi_supervised import LabelPropagation
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.decomposition import FastICA, PCA, SparsePCA
 from sklearn.preprocessing import StandardScaler, RobustScaler
 import scipy.sparse as ss
 from matplotlib import pyplot as plt
-from scipy.cluster.hierarchy import dendrogram
-
-try:
-    import hdbscan as hdbs
-    hdbpresent = True
-    print('hdbscan is present')
-except:
-    hdbpresent = False
-
-def plot_dendrogram(model, **kwargs):
-
-    # Children of hierarchical clustering
-    children = model.children_
-
-    # Distances between each pair of children
-    # Since we don't have this information, we can use a uniform one for plotting
-    distance = np.arange(children.shape[0])
-
-    # The number of observations contained in each cluster level
-    no_of_observations = np.arange(2, children.shape[0]+2)
-
-    # Create linkage matrix and then plot the dendrogram
-    linkage_matrix = np.column_stack([children, distance, no_of_observations]).astype(float)
-
-    # Plot the corresponding dendrogram
-    dendrogram(linkage_matrix, **kwargs)
-
-
-def save_sparse_csr(filename,array):
-    np.savez(filename,data = array.data ,indices=array.indices,
-             indptr =array.indptr, shape=array.shape )
-
-
-def load_sparse_csr(filename):
-    loader = np.load(filename)
-    return ss.csr_matrix((  loader['data'], loader['indices'], loader['indptr']),
-                         shape = loader['shape'])
-
-
-def N2one(loc, strides):
-    retval = 0
-    for i in range(len(loc) - 1):
-        retval += loc[i] * strides[1 - i]
-    retval += loc[-1]
-    return retval
-
-
-def three2one(loc, strides):
-    return loc[0] * strides[1] + loc[1] * strides[0] + loc[2]
-
-
-def one2N(index, strides):
-    coords = []
-    localindex = index + 0
-    for i in range(len(strides)):
-        coords.append(int(np.floor(localindex / strides[i - 1])))
-        localindex -= coords[-1] * strides[i - 1]
-    coords.append(np.mod(localindex, strides[0]))
-    return coords
-
-
-def one2three(index, strides):
-    x = int(np.floor(index / strides[1]))
-    y = int(np.floor((index - x * strides[1]) / strides[0]))
-    z = int(np.mod(index, strides[0]))
-    return [x, y, z]
-
-
-def mkconnectivity(ptlist, radius, theshape, dodiag=False, dims=None):
-    # convert the 1d index list to Nd locations
-    ndmods = [theshape[-1]]
-    for i in range(1, len(theshape) - 1):
-        ndmods.append(theshape[-1 - i] * ndmods[i - 1])
-    ptlistconv = []
-    if len(theshape) != 3:
-        # special case, 3d array
-        for thepoint in ptlist:
-            ptlistconv.append(one2three(thepoint, ndmods))
-    else:
-        for thepoint in ptlist:
-            ptlistconv.append(one2N(thepoint, ndmods))
-    
-    # now make the connectivity matrix for nearest neighbors with given radius
-    print('len ptlist =',len(ptlist))
-    sm = ss.lil_matrix((len(ptlist), len(ptlist)), dtype='int')
-
-    # sanity check first
-    rangeinpts = int(np.floor(radius))
-    if rangeinpts < 1:
-        print('radius too small - no points in connectivity matrix')
-        sys.exit()
-
-    # now iterate over every pair
-    nonzeroelems = 0
-    radsq = radius * radius
-    ptlistnp = np.asarray(ptlistconv)
-    reportstep = 1000
-    checkpointstep = 20000
-    for ridx in range(len(ptlist)):
-        if ridx % reportstep == 0:
-            print('row:', ridx, ', nonzero elements:', nonzeroelems, ', loc:', ptlistconv[ridx])
-        if ridx % checkpointstep == 0:
-            print('checkpoint file')
-            save_sparse_csr('connectivity_checkpoint', sm.tocsr())
-        distarray = np.sum(np.square(ptlistnp[:, :] - ptlistnp[ridx, :]), axis=1)
-        print
-        matchlocs = np.where(distarray < radsq)[0]
-        sm[ridx,matchlocs] = 1
-        nonzeroelems += len(matchlocs)
-    print(nonzeroelems, 'nonzero elements')
-
-    # now stuff this into a sparse matrix
-    #sm = ss.lil_matrix((len(ptlist), len(ptlist)), dtype='int')
-    #for thepair in pairlist:
-    #    sm[thepair[0], thepair[1]] = 1
-    return sm.tocsr()
-
 
 def usage():
     print("usage: supercluster datafile classes outputroot")
@@ -171,18 +53,15 @@ def usage():
     print("")
     print("optional arguments:")
     print("    --dmask=DATAMASK            - use DATAMASK to specify which voxels in the data to classify")
-    print('    --n_estimators=ESIMATORS    - set ESTIMATORS (default is 10)')
+    print('    --n_estimators=ESIMATORS    - set ESTIMATORS (default is 100)')
+    print('    --max_features=FEATURES     - set FEATURES (default is -1 - set equal to sqrt(n_estimators)')
     print('    --n_neighbors=NEIGHBORS     - use NEIGHBORS (default is 5)')
     print('    --type=CLASSIFIERTYPE       - set the classifier type (options are randomforest, knn,')
     print('                                  gradientboost, adaboost, extratrees. Default is randomforest)')
-    print('    --min_samples=MINSAMPLES    - set min_samples to MINSAMPLES')
-    print('    --affinity=AFFINITY         - set affinity to AFFINITY')
-    print('    --linkage=LINKAGE           - set linkage to LINKAGE')
-    print('    --radius=RADIUS             - set connectivity radius to RADIUS')
     print('    --weights=WEIGHTS           - use WEIGHTS weighting for knn (options are uniform and distance (default))')
-    print('    --noconn                    - do not use a connectivity matrix')
-    print('    --display                   - display a 2d representation of the input data')
+    print('    --display                   - display feature importances if available')
     print('    --prescale                  - prescale input data prior to clustering')
+    print('    --scaler=SCALER             - set scaling type (options are standard and robust (default))')
     print('    --bagging                   - construct a bagging classifier')
     print('    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently')
     print('                                  NOTE: turns on prescaling')
@@ -202,7 +81,8 @@ intlist = None
 bagging = True
 
 # random forest variables
-n_estimators = 20
+n_estimators = 100
+max_features = -1
 
 # knn variables
 weights = 'distance'
@@ -211,20 +91,16 @@ n_neighbors = 5
 # parse command line arguments
 try:
     opts, args = getopt.gnu_getopt(sys.argv, 'h', ["help",
-                                                    "linkage=",
                                                     "scaleintervals=",
                                                     "display",
                                                     "prescale",
                                                     "dmask=",
                                                     "numtests=",
                                                     "multirun",
-                                                    "radius=",
                                                     "weights=",
-                                                    "eps=",
-                                                    "noconn",
-                                                    "min_samples=",
-                                                    "affinity=",
+                                                    "scaler=",
                                                     "n_estimators=",
+                                                    "max_features=",
                                                     "n_neighbors=",
                                                     "type="])
 except getopt.GetoptError as err:
@@ -246,7 +122,10 @@ outputrootname=args[3]
 for o, a in opts:
     if o == "--n_estimators":
         n_estimators = int(a)
-        print('will use', n_estimators, 'estimators')
+        print('setting n_estimators to ', n_estimators)
+    elif o == "--max_features":
+        max_features = int(a)
+        print('setting max_features to ', max_features)
     elif o == "--n_neighbors":
         n_neighbors = int(a)
         print('will use n_neighbors of', n_neighbors)
@@ -254,21 +133,21 @@ for o, a in opts:
         usedmask = True
         datamaskname = a
         print('using', datamaskname, 'as data mask')
+    elif o == "--scaler":
+        scaler = a
+        if scaler != 'robust' and scaler != 'standard':
+            print('illegal scaling')
+            sys.exit()
+        print('will use ', scaler, 'scaling')
     elif o == "--weights":
-        radius = a
+        weights = a
+        if weights != 'distance' and weights != 'uniform':
+            print('illegal weighting')
+            sys.exit()
         print('will use ', weights, 'weighting')
-    elif o == "--radius":
-        radius = float(a)
-        print('will use connectivity radius of', radius)
     elif o == "--numtests":
          numtests = int(a)
          print('will run', numtests, 'accuracy checks')
-    elif o == "--eps":
-        eps = float(a)
-        print('will use eps of', eps)
-    elif o == "--min_samples":
-        min_samples = int(a)
-        print('will use min_samples of', min_samples)
     elif o == "--multirun":
         multirun = True
         print('will run multiplle classifications')
@@ -279,12 +158,7 @@ for o, a in opts:
         prescale = True
         intlist = list(map(int, a.split(',')))
         print('will use intervals', intlist)
-    elif o == "--linkage":
-        linkage = a
         print('will use linkage', linkage)
-    elif o == "--affinity":
-        affinity = a
-        print('will use affinity', affinity)
     elif o == "--type":
         classifiertype = a
         if classifiertype != 'randomforest' and \
@@ -354,6 +228,11 @@ y_known = rs_classfile[knownlocs]
 X_known = rs_datafile[knownlocs, :][0]
 X_predict = rs_datafile[proclocs, :][0]
 print(rs_datafile.shape, X_known.shape, X_predict.shape, y_known.shape)
+n_features = rs_datafile.shape[1]
+
+print('data has', n_features, 'features')
+if max_features == -1:
+    max_features = int(np.ceil(np.sqrt(n_features)))
 
 # Scale the data
 if intlist is None:
@@ -386,46 +265,50 @@ if classifiertype == 'randomforest':
         theclassifier = BaggingClassifier( \
             RandomForestClassifier( \
                 n_estimators=n_estimators, \
+                max_features=max_features, \
                 max_depth=None,
                 min_samples_split=2, \
                 n_jobs=-1),
             max_samples=0.5, max_features=0.5)
-        methodname = 'randomforest_bagging_' + prescalename + str(n_estimators).zfill(2)
+        methodname = 'randomforest_bagging_' + prescalename + str(n_estimators).zfill(3) + '_' + str(max_features).zfill(3)
     else:
         theclassifier = RandomForestClassifier( \
             n_estimators=n_estimators, \
+            max_features=max_features, \
             max_depth=None,
             min_samples_split=2, \
             random_state=0, \
             n_jobs=-1)
-        methodname = 'randomforest_' + prescalename + str(n_estimators).zfill(2)
+        methodname = 'randomforest_' + prescalename + str(n_estimators).zfill(3) + '_' + str(max_features).zfill(3)
 
 elif classifiertype == 'extratrees':
     if bagging:
         theclassifier = BaggingClassifier( \
             ExtraTreesClassifier( \
                 n_estimators=n_estimators, \
+                max_features=max_features, \
                 max_depth=None,
                 min_samples_split=2, \
                 n_jobs=-1),
             max_samples=0.5, max_features=0.5)
-        methodname = 'extratrees_bagging_' + prescalename + str(n_estimators).zfill(2)
+        methodname = 'extratrees_bagging_' + prescalename + str(n_estimators).zfill(3) + '_' + str(max_features).zfill(3)
     else:
         theclassifier = ExtraTreesClassifier( \
             n_estimators=n_estimators, \
+            max_features=max_features, \
             max_depth=None,
             min_samples_split=2, \
             random_state=0, \
             n_jobs=-1)
-        methodname = 'extratrees_' + prescalename + str(n_estimators).zfill(2)
+        methodname = 'extratrees_' + prescalename + str(n_estimators).zfill(3) + '_' + str(max_features).zfill(3)
 
 elif classifiertype == 'adaboost':
     theclassifier = AdaBoostClassifier(n_estimators=n_estimators)
-    methodname = 'ada_' + prescalename + str(n_neighbors).zfill(2)
+    methodname = 'ada_' + prescalename + str(n_estimators).zfill(3)
 
 elif classifiertype == 'gradientboost':
     theclassifier = GradientBoostingClassifier(n_estimators=n_estimators)
-    methodname = 'gbc_' + prescalename + str(n_neighbors).zfill(2)
+    methodname = 'gbc_' + prescalename + str(n_estimators).zfill(3)
 
 elif classifiertype == 'knn':
     if bagging:
@@ -492,7 +375,7 @@ if not multirun:
 
 # run other classifier-specific metrics
 if display:
-    if classifiertype == 'randomforest' or classifiertype == 'adaboost' or classifiertype == 'gradientboost':
+    if classifiertype == 'randomforest' or classifiertype == 'extratrees' or classifiertype == 'adaboost' or classifiertype == 'gradientboost':
         plt.plot(theclassifier.feature_importances_)
         plt.show()
 
