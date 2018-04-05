@@ -330,6 +330,8 @@ else:
     print('illegal classifier type')
     sys.exit()
 
+print('method description tag:', methodname)
+
 # check accuracy vs. number of components
 ncomps = timepoints
 
