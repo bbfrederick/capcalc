@@ -307,7 +307,7 @@ elif classifiertype == 'adaboost':
     methodname = 'ada_' + prescalename + str(n_estimators).zfill(3)
 
 elif classifiertype == 'gradientboost':
-    theclassifier = GradientBoostingClassifier(n_estimators=n_estimators)
+    theclassifier = GradientBoostingClassifier(n_estimators=n_estimators, max_features='auto')
     methodname = 'gbc_' + prescalename + str(n_estimators).zfill(3)
 
 elif classifiertype == 'knn':
