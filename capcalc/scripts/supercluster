@@ -79,6 +79,7 @@ scaler = 'robust'
 numtests = 10
 intlist = None
 bagging = True
+n_jobs = -1
 
 # random forest variables
 n_estimators = 100
@@ -97,6 +98,7 @@ try:
                                                     "dmask=",
                                                     "numtests=",
                                                     "multirun",
+                                                    "nomultiproc",
                                                     "weights=",
                                                     "scaler=",
                                                     "n_estimators=",
@@ -129,6 +131,9 @@ for o, a in opts:
     elif o == "--n_neighbors":
         n_neighbors = int(a)
         print('will use n_neighbors of', n_neighbors)
+    elif o == "--nomultiproc":
+        n_jobs = 1
+        print('will limit calculation to a single processor')
     elif o == "--dmask":
         usedmask = True
         datamaskname = a
@@ -268,7 +273,7 @@ if classifiertype == 'randomforest':
                 max_features=max_features, \
                 max_depth=None,
                 min_samples_split=2, \
-                n_jobs=-1),
+                n_jobs=n_jobs),
             max_samples=0.5, max_features=0.5)
         methodname = 'randomforest_bagging_' + prescalename + str(n_estimators).zfill(3) + '_' + str(max_features).zfill(3)
     else:
@@ -278,7 +283,7 @@ if classifiertype == 'randomforest':
             max_depth=None,
             min_samples_split=2, \
             random_state=0, \
-            n_jobs=-1)
+            n_jobs=n_jobs)
         methodname = 'randomforest_' + prescalename + str(n_estimators).zfill(3) + '_' + str(max_features).zfill(3)
 
 elif classifiertype == 'extratrees':
@@ -289,7 +294,7 @@ elif classifiertype == 'extratrees':
                 max_features=max_features, \
                 max_depth=None,
                 min_samples_split=2, \
-                n_jobs=-1),
+                n_jobs=n_jobs),
             max_samples=0.5, max_features=0.5)
         methodname = 'extratrees_bagging_' + prescalename + str(n_estimators).zfill(3) + '_' + str(max_features).zfill(3)
     else:
@@ -299,7 +304,7 @@ elif classifiertype == 'extratrees':
             max_depth=None,
             min_samples_split=2, \
             random_state=0, \
-            n_jobs=-1)
+            n_jobs=n_jobs)
         methodname = 'extratrees_' + prescalename + str(n_estimators).zfill(3) + '_' + str(max_features).zfill(3)
 
 elif classifiertype == 'adaboost':
@@ -316,14 +321,14 @@ elif classifiertype == 'knn':
             KNeighborsClassifier( \
                 n_neighbors=n_neighbors, \
                 weights=weights, \
-                n_jobs=-1),
+                n_jobs=n_jobs),
             max_samples=0.5, max_features=0.5)
         methodname = 'knn_bagging_' + prescalename + weights + '_' + str(n_neighbors).zfill(2)
     else:
         theclassifier = KNeighborsClassifier( \
             n_neighbors=n_neighbors, \
             weights=weights, \
-            n_jobs=-1)
+            n_jobs=n_jobs)
         methodname = 'knn_' + prescalename + weights + '_' + str(n_neighbors).zfill(2)
 
 else:
