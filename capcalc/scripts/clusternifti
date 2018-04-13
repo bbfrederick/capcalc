@@ -337,6 +337,9 @@ print(rs_datafile.shape, procdata.shape)
 # Scale the data
 if intlist is None:
     intlist = [timepoints]
+for coff in range(timepoints):
+    print('coefficient', coff, 'mean, std:', np.mean(procdata[:, coff]), np.std(procdata[:, coff]))
+print()
 if prescale:
     coefficients = procdata * 0.0
     thepos = 0
@@ -346,6 +349,10 @@ if prescale:
         else:
             coefficients[:, thepos:(thepos + interval)] = RobustScaler().fit_transform(procdata[:, thepos:(thepos + interval)])
         thepos += interval
+    print('After prescaling...')
+    for coff in range(timepoints):
+        print('coefficient', coff, 'mean, std:', np.mean(coefficients[:, coff]), np.std(coefficients[:, coff]))
+    print()
     prescalename = 'prescale_'
 else:
     coefficients = procdata
