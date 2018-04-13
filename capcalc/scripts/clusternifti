@@ -174,6 +174,7 @@ def usage():
     print('    --eps=EPS                   - set eps to EPS')
     print('    --alpha=ALPHA               - set alpha to ALPHA')
     print('    --min_samples=MINSAMPLES    - set min_samples to MINSAMPLES')
+    print('    --min_cluster_size=SIZE     - set min_cluster_size to SIZE')
     print('    --affinity=AFFINITY         - set affinity to AFFINITY')
     print('    --linkage=LINKAGE           - set linkage to LINKAGE')
     print('    --radius=RADIUS             - set connectivity radius to RADIUS')
@@ -219,6 +220,7 @@ try:
                                                     "noconn",
                                                     "prescale",
                                                     "min_samples=",
+                                                    "min_cluster_size=",
                                                     "alpha=",
                                                     "affinity=",
                                                     "nclusters=",
@@ -259,6 +261,9 @@ for o, a in opts:
     elif o == "--alpha":
         alpha = float(a)
         print('will use alpha of', alpha)
+    elif o == "--min_cluster_size":
+        min_cluster_size = int(a)
+        print('will use min_cluster_size of', min_cluster_size)
     elif o == "--min_samples":
         min_samples = int(a)
         print('will use min_samples of', min_samples)
