@@ -314,9 +314,6 @@ if usedmask:
         print('input mask time must have time dimension of 1')
         exit()
 
-# save the command line
-tide.writevec([' '.join(sys.argv)], outputrootname + '_commandline.txt')
-
 # allocating arrays
 print("reshaping arrays")
 numspatiallocs = int(xsize) * int(ysize) * int(numslices)
@@ -428,6 +425,10 @@ else:
     #print("Silhouette Coefficient: %0.3f"
           #% metrics.silhouette_score(coefficients, theregionlabels))
     methodname = 'kmeans_' + prescalename + str(n_clusters).zfill(2)
+
+# save the command line
+tide.writevec([' '.join(sys.argv)], outputrootname + '_' + methodname + '_commandline.txt')
+
 print('theregionlabels shape', theregionlabels.shape)
 print('clustering done')
 theheader = datafile_hdr
