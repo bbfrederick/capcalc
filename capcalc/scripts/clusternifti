@@ -410,7 +410,7 @@ elif clustertype == 'hdbscan':
     n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
 
     print('Estimated number of clusters: %d' % n_clusters_)
-    methodname = 'hdbscan_' + prescalename + str(n_clusters).zfill(2)
+    methodname = 'hdbscan_' + prescalename + 'minsamples_' + str(min_samples) + 'minclustersize_' + str(min_cluster_size) + str(n_clusters).zfill(2)
 
 else:
     print('coefficients shape:', coefficients.shape)
