@@ -22,7 +22,8 @@
 from __future__ import print_function
 import sys
 import numpy as np
-import rapidtide.tide_funcs as tide
+import rapidtide.io as tide_io
+import rapidtide.fit as tide_fit
 
 
 def main():
@@ -53,7 +54,7 @@ def main():
             print(evfilename[numfiles - 1])
 
     # read the datafile and the evfiles
-    tc_data = tide.readvecs(inputfile)
+    tc_data = tide_io.readvecs(inputfile)
     numtcs = tc_data.shape[0]
     timepoints = tc_data.shape[1]
 
@@ -61,7 +62,7 @@ def main():
     for i in range(0, numfiles):
         print("file ", i, " has name ", evfilename[i])
         print("reading global regressor from ", evfilename[i])
-        evtimeseries = tide.readvec(evfilename[i])
+        evtimeseries = tide_io.readvec(evfilename[i])
         print("timeseries length = ", len(evtimeseries))
         evdata.append(1.0 * evtimeseries)
         numregressors += 1
@@ -89,7 +90,7 @@ def main():
         for j in range(0, numregressors):
             regressorvec.append(evdata[j])
         if np.max(trimmeddata[thetc, :]) - np.min(trimmeddata[thetc, :]) > 0.0:
-            thisfit, R = tide.mlregress(regressorvec, trimmeddata[thetc, :])
+            thisfit, R = tide_fit.mlregress(regressorvec, trimmeddata[thetc, :])
             meandata[thetc] = thisfit[0, 0]
             Rdata[thetc] = R
             for j in range(0, numregressors):
@@ -107,16 +108,16 @@ def main():
     print("processing complete: about to save data")
 
     # first save the things with a single timepoint
-    tide.writenpvecs(meandata, outputroot + '_mean.txt')
+    tide_io.writenpvecs(meandata, outputroot + '_mean.txt')
     for j in range(0, numregressors):
-        tide.writenpvecs(coefficient[:, j], outputroot + "_coefficient_" + str(j).zfill(2))
-    tide.writenpvecs(Rdata, outputroot + "_R")
+        tide_io.writenpvecs(coefficient[:, j], outputroot + "_coefficient_" + str(j).zfill(2))
+    tide_io.writenpvecs(Rdata, outputroot + "_R")
 
     # now save the things with full timecourses
     for j in range(0, numregressors):
-        tide.writenpvecs(component[:, :, j], outputroot + "_component_" + str(j).zfill(2))
-    tide.writenpvecs(thefit, outputroot + "_fit")
-    tide.writenpvecs(residuals, outputroot + "_residuals")
+        tide_io.writenpvecs(component[:, :, j], outputroot + "_component_" + str(j).zfill(2))
+    tide_io.writenpvecs(thefit, outputroot + "_fit")
+    tide_io.writenpvecs(residuals, outputroot + "_residuals")
 
 
 if __name__ == "__main__":

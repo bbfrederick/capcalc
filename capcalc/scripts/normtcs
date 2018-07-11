@@ -27,7 +27,8 @@ import platform
 import numpy as np
 
 import getopt
-import rapidtide.tide_funcs as tide
+import rapidtide.io as tide_io
+import rapidtide.fit as tide_fit
 
 
 def usage():
@@ -72,13 +73,13 @@ for o, a in opts:
     else:
         assert False, "unhandled option"
 
-inputdata = tide.readvecs(infilename)
+inputdata = tide_io.readvecs(infilename)
 outputdata = inputdata * 0.0
 for i in range(inputdata.shape[0]):
     print('processing column', i)
     if dodetrend:
-        outputdata[i, :] = tide.detrend(inputdata[i, :], detrend=True)
+        outputdata[i, :] = tide_fit.detrend(inputdata[i, :], detrend=True)
     else:
         outputdata[i, :] = inputdata[i, :] - np.mean(inputdata[i, :])
 
-tide.writenpvecs(outputdata, outfilename)
+tide_io.writenpvecs(outputdata, outfilename)

@@ -23,7 +23,8 @@ from __future__ import print_function
 import sys
 import getopt
 import string
-import rapidtide.tide_funcs as tide
+import rapidtide.io as tide_io
+import rapidtide.miscmath as tide_math
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
 import numpy as np
@@ -99,12 +100,12 @@ elif normmethod == 'ppnorm':
     print('will normalize timecourses to p-p deviation of 1.0')
 
 print('loading fmri data')
-input_img, input_data, input_hdr, thedims, thesizes = tide.readfromnifti(inputfilename)
+input_img, input_data, input_hdr, thedims, thesizes = tide_io.readfromnifti(inputfilename)
 print('loading template data')
-template_img, template_data, template_hdr, templatedims, templatesizes = tide.readfromnifti(templatefile)
+template_img, template_data, template_hdr, templatedims, templatesizes = tide_io.readfromnifti(templatefile)
 
 print('checking dimensions')
-if not tide.checkspacematch(thedims, templatedims):
+if not tide_io.checkspacematch(thedims, templatedims):
     print('template file dimensions and input fmri file do not match')
     sys.exit()
 
@@ -130,22 +131,22 @@ if numtimepoints > 1:
         if normmethod == 'none':
             timecourses[theregion - 1, :] = regiontimecourse - np.mean(regiontimecourse)
         elif normmethod == 'pctnorm':
-            timecourses[theregion - 1, :] = tide.pcnormalize(regiontimecourse)
+            timecourses[theregion - 1, :] = tide_math.pcnormalize(regiontimecourse)
         elif normmethod == 'varnorm':
-            timecourses[theregion - 1, :] = tide.varnormalize(regiontimecourse)
+            timecourses[theregion - 1, :] = tide_math.varnormalize(regiontimecourse)
         elif normmethod == 'stdnorm':
-            timecourses[theregion - 1, :] = tide.stdnormalize(regiontimecourse)
+            timecourses[theregion - 1, :] = tide_math.stdnormalize(regiontimecourse)
         elif normmethod == 'ppnorm':
-            timecourses[theregion - 1, :] = tide.ppnormalize(regiontimecourse)
+            timecourses[theregion - 1, :] = tide_math.ppnormalize(regiontimecourse)
         else:
             print('illegal normalization method')
             usage()
             sys.exit()
-    tide.writenpvecs(timecourses, outputfile)
+    tide_io.writenpvecs(timecourses, outputfile)
 else:
     outputvoxels = np.reshape(input_data, (numvoxels, numtimepoints))
     for theregion in range(1, numregions + 1):
         regionval = np.nan_to_num(np.mean(inputvoxels[np.where(templatevoxels == theregion)]))
         outputvoxels[np.where(templatevoxels == theregion)] = regionval
     template_hdr['dim'][4] = numregions
-    tide.savetonifti(outputvoxels.reshape((xsize, ysize, numslices, numregions)), template_hdr, templatesizes, outputfile)
+    tide_io.savetonifti(outputvoxels.reshape((xsize, ysize, numslices, numregions)), template_hdr, templatesizes, outputfile)

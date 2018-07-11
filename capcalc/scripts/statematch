@@ -23,7 +23,7 @@ from __future__ import print_function, division
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
-import rapidtide.tide_funcs as tide
+import rapidtide.io as tide_io
 
 from pylab import plot, legend, show, figure
 
@@ -52,8 +52,8 @@ infile1 = sys.argv[1]
 infile2 = sys.argv[2]
 outfile = sys.argv[3]
 
-inputdata1 = tide.readvec(infile1).astype(int)
-inputdata2 = tide.readvec(infile2).astype(int)
+inputdata1 = tide_io.readvec(infile1).astype(int)
+inputdata2 = tide_io.readvec(infile2).astype(int)
 if len(inputdata1) != len(inputdata2):
     print('input file lengths do not match')
     sys.exit()
@@ -85,5 +85,5 @@ remapped2 = inputdata2 * 0
 for i in range(len(inputdata1)):
     remapped2[i] = maparray[inputdata2[i] - min2] + min1
 
-tide.writenpvecs(remapped2, outfile + '_remapped.txt')
-tide.writenpvecs(matcharray, outfile + '_matcharray.txt')
+tide_io.writenpvecs(remapped2, outfile + '_remapped.txt')
+tide_io.writenpvecs(matcharray, outfile + '_matcharray.txt')

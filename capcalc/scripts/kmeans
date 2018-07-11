@@ -23,7 +23,7 @@ from __future__ import print_function
 import sys
 import getopt
 import string
-import rapidtide.tide_funcs as tide
+import rapidtide.io as tide_io
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
 from numpy import r_, zeros, ones, shape, where, sort
@@ -89,7 +89,7 @@ for o, a in opts:
         assert False, "unhandled option"
 
 print('loading data')
-input_img, input_data, input_hdr, thedims, thesizes = tide.readfromnifti(inputfilename)
+input_img, input_data, input_hdr, thedims, thesizes = tide_io.readfromnifti(inputfilename)
 tr=thesizes[4]
 Fs=1.0/tr
 print('tr from header =',tr,', sample frequency is ',Fs)
@@ -113,6 +113,6 @@ theheader=input_hdr
 theheader['dim'][4] = n_clusters
 theclusters = np.transpose(kmeans.cluster_centers_)
 print('clusters shape:',theclusters.shape)
-tide.savetonifti(theclusters.reshape((xsize, ysize, numslices, n_clusters)), theheader, thesizes, outputroot + '_states')
+tide_io.savetonifti(theclusters.reshape((xsize, ysize, numslices, n_clusters)), theheader, thesizes, outputroot + '_states')
 
-tide.writenpvecs(kmeans.labels_, outputroot + '_statelabels.txt')
+tide_io.writenpvecs(kmeans.labels_, outputroot + '_statelabels.txt')

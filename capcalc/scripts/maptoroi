@@ -23,7 +23,7 @@ from __future__ import print_function
 import sys
 import getopt
 import string
-import rapidtide.tide_funcs as tide
+import rapidtide.io as tide_io
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
 from numpy import r_, zeros, ones, shape, where, sort
@@ -51,8 +51,8 @@ templatefile=sys.argv[2]
 outputfile=sys.argv[3]
 
 print('loading data')
-theclustercenters = tide.readvecs(inputfilename)
-template_img, template_data, template_hdr, thedims, thesizes = tide.readfromnifti(templatefile)
+theclustercenters = tide_io.readvecs(inputfilename)
+template_img, template_data, template_hdr, thedims, thesizes = tide_io.readfromnifti(templatefile)
     
 print(theclustercenters.shape)
 numregions = theclustercenters.shape[0]
@@ -86,4 +86,4 @@ for thecluster in range(numclusters):
     
 theheader=template_hdr
 theheader['dim'][4] = numclusters
-tide.savetonifti(output_data.reshape((xsize, ysize, numslices, numclusters)), theheader, thesizes, outputfile)
+tide_io.savetonifti(output_data.reshape((xsize, ysize, numslices, numclusters)), theheader, thesizes, outputfile)

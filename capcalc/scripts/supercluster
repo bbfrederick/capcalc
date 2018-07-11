@@ -24,7 +24,7 @@ import sys
 import getopt
 import string
 import platform
-import rapidtide.tide_funcs as tide
+import rapidtide.io as tide_io
 import os
 
 import numpy as np
@@ -184,17 +184,17 @@ print('Will perform', classifiertype, 'classification')
     
 # read in data
 print("reading in data arrays")
-datafile_img, datafile_data, datafile_hdr, datafiledims, datafilesizes = tide.readfromnifti(datafilename)
-classfile_img, classfile_data, classfile_hdr, classfiledims, classfilesizes = tide.readfromnifti(classfilename)
+datafile_img, datafile_data, datafile_hdr, datafiledims, datafilesizes = tide_io.readfromnifti(datafilename)
+classfile_img, classfile_data, classfile_hdr, classfiledims, classfilesizes = tide_io.readfromnifti(classfilename)
 if usedmask:
-    datamask_img, datamask_data, datamask_hdr, datamaskdims, datamasksizes = tide.readfromnifti(datamaskname)
+    datamask_img, datamask_data, datamask_hdr, datamaskdims, datamasksizes = tide_io.readfromnifti(datamaskname)
 
-xsize, ysize, numslices, timepoints = tide.parseniftidims(datafiledims)
-xdim, ydim, slicethickness, tr = tide.parseniftisizes(datafilesizes)
+xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
+xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
     
 # check dimensions
 print("checking class dimensions")
-if not tide.checkspacematch(datafiledims, classfiledims):
+if not tide_io.checkspacematch(datafiledims, classfiledims):
     print('input mask spatial dimensions do not match image')
     exit()
 if not classfiledims[4] == 1:
@@ -203,7 +203,7 @@ if not classfiledims[4] == 1:
 
 if usedmask:
     print("checking mask dimensions")
-    if not tide.checkspacematch(datafiledims, datamaskdims):
+    if not tide_io.checkspacematch(datafiledims, datamaskdims):
         print('input mask spatial dimensions do not match image')
         exit()
     if not datamaskdims[4] == 1:
@@ -372,7 +372,7 @@ y_predict_known = theclassifier.predict(X_known)
 print('prediction of known locations complete')
 confusion = confusion_matrix(y_known, y_predict_known)
 classreport = classification_report(y_known, y_predict_known)
-tide.writenpvecs(confusion, outputrootname + '_' + methodname + '_predict_all_confusion_matrix.txt')
+tide_io.writenpvecs(confusion, outputrootname + '_' + methodname + '_predict_all_confusion_matrix.txt')
 print(classreport)
 
 if not multirun:
@@ -393,11 +393,11 @@ theheader['dim'][4] = 1
 # output classification of all known data
 tempout = np.zeros((numspatiallocs), dtype='float')
 tempout[knownlocs] = y_predict_known[:]
-tide.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
+tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
     outputrootname + '_' + methodname + '_predict_known')
 
 # save the command line
-tide.writevec([' '.join(sys.argv)], outputrootname + '_' + methodname + '_commandline.txt')
+tide_io.writevec([' '.join(sys.argv)], outputrootname + '_' + methodname + '_commandline.txt')
 
 # output classification of all known data
 if multirun:
@@ -405,10 +405,10 @@ if multirun:
     tempout[proclocs, :] = y_predict_all[:, :]
     theheader = datafile_hdr
     theheader['dim'][4] = numtests
-    tide.savetonifti(tempout.reshape((xsize, ysize, numslices, numtests)), theheader, datafilesizes,
+    tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, numtests)), theheader, datafilesizes,
         outputrootname + '_' + methodname + '_predict_all')
 else:
     tempout = np.zeros((numspatiallocs), dtype='float')
     tempout[proclocs] = y_predict_all[:]
-    tide.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
+    tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
         outputrootname + '_' + methodname + '_predict_all')
