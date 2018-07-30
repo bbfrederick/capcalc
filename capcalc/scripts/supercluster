@@ -194,8 +194,8 @@ xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
     
 # check dimensions
 print("checking class dimensions")
-if not tide_io.checkspacematch(datafiledims, classfiledims):
-    print('input mask spatial dimensions do not match image')
+if not tide_io.checkspacematch(datafile_hdr, classfile_hdr):
+    print('target map spatial dimensions do not match image')
     exit()
 if not classfiledims[4] == 1:
     print('class file must have time dimension of 1')
@@ -203,7 +203,7 @@ if not classfiledims[4] == 1:
 
 if usedmask:
     print("checking mask dimensions")
-    if not tide_io.checkspacematch(datafiledims, datamaskdims):
+    if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
         print('input mask spatial dimensions do not match image')
         exit()
     if not datamaskdims[4] == 1:

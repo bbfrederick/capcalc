@@ -105,8 +105,8 @@ print('loading template data')
 template_img, template_data, template_hdr, templatedims, templatesizes = tide_io.readfromnifti(templatefile)
 
 print('checking dimensions')
-if not tide_io.checkspacematch(thedims, templatedims):
-    print('template file dimensions and input fmri file do not match')
+if not tide_io.checkspacematch(input_hdr, template_hdr):
+    print('template file does not match spatial coverage of input fmri file')
     sys.exit()
 
 print('reshaping')

@@ -102,8 +102,8 @@ mask1_data = mask1_img.get_data()
 mask1_hdr = mask1_img.get_header()
 themaskdims1=mask1_hdr['dim']
 
-if not tide_io.checkspacematch(thedims1,themaskdims1):
-    print('input image 1 dimensions do not match mask')
+if not tide_io.checkspacematch(input1_hdr, mask1_hdr):
+    print('input mask 1 does not match spatial coverage of image 1')
     exit()
 
 input2_img = nib.load(inputfilename2)
@@ -116,12 +116,12 @@ mask2_data = mask2_img.get_data()
 mask2_hdr = mask2_img.get_header()
 themaskdims2=mask2_hdr['dim']
 
-if not tide_io.checkspacematch(thedims2,themaskdims2):
-    print('input image 2 dimensions do not match mask')
+if not tide_io.checkspacematch(input2_hdr, mask2_hdr):
+    print('input mask 2 does not match spatial coverage of image 2')
     exit()
 
-if not tide_io.checkspacematch(thedims1,thedims2):
-    print('input images 1 and 2 dimensions do not match')
+if not tide_io.checkspacematch(input1_hdr, image2_hdr):
+    print('input images 1 and 2 do not have matching spatial coverage')
     exit()
 
 totalmask=mask1_data*mask2_data
