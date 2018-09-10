@@ -322,7 +322,7 @@ if len(args) > 1:
 infilename = []
 segsize = -1
 subsegs = []
-subseggroupIDs = []
+subseggroupIDs = None
 sampletime = None
 Fs = None
 outfilename = None
@@ -350,6 +350,7 @@ for o, a in opts:
         if verbose:
             print('Setting segment size to ', segsize)
     elif o == '-E':
+        subseggroupIDs = []
         for seg in a.split(','):
             subseggroupIDs.append(seg)
         print('SUBSEGGROUPIDS:', subseggroupIDs)
