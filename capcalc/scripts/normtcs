@@ -47,7 +47,7 @@ def usage():
     return ()
 
 # get the command line parameters
-dodetrend = False
+detrendorder = 0
 
 nargs = len(sys.argv)
 if nargs < 3:
@@ -68,7 +68,7 @@ except getopt.GetoptError as err:
 
 for o, a in opts:
     if o == "-t":
-        dodetrend = True
+        detrendorder = 1
         print('detrending data')
     else:
         assert False, "unhandled option"
@@ -77,8 +77,8 @@ inputdata = tide_io.readvecs(infilename)
 outputdata = inputdata * 0.0
 for i in range(inputdata.shape[0]):
     print('processing column', i)
-    if dodetrend:
-        outputdata[i, :] = tide_fit.detrend(inputdata[i, :], detrend=True)
+    if detrendorder > 0:
+        outputdata[i, :] = tide_fit.detrend(inputdata[i, :], order=detrendorder)
     else:
         outputdata[i, :] = inputdata[i, :] - np.mean(inputdata[i, :])
 

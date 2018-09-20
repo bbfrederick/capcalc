@@ -259,7 +259,7 @@ summaryonly = True
 
 # preprocessing options
 preprocessingtype = None
-dodetrend = True
+detrendorder = 1
 timenormmethod = 'varnorm'
 
 # clustering/partitioning options
@@ -426,7 +426,7 @@ for o, a in opts:
         if verbose:
             print('switching to dbscan clustering')
     elif o == "--nodetrend":
-        dodetrend = False
+        detrendorder = 0
         if verbose:
             print('disabling detrending')
     elif o == "-D":
@@ -496,6 +496,12 @@ for o, a in opts:
     else:
         assert False, "unhandled option"
 
+# check that required arguments are set
+if outfilename is None:
+    print('outfile must be set')
+    usage()
+    sys.exit()
+
 # check to make sure groups and subsegments are in agreement
 groups = {}
 if subsegs is not None:
@@ -521,12 +527,6 @@ if subsegs is not None:
             print('all subsegments in a group must have the same length')
             sys.exit()
     print(groups)
-
-# check that required arguments are set
-if outfilename is None:
-    print('outfile must be set')
-    usage()
-    sys.exit()
 
 if sampletime is None:
     print('sampletime must be set')
@@ -599,7 +599,7 @@ for feature in range(n_features):
     for segment in range(numsegs):
         subsegstart = segment * segsize
         for subseglen in subsegs:
-            if dodetrend:
+            if detrendorder > 0:
                 segdata = tide_fit.detrend(reformdata[feature, subsegstart:subsegstart + subseglen])
             else:
                 segdata = reformdata[feature, subsegstart:subsegstart + subseglen]
