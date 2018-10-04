@@ -568,7 +568,7 @@ if len(infilename) == 1:
 elif len(infilename) == 2:
     inputdata1 = tide_io.readvec(infilename[0])[skippts:]
     numpoints = len(inputdata1)
-    inputdata2 = tide_io.readvec(infilename[1])
+    inputdata2 = tide_io.readvec(infilename[1])[skippts:]
     endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     trimmeddata = np.zeros((2, numpoints), dtype='float')
