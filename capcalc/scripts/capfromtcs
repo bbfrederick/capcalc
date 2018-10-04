@@ -215,6 +215,7 @@ def usage():
     print('                                 - group subsegments for summary statistics.  All subsegments in the same group must be the same length')
     print('                                   If there are multiple, comma separated numbers, treat these as subsegment lengths.')
     print('                                   Default segmentsize is the entire length')
+    print('  --skippts=NUMPTS               - drop first NUMPTS points from each segment')
     print("  Clustering:")
     print(
         '    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets')
@@ -278,6 +279,7 @@ eps = 0.3
 min_samples = 100
 alpha = 1.0
 standardscale = True
+skippts = 0
 
 duration = 1000000.0
 starttime = 0.0
@@ -305,6 +307,7 @@ try:
                                                                               "varnorm",
                                                                               "stdnorm",
                                                                               "ppnorm",
+                                                                              "skippts=",
                                                                               "quality",
                                                                               "samplefreq=", "sampletime=", "help"])
 except getopt.GetoptError as err:
@@ -394,6 +397,10 @@ for o, a in opts:
         timenormmethod = 'ppnorm'
         if verbose:
             print('will do p-p normalization')
+    elif o == "--skippts":
+        skippts = int(a)
+        if verbose:
+            print('will drop first', skippts, 'points from each segnent')
     elif o == "--quality":
         summaryonly = False
         if verbose:
@@ -552,16 +559,16 @@ startpoint = max([int(starttime * Fs), 0])
 if len(infilename) == 1:
     # each column is a timecourse, each row is a timepoint
     matrixoutput = True
-    inputdata = tide_io.readvecs(infilename[0])
+    inputdata = tide_io.readvecs(infilename[0])[skippts:]
     if verbose:
         print('input data shape is ', inputdata.shape)
     numpoints = inputdata.shape[1]
     endpoint = min([startpoint + int(duration * Fs), numpoints])
     trimmeddata = inputdata[:, startpoint:endpoint]
 elif len(infilename) == 2:
-    inputdata1 = tide_io.readvec(infilename[0])
+    inputdata1 = tide_io.readvec(infilename[0])[skippts:]
     numpoints = len(inputdata1)
-    inputdata2 = tide_io.readvec(infilename[1])
+    inputdata2 = tide_io.readvec(infilename[1])[skippts:]
     endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     trimmeddata = np.zeros((2, numpoints), dtype='float')
