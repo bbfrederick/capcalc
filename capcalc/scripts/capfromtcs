@@ -566,9 +566,9 @@ if len(infilename) == 1:
     endpoint = min([startpoint + int(duration * Fs), numpoints])
     trimmeddata = inputdata[:, startpoint:endpoint]
 elif len(infilename) == 2:
-    inputdata1 = tide_io.readvec(infilename[0])[skippts:]
+    inputdata1 = tide_io.readvec(infilename[0])
     numpoints = len(inputdata1)
-    inputdata2 = tide_io.readvec(infilename[1])[skippts:]
+    inputdata2 = tide_io.readvec(infilename[1])
     endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     trimmeddata = np.zeros((2, numpoints), dtype='float')
@@ -678,10 +678,10 @@ if clustertype == 'kmeans':
 
     # make normalized clusters
     thenormclusters = theclusters * 0.0
-    themeans = np.mean(theclusters, axis=1)
-    thestds = np.std(theclusters, axis=1)
-    for i in range(theclusters.shape[0]):
-        thenormclusters[i, :] = (theclusters[i, :] - themeans[i]) / thestds[i]
+    themeans = np.mean(theclusters, axis=0)
+    thestds = np.std(theclusters, axis=0)
+    for i in range(theclusters.shape[1]):
+        thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
     tide_io.writenpvecs(theclusters, outfilename + '_norm_clustercenters.txt')
     
     # save the states
