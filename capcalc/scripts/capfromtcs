@@ -314,8 +314,9 @@ except getopt.GetoptError as err:
     sys.exit(2)
 
 if len(args) > 1:
-    print('unexpected unflagged argument, but that is ok by me')
+    print('capfromtcs takes no unflagged arguments')
     print(args)
+    sys.exit(2)
 
 # unset all required arguments
 infilename = []
@@ -587,7 +588,7 @@ if len(subsegs) > 1:
     print('    segment is broken into', len(subsegs), 'subsegments of length', subsegs)
 reformdata = np.reshape(trimmeddata, (n_features, n_samples))
 if n_samples % segsize > 0:
-    print('segment size is not an even divisor of the total length - exiting')
+    print('segment size (', segsize,') is not an even divisor of the total length (', n_samples, ')- exiting')
     sys.exit()
 else:
     numsegs = int(n_samples // segsize)
