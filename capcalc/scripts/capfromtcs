@@ -682,7 +682,8 @@ if clustertype == 'kmeans':
     thestds = np.std(theclusters, axis=0)
     print('themeans:', themeans)
     print('thestds:', thestds)
-    for i in range(theclusters.shape[0]):
+    print('shape:', theclusters.shape)
+    for i in range(theclusters.shape[1]):
         thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
     tide_io.writenpvecs(thenormclusters, outfilename + '_norm_clustercenters.txt')
     
