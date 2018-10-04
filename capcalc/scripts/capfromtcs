@@ -314,9 +314,8 @@ except getopt.GetoptError as err:
     sys.exit(2)
 
 if len(args) > 1:
-    print('capfromtcs takes no unflagged arguments')
-    usage()
-    exit()
+    print('unexpected unflagged argument, but that is ok by me')
+    print(args)
 
 # unset all required arguments
 infilename = []
@@ -668,6 +667,16 @@ if clustertype == 'kmeans':
     print('thestatelabels shape', thestatelabels.shape)
     print('kmeans done')
     tide_io.writenpvecs(theclusters, outfilename + '_clustercenters.txt')
+
+    # make normalized clusters
+    thenormclusters = theclusters * 0.0
+    themeans = np.mean(theclusters, axis=1)
+    thestds = np.std(theclusters, axis=1)
+    for i in range(theclusters.shape[0]):
+        thenormclusters[i, :] = (theclusters[i, :] - themeans[i]) / thestds[i]
+    tide_io.writenpvecs(theclusters, outfilename + '_norm_clustercenters.txt')
+    
+    # save the states
     tide_io.writenpvecs(thestatelabels, outfilename + '_statelabels.txt')
 
     # find most important features
