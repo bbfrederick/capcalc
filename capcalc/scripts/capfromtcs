@@ -559,14 +559,14 @@ startpoint = max([int(starttime * Fs), 0]) + skippts
 if len(infilename) == 1:
     # each column is a timecourse, each row is a timepoint
     matrixoutput = True
-    inputdata = tide_io.readvecs(infilename[0])
+    inputdata = tide_io.readvecs(infilename[0])[skippts:]
     if verbose:
         print('input data shape is ', inputdata.shape)
     numpoints = inputdata.shape[1]
     endpoint = min([startpoint + int(duration * Fs), numpoints])
     trimmeddata = inputdata[:, startpoint:endpoint]
 elif len(infilename) == 2:
-    inputdata1 = tide_io.readvec(infilename[0])
+    inputdata1 = tide_io.readvec(infilename[0])[skippts:]
     numpoints = len(inputdata1)
     inputdata2 = tide_io.readvec(infilename[1])
     endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
