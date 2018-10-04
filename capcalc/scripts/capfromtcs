@@ -555,20 +555,20 @@ elif timenormmethod == 'ppnorm':
 tide_io.writevec([' '.join(sys.argv)], outfilename + '_commandline.txt')
 
 # read in the files and get everything trimmed to the right length
-startpoint = max([int(starttime * Fs), 0])
+startpoint = max([int(starttime * Fs), 0]) + skippts
 if len(infilename) == 1:
     # each column is a timecourse, each row is a timepoint
     matrixoutput = True
-    inputdata = tide_io.readvecs(infilename[0])[skippts:]
+    inputdata = tide_io.readvecs(infilename[0])
     if verbose:
         print('input data shape is ', inputdata.shape)
     numpoints = inputdata.shape[1]
     endpoint = min([startpoint + int(duration * Fs), numpoints])
     trimmeddata = inputdata[:, startpoint:endpoint]
 elif len(infilename) == 2:
-    inputdata1 = tide_io.readvec(infilename[0])[skippts:]
+    inputdata1 = tide_io.readvec(infilename[0])
     numpoints = len(inputdata1)
-    inputdata2 = tide_io.readvec(infilename[1])[skippts:]
+    inputdata2 = tide_io.readvec(infilename[1])
     endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     trimmeddata = np.zeros((2, numpoints), dtype='float')
