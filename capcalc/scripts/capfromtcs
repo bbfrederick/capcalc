@@ -678,11 +678,11 @@ if clustertype == 'kmeans':
 
     # make normalized clusters
     thenormclusters = theclusters * 0.0
-    themeans = np.mean(theclusters, axis=0)
-    thestds = np.std(theclusters, axis=0)
-    for i in range(theclusters.shape[1]):
-        thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
-    tide_io.writenpvecs(theclusters, outfilename + '_norm_clustercenters.txt')
+    themeans = np.mean(theclusters, axis=1)
+    thestds = np.std(theclusters, axis=1)
+    for i in range(theclusters.shape[0]):
+        thenormclusters[i, 0] = (theclusters[i, 0] - themeans[i]) / thestds[i]
+    tide_io.writenpvecs(thenormclusters, outfilename + '_norm_clustercenters.txt')
     
     # save the states
     tide_io.writenpvecs(thestatelabels, outfilename + '_statelabels.txt')
