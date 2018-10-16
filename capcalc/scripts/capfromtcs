@@ -193,7 +193,7 @@ def usage():
     print("                  [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C]")
     print("                  [-m] [-n NUMCLUSTER] [-b BATCHSIZE] [-S SEGMENTSIZE] [-E SEGMENTTYPE] [-I INITIALIZATIONS]")
     print("                  [--noscale] [--nonorm] [--pctnorm] [--varnorm] [--stdnorm] [--ppnorm] [--quality]")
-    print("                  [--pca] [--ica] [-p NUMCOMPONENTS]")
+    print("                  [--pca] [--ica] [-p NUMCOMPONENTS] --modelroot=MODELROOT")
     print("")
     print("required arguments:")
     print("    -i, --infile=TIMECOURSEFILE  - text file mulitple timeseries")
@@ -230,7 +230,7 @@ def usage():
     print('    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)')
     print("")
     print('  Preprocessing:')
-    print("    -F                           - filter data and regressors from LOWERFREQ to UPPERFREQ.")
+    print("    -F LOWERFREQ,UPPERFREQ       - filter data and regressors from LOWERFREQ to UPPERFREQ.")
     print(
         "                                   LOWERSTOP and UPPERSTOP can be specified, or will be calculated automatically")
     print("    -V                           - filter data and regressors to VLF band")
@@ -254,6 +254,8 @@ def usage():
     print('    -d                           - display some quality metrics')
     print('    --quality                    - perform a silhouette test to evaluate fit quality')
     print('    -v                           - turn on verbose mode')
+    print('    --modelroot=MODELROOT        - reread trained models from a previous run - MODELROOT should ')
+    print('                                   be the outputfile from the previous run (i.e. what followed -o)')
     print("")
     return ()
 
