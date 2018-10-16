@@ -28,12 +28,15 @@ import rapidtide.io as tide_io
 import rapidtide.miscmath as tide_math
 import rapidtide.filter as tide_filter
 import rapidtide.fit as tide_fit
+
 from sklearn.cluster import KMeans, MiniBatchKMeans, DBSCAN
 from sklearn.decomposition import PCA, IncrementalPCA, FastICA
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn import metrics
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectFdr, SelectKBest, SelectPercentile, f_classif, RFE
+from sklearn.externals import joblib
+
 from scipy import sin, arange, pi, randn
 import numpy as np
 import nibabel as nib
@@ -290,6 +293,8 @@ verbose = False
 doGBR = False
 display = False
 
+trainedmodelroot = None
+
 
 
 # scan the command line arguments
@@ -308,6 +313,7 @@ try:
                                                                               "stdnorm",
                                                                               "ppnorm",
                                                                               "skippts=",
+                                                                              "modelroot=",
                                                                               "quality",
                                                                               "samplefreq=", "sampletime=", "help"])
 except getopt.GetoptError as err:
@@ -397,6 +403,10 @@ for o, a in opts:
         timenormmethod = 'ppnorm'
         if verbose:
             print('will do p-p normalization')
+    elif o == "--modelroot":
+        trainedmodelroot = a
+        if verbose:
+            print('will read trained models from', trainedmodelroot, '_*.joblib')
     elif o == "--skippts":
         skippts = int(a)
         if verbose:
@@ -512,9 +522,12 @@ if outfilename is None:
 # check to make sure groups and subsegments are in agreement
 groups = {}
 if subsegs is not None:
+    print('subsegs:', subsegs)
     if subseggroupIDs is None:
+        subseggroupIDs = []
         for i in range(len(subsegs)):
             subseggroupIDs.append("group_" + str(i))
+    print('subseggroupIDs:', subseggroupIDs)
     if len(subsegs) != len(subseggroupIDs):
         print('number of subsegment group IDs must match number of subsegs')
         sys.exit()
@@ -634,16 +647,24 @@ if standardscale:
 if preprocessingtype == 'pca':
     print('running PCA')
     print('shape going in:', X.shape)
-    if False:
+    if trainedmodelroot is None:
+        print('running PCA')
         if n_pca <=0:
-            n_pca = None
-        thepca = IncrementalPCA(batch_size=batch_size, n_components=n_pca)
-    else:
-        if n_pca <=0:
-            thepca = PCA(n_components='mle', svd_solver='full')
+            thepca = PCA(n_components='mle', svd_solver='full').fit(X)
         else:
-            thepca = PCA(n_components=n_pca)
-    thefit = thepca.fit(X)
+            thepca = PCA(n_components=n_pca).fit(X)
+
+        # save the model
+        joblib.dump(thepca, outfilename + '_pca.joblib')
+    else:
+        modelfilename = trainedmodelroot + '_pca.joblib'
+        print('reading PCA from', modelfilename)
+        try:
+            thepca = joblib.load(modelfilename)
+        except:
+            print('model file', modelfilename, 'not found - aborting')
+            sys.exit()
+
     thetransform = thepca.transform(X)
     X = thepca.inverse_transform(thetransform)
     print('shape coming out:', X.shape)
@@ -655,8 +676,20 @@ elif preprocessingtype == 'ica':
     print('running FastICA')
     if n_pca <= 1.0:
         n_pca = int(0)
-    theica = FastICA(n_components=n_pca, algorithm='deflation')
-    thefit = theica.fit(X)
+    if trainedmodelroot is None:
+        theica = FastICA(n_components=n_pca, algorithm='deflation').fit(X)
+
+        # save the model
+        joblib.dump(theica, outfilename + '_ica.joblib')
+    else:
+        modelfilename = trainedmodelroot + '_ica.joblib'
+        print('reading ICA from', modelfilename)
+        try:
+            theica = joblib.load(modelfilename)
+        except:
+            print('model file', modelfilename, 'not found - aborting')
+            sys.exit()
+
     thetransform = theica.transform(X)
     X = theica.inverse_transform(thetransform)
     tide_io.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
@@ -665,10 +698,24 @@ tide_io.writenpvecs(reformdata, outfilename + '_preprocessed.txt')
 
 if clustertype == 'kmeans':
     print('setting up kmeans')
-    if minibatch:
-        kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter).fit(X)
+    if trainedmodelroot is None:
+        print('training model')
+        if minibatch:
+            kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter).fit(X)
+        else:
+            kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(X)
+
+        # save the model
+        joblib.dump(kmeans, outfilename + '_kmeans.joblib')
     else:
-        kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(X)
+        modelfilename = trainedmodelroot + '_kmeans.joblib'
+        print('reading kmeans model from', modelfilename)
+        try:
+            kmeans = joblib.load(modelfilename)
+        except:
+            print('model file', modelfilename, 'not found - aborting')
+            sys.exit()
+        kmeans.predict(X)
     
     theclusters = np.transpose(kmeans.cluster_centers_)
     thestatelabels = kmeans.labels_
@@ -850,7 +897,21 @@ if clustertype == 'kmeans':
         tide_io.writenpvecs(np.reshape(clf.feature_importances_, (n_features, 1)), outfilename + '_featureimportances.txt')
 
 elif clustertype == 'dbscan':
-    db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(X)
+    if trainedmodelroot is None:
+        db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(X)
+
+        # save the model
+        joblib.dump(db, outfilename + '_dbscan.joblib')
+    else:
+        modelfilename = trainedmodelroot + '_dbscan.joblib'
+        print('reading dbscan model from', modelfilename)
+        try:
+            db = joblib.load(modelfilename)
+        except:
+            print('model file', modelfilename, 'not found - aborting')
+            sys.exit()
+        db.predict(X)
+
     print('dbscan done')
 
     #core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
@@ -872,9 +933,23 @@ elif clustertype == 'dbscan':
     methodname = 'dbscan_' + str(n_clusters).zfill(2)
 
 elif clustertype == 'hdbscan':
-    hdb = hdbs.HDBSCAN(min_samples=min_samples,
-                        alpha=alpha, 
-                        memory='/Users/frederic/Documents/MR_data/connectome/movies').fit(X)
+    if trainedmodelroot is None:
+        hdb = hdbs.HDBSCAN(min_samples=min_samples,
+                           alpha=alpha,
+                           memory='/Users/frederic/Documents/MR_data/connectome/movies').fit(X)
+
+        # save the model
+        joblib.dump(db, outfilename + '_hdbscan.joblib')
+    else:
+        modelfilename = trainedmodelroot + '_hdbscan.joblib'
+        print('reading hdbscan model from', modelfilename)
+        try:
+            hdb = joblib.load(modelfilename)
+        except:
+            print('model file', modelfilename, 'not found - aborting')
+            sys.exit()
+        hdb.predict(X)
+
     thestatelabels = hdb.labels_
     print(thestatelabels)
 
