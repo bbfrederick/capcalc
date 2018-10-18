@@ -105,7 +105,7 @@ def statestats(thestates, numlabels, minlabel):
 
 def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly, display=False):
     print('generating cluster labels')
-    cluster_labels = kmeans.fit_predict(X)
+    cluster_labels = kmeans.predict(X)
     thesilavgs = np.zeros(numsegs, dtype='float')
     thesilclusterstats = np.zeros((numsegs, 4, n_clusters), dtype='float')
     print('calculating silhouette stats')
@@ -717,10 +717,10 @@ if clustertype == 'kmeans':
         except:
             print('model file', modelfilename, 'not found - aborting')
             sys.exit()
-        kmeans.predict(X)
     
     theclusters = np.transpose(kmeans.cluster_centers_)
-    thestatelabels = kmeans.labels_
+    thestatelabels = kmeans.predict(X)
+    #thestatelabels = kmeans.labels_
     print('thestatelabels shape', thestatelabels.shape)
     print('kmeans done')
     tide_io.writenpvecs(theclusters, outfilename + '_clustercenters.txt')
