@@ -385,7 +385,7 @@ for o, a in opts:
         if verbose:
             print('will display quality metrics')
     elif o == "--preproconly":
-        preproconly = False
+        preproconly = True
         if verbose:
             print('only do preprocessing through PCA/ICA')
     elif o == "--noscale":
