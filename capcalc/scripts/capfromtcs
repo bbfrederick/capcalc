@@ -681,6 +681,7 @@ if preprocessingtype == 'pca':
         print('component', i, 'explained variance:', thepca.explained_variance_[i], 'explained variance %:',
               100.0 * thepca.explained_variance_ratio_[i])
     tide_io.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
+    tide_io.writenpvecs(np.transpose(thepca.components_), outfilename + "_pcacomponents_transpose.txt")
 elif preprocessingtype == 'ica':
     print('running FastICA')
     if n_pca <= 1.0:
@@ -702,6 +703,7 @@ elif preprocessingtype == 'ica':
     thetransform = theica.transform(X)
     X = theica.inverse_transform(thetransform)
     tide_io.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
+    tide_io.writenpvecs(np.transpose(theica.components_), outfilename + "_icacomponents_transpose.txt")
 
 tide_io.writenpvecs(reformdata, outfilename + '_preprocessed.txt')
 if preproconly:
