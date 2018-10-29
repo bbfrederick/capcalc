@@ -248,6 +248,7 @@ def usage():
     print('    --ica                        - perform ICA dimensionality reduction prior to analysis')
     print('    -p NUMCOMPONENTS             - set the number of p/ica components to NUMCOMPONENTS (default is 8).  Set to -1 to estimate')
     print('    --noscale                    - do not apply standard scaler befor cluster fitting')
+    print('    --preproconly                - do preprocessing then quit')
     print("")
     print('  Other:')
     print('    --GBR                        - apply gradient boosting regressor testing on clusters')
@@ -294,6 +295,7 @@ verbose = False
 
 doGBR = False
 display = False
+preproconly = False
 
 trainedmodelroot = None
 
@@ -309,6 +311,7 @@ try:
                                                                               "pca",
                                                                               "ica",
                                                                               "noscale",
+                                                                              "preproconly",
                                                                               "nonorm",
                                                                               "pctnorm",
                                                                               "varnorm",
@@ -381,6 +384,10 @@ for o, a in opts:
         display = True
         if verbose:
             print('will display quality metrics')
+    elif o == "--preproconly":
+        preproconly = False
+        if verbose:
+            print('only do preprocessing through PCA/ICA')
     elif o == "--noscale":
         standardscale = False
         if verbose:
@@ -697,6 +704,9 @@ elif preprocessingtype == 'ica':
     tide_io.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
 
 tide_io.writenpvecs(reformdata, outfilename + '_preprocessed.txt')
+if preproconly:
+    print('preprocessing done - quitting')
+    sys.exit()
 
 if clustertype == 'kmeans':
     print('setting up kmeans')
