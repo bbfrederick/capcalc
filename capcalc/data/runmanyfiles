@@ -15,6 +15,12 @@ echo 'extracting timecourses'
 echo 'calculating kmeans'
 capfromtcs -i manyfiles.txt -o output/manyfiles --sampletime=0.72 --varnorm -m -b 4800 -S 1200 --quality -E default
 
+echo 'checking for existence of trained model file'
+ls -ltra output/manyfiles.joblib
+
+echo 'rerunning with trained model'
+capfromtcs -i manyfiles.txt -o output/reloaded_manyfiles --sampletime=0.72 --varnorm -m -b 4800 -S 1200 --quality -E default --modelroot=output/manyfiles
+
 echo 'projecting clusters back onto the brain'
 roirecompose output/manyfiles_clustercenters.txt Hutch17CortStriatAmyg_MNI.nii.gz output/manyfiles_states
 

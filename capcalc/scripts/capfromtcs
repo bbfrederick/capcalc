@@ -28,6 +28,7 @@ import rapidtide.io as tide_io
 import rapidtide.miscmath as tide_math
 import rapidtide.filter as tide_filter
 import rapidtide.fit as tide_fit
+import rapidtide.stats as tide_stats
 
 from sklearn.cluster import KMeans, MiniBatchKMeans, DBSCAN
 from sklearn.decomposition import PCA, IncrementalPCA, FastICA
@@ -100,7 +101,7 @@ def statestats(thestates, numlabels, minlabel):
             thestats.append([100.0 * np.sum(lenarray)/len(thestates), len(lenarray), np.sum(lenarray), lenarray[0], lenarray[0], lenarray[0], lenarray[0], 0.0])
         else:
             thestats.append([0.0, len(lenarray), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    return transmat, np.asarray(thestats, dtype='float')
+    return transmat, np.asarray(thestats, dtype='float'), lenlist
 
 
 def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly, display=False):
@@ -803,12 +804,17 @@ if clustertype == 'kmeans':
         tide_io.writenpvecs(groups[key]['meaninstate'], outfilename + '_' + str(key) + '_meaninstate.txt')
         tide_io.writenpvecs(groups[key]['stdinstate'], outfilename + '_' + str(key) + '_stdinstate.txt')
     allstatestats = []
+    alllenlists = []
+    for i in range(n_clusters):
+        alllenlists.append([])
     for segment in range(numsegs):
         thesestatelabels = thestatelabels[segment * segsize:(segment + 1) * segsize]
 
         outputaffine = np.eye(4)
-        rawtransmat, thestats = statestats(thesestatelabels, n_clusters, 0)
+        rawtransmat, thestats, lenlist = statestats(thesestatelabels, n_clusters, 0)
         allstatestats.append(thestats)
+        for i in range(n_clusters):
+            alllenlists[i] += lenlist[i]
         normtransmat = 1.0 * rawtransmat
         for i in range(n_clusters):
             if np.sum(rawtransmat[i, :]) > 0.0:
@@ -887,6 +893,14 @@ if clustertype == 'kmeans':
                 silinfo[state].append(thesilclusterstats[segment, 0, state])
 
     # now generate some summary information
+    themaxlen = 0
+    for i in range(n_clusters):
+        themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))
+    for i in range(n_clusters):
+        thishist = tide_stats.makeandsavehistogram(np.array(alllenlists[i]),
+                                                   themaxlen, 0,
+                                                   outfilename + '_' + str(i).zfill(2) + '_lenhist',
+                                                   therange=[1, themaxlen])
     silavgs = []
     if not summaryonly:
         for state in range(n_clusters):
