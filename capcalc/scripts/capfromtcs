@@ -49,7 +49,52 @@ try:
 except:
     hdbpresent = False
 
-def statestats(thestates, numlabels, minlabel):
+def statefilter(thestates, minlength, minhold, debug=False):
+    print('state filtering with length', minlength)
+    thefiltstates = np.zeros((len(thestates)), dtype=int)
+    currentstate = thestates[0]
+    laststate = currentstate + 0
+    currentlen = 1
+    lastlen = 1
+    for state in range(1, len(thestates)):
+        if thestates[state] == currentstate:
+            currentlen += 1
+            thefiltstates[state] = thestates[state]
+            if debug:
+                print('state', state, '(', thestates[state],'):continue')
+        else:
+            if (currentlen < minlength) and (thestates[state] == laststate):
+                thefiltstates[state - currentlen:state + 1] = laststate
+                currentstate = laststate + 0
+                currentlen += lastlen
+                if debug:
+                    print('state', state, '(', thestates[state], '):patch')
+            elif (currentlen < minhold) and (thestates[state] != laststate):
+                thefiltstates[state - currentlen:state + 1] = laststate
+                currentstate = laststate + 0
+                currentlen += lastlen
+                if debug:
+                    print('state', state, '(', thestates[state], '):fill')
+            else:
+                lastlen = currentlen + 1
+                currentlen = 1
+                laststate = currentstate + 0
+                currentstate = thestates[state]
+                thefiltstates[state] = thestates[state]
+                if debug:
+                    print('state', state, '(', thestates[state], '):switch')
+            '''else:
+                lastlen = currentlen + 1
+                currentlen = 1
+                laststate = currentstate + 0
+                currentstate = thestates[state]
+                thefiltstates[state] = thestates[state]
+                if debug:
+                    print('state', state, '(', thestates[state], '):shortswitch')
+            '''
+    return thefiltstates
+
+def statestats(thestates, numlabels, minlabel, minout=1, minhold=1):
     # returns statestats and transmat
     #
     # statestats file columns:
@@ -69,6 +114,11 @@ def statestats(thestates, numlabels, minlabel):
     maxlabel = minlabel + numlabels - 1
     numlabels = maxlabel - minlabel + 1
     transmat = np.zeros((numlabels, numlabels), dtype='float')
+
+    # prefilter
+    thestates = statefilter(thestates, minout, minhold)
+
+    # now tabulate states
     currentstate = thestates[0]
     currentlen = 1
     lenlist = [[]]
@@ -250,6 +300,8 @@ def usage():
     print('    -p NUMCOMPONENTS             - set the number of p/ica components to NUMCOMPONENTS (default is 8).  Set to -1 to estimate')
     print('    --noscale                    - do not apply standard scaler befor cluster fitting')
     print('    --preproconly                - do preprocessing then quit')
+    print('    --minout=MINOUT              - transitions out of a state shorter than MINOUT will be patched.  Default is 1')
+    print('    --minhold=MINHOLD)           - time in a state shorter than MINHOLD will be assigned to the previous state.  Default is 1')
     print("")
     print('  Other:')
     print('    --GBR                        - apply gradient boosting regressor testing on clusters')
@@ -287,6 +339,8 @@ min_samples = 100
 alpha = 1.0
 standardscale = True
 skippts = 0
+minoutength = 1
+minholdlength = 1
 
 duration = 1000000.0
 starttime = 0.0
@@ -319,6 +373,8 @@ try:
                                                                               "stdnorm",
                                                                               "ppnorm",
                                                                               "skippts=",
+                                                                              "minout=",
+                                                                              "minhold=",
                                                                               "modelroot=",
                                                                               "quality",
                                                                               "samplefreq=", "sampletime=", "help"])
@@ -417,6 +473,14 @@ for o, a in opts:
         trainedmodelroot = a
         if verbose:
             print('will read trained models from', trainedmodelroot, '_*.joblib')
+    elif o == "--minhold":
+        minholdlength = int(a)
+        if verbose:
+            print('residency in a state shorter than', minholdlength, 'will be patched')
+    elif o == "--minout":
+        minoutlength = int(a)
+        if verbose:
+            print('transitions out of a state shorter than', minoutlength, 'will be patched')
     elif o == "--skippts":
         skippts = int(a)
         if verbose:
@@ -811,7 +875,7 @@ if clustertype == 'kmeans':
         thesestatelabels = thestatelabels[segment * segsize:(segment + 1) * segsize]
 
         outputaffine = np.eye(4)
-        rawtransmat, thestats, lenlist = statestats(thesestatelabels, n_clusters, 0)
+        rawtransmat, thestats, lenlist = statestats(thesestatelabels, n_clusters, 0, minout=minoutlength, minhold=minholdlength)
         allstatestats.append(thestats)
         for i in range(n_clusters):
             alllenlists[i] += lenlist[i]
