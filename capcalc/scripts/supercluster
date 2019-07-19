@@ -29,7 +29,6 @@ import os
 
 import numpy as np
 from pylab import *
-import nibabel as nib
 
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split

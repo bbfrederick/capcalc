@@ -29,7 +29,6 @@ import os
 
 import numpy as np
 from pylab import *
-import nibabel as nib
 from sklearn.feature_extraction.image import grid_to_graph
 from sklearn import metrics
 from sklearn.cluster import AgglomerativeClustering, KMeans, MiniBatchKMeans, DBSCAN
