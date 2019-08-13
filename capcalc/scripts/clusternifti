@@ -439,5 +439,6 @@ theheader = datafile_hdr
 theheader['dim'][4] = 1
 tempout = np.zeros((numspatiallocs), dtype='float')
 tempout[proclocs] = theregionlabels[:] + 1
-tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
-    outputrootname + '_' + methodname + '_regions')
+tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)),
+                    datafile_hdr,
+                    outputrootname + '_' + methodname + '_regions')

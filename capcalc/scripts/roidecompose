@@ -149,4 +149,6 @@ else:
         regionval = np.nan_to_num(np.mean(inputvoxels[np.where(templatevoxels == theregion)]))
         outputvoxels[np.where(templatevoxels == theregion)] = regionval
     template_hdr['dim'][4] = numregions
-    tide_io.savetonifti(outputvoxels.reshape((xsize, ysize, numslices, numregions)), template_hdr, templatesizes, outputfile)
+    tide_io.savetonifti(outputvoxels.reshape((xsize, ysize, numslices, numregions)),
+                        template_hdr,
+                        outputfile)

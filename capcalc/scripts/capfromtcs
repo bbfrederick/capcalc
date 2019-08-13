@@ -891,9 +891,9 @@ if clustertype == 'kmeans':
         init_img=nib.Nifti1Image(normtransmat, outputaffine)
         init_hdr=init_img.get_header()
         init_sizes=init_hdr['pixdim']
-        tide_io.savetonifti(np.transpose(rawtransmat), init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_rawtransmat')
-        tide_io.savetonifti(np.transpose(normtransmat), init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_normtransmat')
-        tide_io.savetonifti(np.transpose(offdiagtransmat), init_hdr, init_sizes, outfilename + '_seg_' + str(segment).zfill(4) + '_offdiagtransmat')
+        tide_io.savetonifti(np.transpose(rawtransmat), init_hdr, outfilename + '_seg_' + str(segment).zfill(4) + '_rawtransmat')
+        tide_io.savetonifti(np.transpose(normtransmat), init_hdr, outfilename + '_seg_' + str(segment).zfill(4) + '_normtransmat')
+        tide_io.savetonifti(np.transpose(offdiagtransmat), init_hdr, outfilename + '_seg_' + str(segment).zfill(4) + '_offdiagtransmat')
 
         # write as text as well
         rows = []

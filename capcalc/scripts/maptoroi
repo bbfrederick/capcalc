@@ -86,4 +86,6 @@ for thecluster in range(numclusters):
     
 theheader=template_hdr
 theheader['dim'][4] = numclusters
-tide_io.savetonifti(output_data.reshape((xsize, ysize, numslices, numclusters)), theheader, thesizes, outputfile)
+tide_io.savetonifti(output_data.reshape((xsize, ysize, numslices, numclusters)),
+                    theheader,
+                    outputfile)

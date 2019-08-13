@@ -392,8 +392,9 @@ theheader['dim'][4] = 1
 # output classification of all known data
 tempout = np.zeros((numspatiallocs), dtype='float')
 tempout[knownlocs] = y_predict_known[:]
-tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
-    outputrootname + '_' + methodname + '_predict_known')
+tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)),
+                    datafile_hdr,
+                    outputrootname + '_' + methodname + '_predict_known')
 
 # save the command line
 tide_io.writevec([' '.join(sys.argv)], outputrootname + '_' + methodname + '_commandline.txt')
@@ -404,10 +405,12 @@ if multirun:
     tempout[proclocs, :] = y_predict_all[:, :]
     theheader = datafile_hdr
     theheader['dim'][4] = numtests
-    tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, numtests)), theheader, datafilesizes,
-        outputrootname + '_' + methodname + '_predict_all')
+    tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, numtests)),
+                        theheader,
+                        outputrootname + '_' + methodname + '_predict_all')
 else:
     tempout = np.zeros((numspatiallocs), dtype='float')
     tempout[proclocs] = y_predict_all[:]
-    tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)), datafile_hdr, datafilesizes,
-        outputrootname + '_' + methodname + '_predict_all')
+    tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)),
+                        datafile_hdr,
+                        outputrootname + '_' + methodname + '_predict_all')

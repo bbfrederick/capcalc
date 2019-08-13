@@ -113,6 +113,8 @@ theheader=input_hdr
 theheader['dim'][4] = n_clusters
 theclusters = np.transpose(kmeans.cluster_centers_)
 print('clusters shape:',theclusters.shape)
-tide_io.savetonifti(theclusters.reshape((xsize, ysize, numslices, n_clusters)), theheader, thesizes, outputroot + '_states')
+tide_io.savetonifti(theclusters.reshape((xsize, ysize, numslices, n_clusters)),
+                    theheader,
+                    outputroot + '_states')
 
 tide_io.writenpvecs(kmeans.labels_, outputroot + '_statelabels.txt')
