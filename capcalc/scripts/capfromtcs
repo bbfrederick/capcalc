@@ -291,7 +291,7 @@ def usage():
     print("    --nodetrend                  - do not detrend the data before correlation")
     print('    --noscale                    - don\'t perform vector magnitude scaling')
     print('    --nonorm                     - don\'t normalize timecourses')
-    print('    --pctnorm                    - scale each timecourse to it\'s percentage of the mean')
+    print('    --pctnorm                    - scale each timecourse to its percentage of the mean')
     print('    --varnorm                    - scale each timecourse to have a variance of 1.0 (default)')
     print('    --stdnorm                    - scale each timecourse to have a standard deviation of 1.0')
     print('    --ppnorm                     - scale each timecourse to have a peak to peak range of 1.0')
