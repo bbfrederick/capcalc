@@ -26,6 +26,10 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+modules_list = ['capcalc/utils',
+               ]
+
+
 script_list = ['capcalc/scripts/kmeans',
                'capcalc/scripts/capfromtcs',
                'capcalc/scripts/statematch',
@@ -129,7 +133,7 @@ setup(
     # Alternatively, if you want to distribute just a my_module.py, uncomment
     # this:
     #   py_modules=["my_module"],
-    #py_modules=modules_list,
+    py_modules=modules_list,
 
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's

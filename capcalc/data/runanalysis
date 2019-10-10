@@ -3,7 +3,7 @@
 echo 'extracting timecourses'
 roidecompose Resting_101309/REST1_LR/origional/101309_Hutch17CortStriatAmyg_MNI_REST1_LR.txt \
     Hutch17CortStriatAmyg_MNI_corrected.nii.gz \
-    orig_hcptcs.txt \
+    output/orig_hcptcs.txt \
     --pctnorm
 #roidecompose Resting_101309/REST1_LR/rapidtide/101309_rapidtide_Hutch17CortStriatAmyg_MNI_REST1_LR.txt \
 #    Hutch17CortStriatAmyg_MNI_corrected.nii.gz \

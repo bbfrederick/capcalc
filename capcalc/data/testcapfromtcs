@@ -1,0 +1,2 @@
+#!/bin/csh -f
+capfromtcs -i manyfiles.txt -o output/manyfiles --sampletime=0.72 --varnorm -m -b 4800 -S 1200 --quality -E default --minout=2
