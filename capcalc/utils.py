@@ -29,6 +29,7 @@ import numpy as np
 def statefilter(thestates, minlength, minhold, debug=False):
     print('state filtering with length', minlength)
     thefiltstates = np.zeros((len(thestates)), dtype=int)
+    thefiltstates[0] = thestates[0]
     currentstate = thestates[0]
     laststate = currentstate + 0
     currentlen = 1
@@ -60,18 +61,12 @@ def statefilter(thestates, minlength, minhold, debug=False):
                 thefiltstates[state] = thestates[state]
                 if debug:
                     print('state', state, '(', thestates[state], '):switch')
-            '''else:
-                lastlen = currentlen + 1
-                currentlen = 1
-                laststate = currentstate + 0
-                currentstate = thestates[state]
-                thefiltstates[state] = thestates[state]
-                if debug:
-                    print('state', state, '(', thestates[state], '):shortswitch')
-            '''
+    if debug:
+        for state in range(len(thestates)):
+            print(state, thestates[state], thefiltstates[state])
     return thefiltstates
 
-def statestats(thestates, numlabels, minlabel, minout=1, minhold=1):
+def statestats(thestates, numlabels, minlabel, minout=1, minhold=1, debug=False):
     # returns statestats and transmat
     #
     # statestats file columns:
@@ -93,7 +88,7 @@ def statestats(thestates, numlabels, minlabel, minout=1, minhold=1):
     transmat = np.zeros((numlabels, numlabels), dtype='float')
 
     # prefilter
-    thestates = statefilter(thestates, minout, minhold)
+    thestates = statefilter(thestates, minout, minhold, debug=debug)
 
     # now tabulate states
     currentstate = thestates[0]
