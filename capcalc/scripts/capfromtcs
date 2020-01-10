@@ -376,7 +376,7 @@ for o, a in opts:
             arb_lowerstop = float(arbvec[2])
             arb_upperstop = float(arbvec[3])
         theprefilter.settype('arb')
-        theprefilter.setarb(arb_lowerstop, arb_lower, arb_upper, arb_upperstop)
+        theprefilter.setfreqs(arb_lowerstop, arb_lower, arb_upper, arb_upperst op)
         if verbose:
             print('prefiltering to ', arb_lower, arb_upper, "(stops at ", arb_lowerstop, arb_upperstop, ")")
     elif o == "-m":
@@ -551,8 +551,10 @@ if preprocessingtype == 'pca':
         print('reading PCA from', modelfilename)
         try:
             thepca = joblib.load(modelfilename)
-        except:
-            print('model file', modelfilename, 'not found - aborting')
+        except Exception as ex:
+            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            message = template.format(type(ex).__name__, modelfilename, ex.args)
+            print(message)
             sys.exit()
 
     thetransform = thepca.transform(X)
@@ -577,8 +579,10 @@ elif preprocessingtype == 'ica':
         print('reading ICA from', modelfilename)
         try:
             theica = joblib.load(modelfilename)
-        except:
-            print('model file', modelfilename, 'not found - aborting')
+        except Exception as ex:
+            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            message = template.format(type(ex).__name__, modelfilename, ex.args)
+            print(message)
             sys.exit()
 
     thetransform = theica.transform(X)
@@ -607,8 +611,10 @@ if clustertype == 'kmeans':
         print('reading kmeans model from', modelfilename)
         try:
             kmeans = joblib.load(modelfilename)
-        except:
-            print('model file', modelfilename, 'not found - aborting')
+        except Exception as ex:
+            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            message = template.format(type(ex).__name__, modelfilename, ex.args)
+            print(message)
             sys.exit()
     
     theclusters = np.transpose(kmeans.cluster_centers_)
@@ -815,9 +821,12 @@ elif clustertype == 'dbscan':
         print('reading dbscan model from', modelfilename)
         try:
             db = joblib.load(modelfilename)
-        except:
-            print('model file', modelfilename, 'not found - aborting')
+        except Exception as ex:
+            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            message = template.format(type(ex).__name__, modelfilename, ex.args)
+            print(message)
             sys.exit()
+
         db.predict(X)
 
     print('dbscan done')
@@ -853,9 +862,12 @@ elif clustertype == 'hdbscan':
         print('reading hdbscan model from', modelfilename)
         try:
             hdb = joblib.load(modelfilename)
-        except:
-            print('model file', modelfilename, 'not found - aborting')
+        except Exception as ex:
+            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            message = template.format(type(ex).__name__, modelfilename, ex.args)
+            print(message)
             sys.exit()
+
         hdb.predict(X)
 
     thestatelabels = hdb.labels_
