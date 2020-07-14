@@ -487,7 +487,10 @@ if theprefilter.gettype() != 'none':
     if verbose:
         print("filtering to ", theprefilter.gettype(), " band")
 
+origdims = inputdata.shape
 thedims = trimmeddata.shape
+print('original file dimensions:', origdims)
+print('trimmed file dimensions:', thedims)
 n_features = thedims[0]
 n_samples = thedims[1]
 if segsize < 0:
