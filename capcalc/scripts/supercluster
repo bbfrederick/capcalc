@@ -21,16 +21,10 @@
 #
 from __future__ import division, print_function
 
-import getopt
-import os
-import platform
-import string
-import sys
+import argparse
 
-import numpy as np
 import rapidtide.io as tide_io
-import scipy.sparse as ss
-from matplotlib import pyplot as plt
+import rapidtide.workflows.parser_funcs as pf
 from pylab import *
 from sklearn.ensemble import (
     AdaBoostClassifier,
@@ -44,504 +38,512 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import RobustScaler, StandardScaler
-from sklearn.semi_supervised import LabelPropagation
-from sklearn.tree import DecisionTreeClassifier
 
 
-def usage():
-    print("usage: supercluster datafile classes outputroot")
-    print("")
-    print("required arguments:")
-    print("    datafile      - the name of the 4 dimensional nifti file to cluster")
-    print(
-        "    classes       - the name of the 3 dimensional nifti file of the class labels"
+def _get_parser():
+    parser = argparse.ArgumentParser(
+        prog="supercluster",
+        description="Plots the data in text files.",
+        usage="%(prog)s texfilename[:col1,col2...,coln] [textfilename]... [options]",
     )
-    print("    outputroot    - the root name of the output nifti files")
-    print("")
-    print("optional arguments:")
-    print(
-        "    --dmask=DATAMASK            - use DATAMASK to specify which voxels in the data to classify"
+
+    # Required arguments
+    parser.add_argument(
+        "datafilename",
+        type=lambda x: pf.is_valid_file(parser, x),
+        help="The name of the 4 dimensional nifti file to cluster.",
     )
-    print("    --n_estimators=ESIMATORS    - set ESTIMATORS (default is 100)")
-    print(
-        "    --max_features=FEATURES     - set FEATURES (default is -1 - set equal to sqrt(n_estimators)"
+
+    parser.add_argument(
+        "classfilename",
+        type=lambda x: pf.is_valid_file(parser, x),
+        help="The name of the 3 dimensional nifti file of the class labels.",
     )
-    print("    --n_neighbors=NEIGHBORS     - use NEIGHBORS (default is 5)")
-    print(
-        "    --type=CLASSIFIERTYPE       - set the classifier type (options are randomforest, knn,"
+
+    parser.add_argument(
+        "outputrootname",
+        type=str,
+        help=("The root name of the output nifti files."),
     )
-    print(
-        "                                  gradientboost, adaboost, extratrees. Default is randomforest)"
+
+    parser.add_argument(
+        "--dmask",
+        dest="datamaskname",
+        metavar="DATAMASK",
+        help=("Use DATAMASK to specify which voxels in the data to classify."),
+        default=None,
     )
-    print(
-        "    --weights=WEIGHTS           - use WEIGHTS weighting for knn (options are uniform and distance (default))"
+
+    parser.add_argument(
+        "--n_estimators",
+        dest="n_estimators",
+        metavar="ESTIMATORS",
+        action="store",
+        type=int,
+        help=("Set the number of estimators to ESTIMATORS (default is 100)"),
+        default=100,
     )
-    print("    --display                   - display feature importances if available")
-    print("    --prescale                  - prescale input data prior to clustering")
-    print(
-        "    --scaler=SCALER             - set scaling type (options are standard and robust (default))"
+
+    parser.add_argument(
+        "--max_features",
+        dest="max_features",
+        metavar="NUM",
+        action="store",
+        type=int,
+        help=(
+            "Set number of features to NUM (default is -1 - set equal to sqrt(n_estimators)"
+        ),
+        default=-1,
     )
-    print("    --bagging                   - construct a bagging classifier")
-    print(
-        "    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently"
+
+    parser.add_argument(
+        "--numruns",
+        dest="numtests",
+        metavar="NUM",
+        action="store",
+        type=int,
+        help=("Set the number of independent iterations to run.  Default is 1."),
+        default=1,
     )
-    print("                                  NOTE: turns on prescaling")
-    print("")
-    return ()
 
-
-# set default variable values
-usedmask = False
-classifiertype = "randomforest"
-display = False
-prescale = False
-multirun = False
-scaler = "robust"
-numtests = 10
-intlist = None
-bagging = True
-n_jobs = -1
-
-# random forest variables
-n_estimators = 100
-max_features = -1
-
-# knn variables
-weights = "distance"
-n_neighbors = 5
-
-# parse command line arguments
-try:
-    opts, args = getopt.gnu_getopt(
-        sys.argv,
-        "h",
-        [
-            "help",
-            "scaleintervals=",
-            "display",
-            "prescale",
-            "dmask=",
-            "numtests=",
-            "multirun",
-            "nomultiproc",
-            "weights=",
-            "scaler=",
-            "n_estimators=",
-            "max_features=",
-            "n_neighbors=",
-            "type=",
-        ],
+    parser.add_argument(
+        "--n_neighbors",
+        dest="n_neighbors",
+        metavar="NUM",
+        action="store",
+        type=int,
+        help=("Set the number of neighbors for KNN classifiers.  Default is 5."),
+        default=5,
     )
-except getopt.GetoptError as err:
-    # print(help information and exit:
-    print(str(err))  # will print something like "option -a not recognized"
-    usage()
-    sys.exit(2)
 
-# handle required args first
-if len(args) < 4:
-    print("spatial fit has 3 required arguments - ", len(args) - 1, "found")
-    usage()
-    sys.exit()
+    parser.add_argument(
+        "--type",
+        dest="classifiertype",
+        action="store",
+        type=str,
+        choices=["randomforest", "knn", "gradientboost", "adaboost", "extratrees"],
+        help=("Set the classifier type. Default is randomforest."),
+        default="randomforest",
+    )
 
-datafilename = args[1]
-classfilename = args[2]
-outputrootname = args[3]
+    parser.add_argument(
+        "--weights",
+        dest="weights",
+        action="store",
+        type=str,
+        choices=["uniform", "distance"],
+        help=("Set the weighting for KNN classifiers.  Default is distance."),
+        default="distance",
+    )
 
-for o, a in opts:
-    if o == "--n_estimators":
-        n_estimators = int(a)
-        print("setting n_estimators to ", n_estimators)
-    elif o == "--max_features":
-        max_features = int(a)
-        print("setting max_features to ", max_features)
-    elif o == "--n_neighbors":
-        n_neighbors = int(a)
-        print("will use n_neighbors of", n_neighbors)
-    elif o == "--nomultiproc":
-        n_jobs = 1
-        print("will limit calculation to a single processor")
-    elif o == "--dmask":
-        usedmask = True
-        datamaskname = a
-        print("using", datamaskname, "as data mask")
-    elif o == "--scaler":
-        scaler = a
-        if scaler != "robust" and scaler != "standard":
-            print("illegal scaling")
-            sys.exit()
-        print("will use ", scaler, "scaling")
-    elif o == "--weights":
-        weights = a
-        if weights != "distance" and weights != "uniform":
-            print("illegal weighting")
-            sys.exit()
-        print("will use ", weights, "weighting")
-    elif o == "--numtests":
-        numtests = int(a)
-        print("will run", numtests, "accuracy checks")
-    elif o == "--multirun":
-        multirun = True
-        print("will run multiplle classifications")
-    elif o == "--prescale":
-        prescale = True
-        print("will prescale data")
-    elif o == "--scaleintervals":
-        prescale = True
-        intlist = list(map(int, a.split(",")))
-        print("will use intervals", intlist)
-        print("will use linkage", linkage)
-    elif o == "--type":
-        classifiertype = a
-        if (
-            classifiertype != "randomforest"
-            and classifiertype != "knn"
-            and classifiertype != "extratrees"
-            and classifiertype != "adaboost"
-            and classifiertype != "gradientboost"
-        ):
-            print(
-                "illegal classifier mode - must be randomforest, extratrees, knn, adaboost, or gradientboost"
-            )
-            sys.exit()
-    elif o in ("-h", "--help"):
-        usage()
-        sys.exit()
-    else:
-        assert False, "unhandled option"
+    parser.add_argument(
+        "--display",
+        action="store_true",
+        dest="display",
+        help="Display feature importances if available.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--prescaler",
+        dest="prescaler",
+        action="store",
+        type=str,
+        choices=["standard", "robust", "None"],
+        help=(
+            "What sort of prescaler to apply to data prior to classification.  Default is None"
+        ),
+        default="None",
+    )
+
+    parser.add_argument(
+        "--bagging",
+        action="store_true",
+        dest="bagging",
+        help="Use a bagging classifier.",
+        default=False,
+    )
+
+    return parser
 
 
-print("Will perform", classifiertype, "classification")
+def main():
+    # set default variable values
+    try:
+        args = _get_parser().parse_args()
+    except SystemExit:
+        _get_parser().print_help()
+        raise
 
-# read in data
-print("reading in data arrays")
-(
-    datafile_img,
-    datafile_data,
-    datafile_hdr,
-    datafiledims,
-    datafilesizes,
-) = tide_io.readfromnifti(datafilename)
-(
-    classfile_img,
-    classfile_data,
-    classfile_hdr,
-    classfiledims,
-    classfilesizes,
-) = tide_io.readfromnifti(classfilename)
-if usedmask:
+    multirun = False
+    numtests = 100
+    intlist = None
+    kalgorithm = "brute"
+    n_jobs = -1
+
+    print("Will perform", args.classifiertype, "classification")
+
+    # read in data
+    print("reading in data arrays")
     (
-        datamask_img,
-        datamask_data,
-        datamask_hdr,
-        datamaskdims,
-        datamasksizes,
-    ) = tide_io.readfromnifti(datamaskname)
+        datafile_img,
+        datafile_data,
+        datafile_hdr,
+        datafiledims,
+        datafilesizes,
+    ) = tide_io.readfromnifti(args.datafilename)
+    (
+        classfile_img,
+        classfile_data,
+        classfile_hdr,
+        classfiledims,
+        classfilesizes,
+    ) = tide_io.readfromnifti(args.classfilename)
+    if args.datamaskname is not None:
+        (
+            datamask_img,
+            datamask_data,
+            datamask_hdr,
+            datamaskdims,
+            datamasksizes,
+        ) = tide_io.readfromnifti(args.datamaskname)
 
-xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
-xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
+    xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
+    xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
 
-# check dimensions
-print("checking class dimensions")
-if not tide_io.checkspacematch(datafile_hdr, classfile_hdr):
-    print("target map spatial dimensions do not match image")
-    exit()
-if not classfiledims[4] == 1:
-    print("class file must have time dimension of 1")
-    exit()
-
-if usedmask:
-    print("checking mask dimensions")
-    if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
-        print("input mask spatial dimensions do not match image")
+    # check dimensions
+    print("checking class dimensions")
+    if not tide_io.checkspacematch(datafile_hdr, classfile_hdr):
+        print("target map spatial dimensions do not match image")
         exit()
-    if not datamaskdims[4] == 1:
-        print("input mask time must have time dimension of 1")
+    if not classfiledims[4] == 1:
+        print("class file must have time dimension of 1")
         exit()
 
-# allocating arrays
-print("reshaping arrays")
-numspatiallocs = int(xsize) * int(ysize) * int(numslices)
-rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
-rs_classfile = classfile_data.reshape((numspatiallocs))
-knownlocs = np.where(rs_classfile > 0)
+    if args.datamaskname is not None:
+        print("checking mask dimensions")
+        if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
+            print("input mask spatial dimensions do not match image")
+            exit()
+        if not datamaskdims[4] == 1:
+            print("input mask time must have time dimension of 1")
+            exit()
 
-print("masking arrays")
-if usedmask:
-    proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.9)
-else:
-    datamaskdims = [1, xsize, ysize, numslices, 1]
-    themaxes = np.max(rs_datafile, axis=1)
-    themins = np.min(rs_datafile, axis=1)
-    thediffs = (themaxes - themins).reshape((numspatiallocs))
-    proclocs = np.where(thediffs > 0.0)
+    # allocating arrays
+    print("reshaping arrays")
+    numspatiallocs = int(xsize) * int(ysize) * int(numslices)
+    rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
+    rs_classfile = classfile_data.reshape((numspatiallocs))
+    knownlocs = np.where(rs_classfile > 0)
 
-# construct the arrays
-Y_known = rs_classfile[knownlocs]
-
-X_known = rs_datafile[knownlocs, :][0]
-X_predict = rs_datafile[proclocs, :][0]
-print(rs_datafile.shape, X_known.shape, X_predict.shape, Y_known.shape)
-n_features = rs_datafile.shape[1]
-
-print("data has", n_features, "features")
-if max_features == -1:
-    max_features = int(np.ceil(np.sqrt(n_features)))
-
-# Scale the data
-if intlist is None:
-    intlist = [timepoints]
-if prescale:
-    print("prescaling...")
-    thepos = 0
-    for interval in intlist:
-        if scaler == "standard":
-            X_known[:, thepos : (thepos + interval)] = StandardScaler().fit_transform(
-                X_known[:, thepos : (thepos + interval)]
-            )
-            X_predict[:, thepos : (thepos + interval)] = StandardScaler().fit_transform(
-                X_predict[:, thepos : (thepos + interval)]
-            )
-        else:
-            X_known[:, thepos : (thepos + interval)] = RobustScaler().fit_transform(
-                X_known[:, thepos : (thepos + interval)]
-            )
-            X_predict[:, thepos : (thepos + interval)] = RobustScaler().fit_transform(
-                X_predict[:, thepos : (thepos + interval)]
-            )
-        thepos += interval
-    prescalename = "prescale_" + scaler + "_"
-    print("Done")
-else:
-    prescalename = ""
-
-# take a look at it
-if display and False:
-    projection = TSNE().fit_transform(X_known)
-    plt.scatter(*projection.T, **plot_kwds)
-    plt.show()
-
-# set up the classifier
-if classifiertype == "randomforest":
-    if bagging:
-        theclassifier = BaggingClassifier(
-            RandomForestClassifier(
-                n_estimators=n_estimators,
-                max_features=max_features,
-                max_depth=None,
-                min_samples_split=2,
-                n_jobs=n_jobs,
-            ),
-            max_samples=0.5,
-            max_features=0.5,
-        )
-        methodname = (
-            "randomforest_bagging_"
-            + prescalename
-            + str(n_estimators).zfill(3)
-            + "_"
-            + str(max_features).zfill(3)
-        )
+    print("masking arrays")
+    if args.datamaskname is not None:
+        proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.9)
     else:
-        theclassifier = RandomForestClassifier(
-            n_estimators=n_estimators,
-            max_features=max_features,
-            max_depth=None,
-            min_samples_split=2,
-            random_state=0,
-            n_jobs=n_jobs,
-        )
-        methodname = (
-            "randomforest_"
-            + prescalename
-            + str(n_estimators).zfill(3)
-            + "_"
-            + str(max_features).zfill(3)
-        )
+        datamaskdims = [1, xsize, ysize, numslices, 1]
+        themaxes = np.max(rs_datafile, axis=1)
+        themins = np.min(rs_datafile, axis=1)
+        thediffs = (themaxes - themins).reshape((numspatiallocs))
+        proclocs = np.where(thediffs > 0.0)
 
-elif classifiertype == "extratrees":
-    if bagging:
-        theclassifier = BaggingClassifier(
-            ExtraTreesClassifier(
-                n_estimators=n_estimators,
-                max_features=max_features,
-                max_depth=None,
-                min_samples_split=2,
-                n_jobs=n_jobs,
-            ),
-            max_samples=0.5,
-            max_features=0.5,
-        )
-        methodname = (
-            "extratrees_bagging_"
-            + prescalename
-            + str(n_estimators).zfill(3)
-            + "_"
-            + str(max_features).zfill(3)
-        )
+    # construct the arrays
+    Y_known = rs_classfile[knownlocs]
+
+    X_known = rs_datafile[knownlocs, :][0]
+    X_predict = rs_datafile[proclocs, :][0]
+    print(rs_datafile.shape, X_known.shape, X_predict.shape, Y_known.shape)
+    n_features = rs_datafile.shape[1]
+
+    print("data has", n_features, "features")
+    if args.max_features == -1:
+        max_features = int(np.ceil(np.sqrt(n_features)))
     else:
-        theclassifier = ExtraTreesClassifier(
-            n_estimators=n_estimators,
-            max_features=max_features,
-            max_depth=None,
-            min_samples_split=2,
-            random_state=0,
-            n_jobs=n_jobs,
-        )
-        methodname = (
-            "extratrees_"
-            + prescalename
-            + str(n_estimators).zfill(3)
-            + "_"
-            + str(max_features).zfill(3)
-        )
+        max_features = args.max_features
 
-elif classifiertype == "adaboost":
-    theclassifier = AdaBoostClassifier(n_estimators=n_estimators)
-    methodname = "ada_" + prescalename + str(n_estimators).zfill(3)
-
-elif classifiertype == "gradientboost":
-    theclassifier = GradientBoostingClassifier(
-        n_estimators=n_estimators, max_features="auto"
-    )
-    methodname = "gbc_" + prescalename + str(n_estimators).zfill(3)
-
-elif classifiertype == "knn":
-    if bagging:
-        theclassifier = BaggingClassifier(
-            KNeighborsClassifier(
-                n_neighbors=n_neighbors, weights=weights, n_jobs=n_jobs
-            ),
-            max_samples=0.5,
-            max_features=0.5,
-        )
-        methodname = (
-            "knn_bagging_" + prescalename + weights + "_" + str(n_neighbors).zfill(2)
-        )
+    # Scale the data
+    if intlist is None:
+        intlist = [timepoints]
+    if args.prescaler != "None":
+        print("prescaling...")
+        thepos = 0
+        for interval in intlist:
+            if args.prescaler == "standard":
+                X_known[
+                    :, thepos : (thepos + interval)
+                ] = StandardScaler().fit_transform(
+                    X_known[:, thepos : (thepos + interval)]
+                )
+                X_predict[
+                    :, thepos : (thepos + interval)
+                ] = StandardScaler().fit_transform(
+                    X_predict[:, thepos : (thepos + interval)]
+                )
+            else:
+                X_known[:, thepos : (thepos + interval)] = RobustScaler().fit_transform(
+                    X_known[:, thepos : (thepos + interval)]
+                )
+                X_predict[
+                    :, thepos : (thepos + interval)
+                ] = RobustScaler().fit_transform(
+                    X_predict[:, thepos : (thepos + interval)]
+                )
+            thepos += interval
+        prescalename = "prescale_" + args.prescaler + "_"
+        print("Done")
     else:
-        theclassifier = KNeighborsClassifier(
-            n_neighbors=n_neighbors, weights=weights, n_jobs=n_jobs
-        )
-        methodname = "knn_" + prescalename + weights + "_" + str(n_neighbors).zfill(2)
+        prescalename = ""
 
-else:
-    print("illegal classifier type")
-    sys.exit()
-
-print("method description tag:", methodname)
-
-# check accuracy vs. number of components
-ncomps = timepoints
-
-# check the accuracy of the model
-accuracies = []
-if multirun:
-    Y_predict_all = np.zeros((X_predict.shape[0], numtests), dtype=float)
-for testrun in range(numtests):
-    print(f"test {testrun}")
-    print("\tsplitting data")
-    X_train, X_test, Y_train, Y_test = train_test_split(
-        X_known[:, 0:ncomps], Y_known, test_size=0.2
-    )
-
-    print("\tfitting model")
-    theclassifier.fit(X_train, Y_train)
-
-    # now make predictions on the test data
-    print("\tpredicting on test data")
-    Y_predict = theclassifier.predict(X_test)
-    accuracies.append(accuracy_score(Y_test, Y_predict))
-
-    # if we are doing multirun, make a prediction on all known data for each training
-    if multirun:
-        print("\tpredicting on all data")
-        Y_predict_all[:, testrun] = theclassifier.predict(X_predict)
-
-if len(accuracies) > 0:
-    theaccuracies = np.asarray(accuracies, dtype=float)
-    print(
-        "Accuracies for",
-        ncomps,
-        "components (mean, std, min, max):",
-        np.mean(theaccuracies),
-        np.std(theaccuracies),
-        np.min(theaccuracies),
-        np.max(theaccuracies),
-    )
-    with open(outputrootname + "_" + methodname + "_accuracy.csv", "w") as text_file:
-        dpath, dfile = os.path.split(datafilename)
-        cpath, cfile = os.path.split(classfilename)
-        fieldlist = [
-            dfile,
-            cfile,
-            methodname,
-            str(np.mean(theaccuracies)),
-            str(np.std(theaccuracies)),
-            str(np.min(theaccuracies)),
-            str(np.max(theaccuracies)),
-        ]
-        text_file.write(",".join(fieldlist) + "\n")
-
-# now classify all the known data to calculate metrics
-Y_predict_known = theclassifier.predict(X_known)
-print("prediction of known locations complete")
-confusion = confusion_matrix(Y_known, Y_predict_known)
-classreport = classification_report(Y_known, Y_predict_known)
-tide_io.writenpvecs(
-    confusion, outputrootname + "_" + methodname + "_predict_all_confusion_matrix.txt"
-)
-print(classreport)
-
-if not multirun:
-    # now classify the entire image
-    Y_predict_all = theclassifier.predict(X_predict)
-    print("prediction of all locations complete")
-
-# run other classifier-specific metrics
-if display:
-    if (
-        classifiertype == "randomforest"
-        or classifiertype == "extratrees"
-        or classifiertype == "adaboost"
-        or classifiertype == "gradientboost"
-    ):
-        plt.plot(theclassifier.feature_importances_)
+    # take a look at it
+    if args.display and False:
+        projection = TSNE().fit_transform(X_known)
+        plt.scatter(*projection.T)
         plt.show()
 
-# save the data
-theheader = datafile_hdr
-theheader["dim"][4] = 1
+    # set up the classifier
+    if args.classifiertype == "randomforest":
+        if args.bagging:
+            theclassifier = BaggingClassifier(
+                RandomForestClassifier(
+                    n_estimators=args.n_estimators,
+                    max_features=max_features,
+                    max_depth=None,
+                    min_samples_split=2,
+                    n_jobs=n_jobs,
+                ),
+                max_samples=0.5,
+                max_features=0.5,
+            )
+            methodname = (
+                "randomforest_bagging_"
+                + prescalename
+                + str(args.n_estimators).zfill(3)
+                + "_"
+                + str(max_features).zfill(3)
+            )
+        else:
+            theclassifier = RandomForestClassifier(
+                n_estimators=args.n_estimators,
+                max_features=max_features,
+                max_depth=None,
+                min_samples_split=2,
+                random_state=0,
+                n_jobs=n_jobs,
+            )
+            methodname = (
+                "randomforest_"
+                + prescalename
+                + str(args.n_estimators).zfill(3)
+                + "_"
+                + str(max_features).zfill(3)
+            )
 
-# output classification of all known data
-tempout = np.zeros((numspatiallocs), dtype="float")
-tempout[knownlocs] = Y_predict_known[:]
-tide_io.savetonifti(
-    tempout.reshape((xsize, ysize, numslices, 1)),
-    datafile_hdr,
-    outputrootname + "_" + methodname + "_predict_known",
-)
+    elif args.classifiertype == "extratrees":
+        if args.bagging:
+            theclassifier = BaggingClassifier(
+                ExtraTreesClassifier(
+                    n_estimators=args.n_estimators,
+                    max_features=max_features,
+                    max_depth=None,
+                    min_samples_split=2,
+                    n_jobs=n_jobs,
+                ),
+                max_samples=0.5,
+                max_features=0.5,
+            )
+            methodname = (
+                "extratrees_bagging_"
+                + prescalename
+                + str(args.n_estimators).zfill(3)
+                + "_"
+                + str(max_features).zfill(3)
+            )
+        else:
+            theclassifier = ExtraTreesClassifier(
+                n_estimators=args.n_estimators,
+                max_features=max_features,
+                max_depth=None,
+                min_samples_split=2,
+                random_state=0,
+                n_jobs=n_jobs,
+            )
+            methodname = (
+                "extratrees_"
+                + prescalename
+                + str(args.n_estimators).zfill(3)
+                + "_"
+                + str(max_features).zfill(3)
+            )
 
-# save the command line
-tide_io.writevec(
-    [" ".join(sys.argv)], outputrootname + "_" + methodname + "_commandline.txt"
-)
+    elif args.classifiertype == "adaboost":
+        theclassifier = AdaBoostClassifier(n_estimators=args.n_estimators)
+        methodname = "ada_" + prescalename + str(args.n_estimators).zfill(3)
 
-# output classification of all known data
-if multirun:
-    tempout = np.zeros((numspatiallocs, numtests), dtype="float")
-    tempout[proclocs, :] = Y_predict_all[:, :]
-    theheader = datafile_hdr
-    theheader["dim"][4] = numtests
-    tide_io.savetonifti(
-        tempout.reshape((xsize, ysize, numslices, numtests)),
-        theheader,
-        outputrootname + "_" + methodname + "_predict_all",
+    elif args.classifiertype == "gradientboost":
+        theclassifier = GradientBoostingClassifier(
+            n_estimators=args.n_estimators, max_features="auto"
+        )
+        methodname = "gbc_" + prescalename + str(args.n_estimators).zfill(3)
+
+    elif args.classifiertype == "knn":
+        if args.bagging:
+            theclassifier = BaggingClassifier(
+                KNeighborsClassifier(
+                    n_neighbors=args.n_neighbors,
+                    weights=args.weights,
+                    n_jobs=n_jobs,
+                    algorithm=kalgorithm,
+                ),
+                max_samples=0.5,
+                max_features=0.5,
+            )
+            methodname = (
+                "knn_bagging_"
+                + prescalename
+                + args.weights
+                + "_"
+                + str(args.n_neighbors).zfill(2)
+            )
+        else:
+            theclassifier = KNeighborsClassifier(
+                n_neighbors=args.n_neighbors,
+                weights=args.weights,
+                n_jobs=n_jobs,
+                algorithm=kalgorithm,
+            )
+            methodname = (
+                "knn_"
+                + prescalename
+                + args.weights
+                + "_"
+                + str(args.n_neighbors).zfill(2)
+            )
+
+    else:
+        print("illegal classifier type")
+        sys.exit()
+
+    print("method description tag:", methodname)
+
+    # check accuracy vs. number of components
+    ncomps = timepoints
+
+    # check the accuracy of the model
+    accuracies = []
+    if args.numtests > 1:
+        Y_predict_all = np.zeros((X_predict.shape[0], args.numtests), dtype=float)
+    for testrun in range(args.numtests):
+        print(f"test {testrun}")
+        print("\tsplitting data")
+        X_train, X_test, Y_train, Y_test = train_test_split(
+            X_known[:, 0:ncomps], Y_known, test_size=0.2
+        )
+
+        print("\tfitting model")
+        theclassifier.fit(X_train, Y_train)
+
+        # now make predictions on the test data
+        print("\tpredicting on test data")
+        Y_predict = theclassifier.predict(X_test)
+        accuracies.append(accuracy_score(Y_test, Y_predict))
+
+        # if we are doing multirun, make a prediction on all known data for each training
+        if args.numtests > 1:
+            print("\tpredicting on all data")
+            Y_predict_all[:, testrun] = theclassifier.predict(X_predict)
+
+    if len(accuracies) > 0:
+        theaccuracies = np.asarray(accuracies, dtype=float)
+        print(
+            "Accuracies for",
+            ncomps,
+            "components (mean, std, min, max):",
+            np.mean(theaccuracies),
+            np.std(theaccuracies),
+            np.min(theaccuracies),
+            np.max(theaccuracies),
+        )
+        with open(
+            args.outputrootname + "_" + methodname + "_accuracy.csv", "w"
+        ) as text_file:
+            dpath, dfile = os.path.split(args.datafilename)
+            cpath, cfile = os.path.split(args.classfilename)
+            fieldlist = [
+                dfile,
+                cfile,
+                methodname,
+                str(np.mean(theaccuracies)),
+                str(np.std(theaccuracies)),
+                str(np.min(theaccuracies)),
+                str(np.max(theaccuracies)),
+            ]
+            text_file.write(",".join(fieldlist) + "\n")
+
+    # now classify all the known data to calculate metrics
+    Y_predict_known = theclassifier.predict(X_known)
+    print("prediction of known locations complete")
+    confusion = confusion_matrix(Y_known, Y_predict_known)
+    classreport = classification_report(Y_known, Y_predict_known)
+    tide_io.writenpvecs(
+        confusion,
+        args.outputrootname + "_" + methodname + "_predict_all_confusion_matrix.txt",
     )
-else:
+    print(classreport)
+
+    if not multirun:
+        # now classify the entire image
+        Y_predict_all = theclassifier.predict(X_predict)
+        print("prediction of all locations complete")
+
+    # run other classifier-specific metrics
+    if args.display:
+        if (
+            args.classifiertype == "randomforest"
+            or args.classifiertype == "extratrees"
+            or args.classifiertype == "adaboost"
+            or args.classifiertype == "gradientboost"
+        ):
+            plt.plot(theclassifier.feature_importances_)
+            plt.show()
+
+    # save the data
+    theheader = datafile_hdr
+    theheader["dim"][4] = 1
+
+    # output classification of all known data
     tempout = np.zeros((numspatiallocs), dtype="float")
-    tempout[proclocs] = Y_predict_all[:]
+    tempout[knownlocs] = Y_predict_known[:]
     tide_io.savetonifti(
         tempout.reshape((xsize, ysize, numslices, 1)),
         datafile_hdr,
-        outputrootname + "_" + methodname + "_predict_all",
+        args.outputrootname + "_" + methodname + "_predict_known",
     )
+
+    # save the command line
+    tide_io.writevec(
+        [" ".join(sys.argv)],
+        args.outputrootname + "_" + methodname + "_commandline.txt",
+    )
+
+    # output classification of all known data
+    if args.numtests > 1:
+        tempout = np.zeros((numspatiallocs, args.numtests), dtype="float")
+        tempout[proclocs, :] = Y_predict_all[:, :]
+        theheader = datafile_hdr
+        theheader["dim"][4] = args.numtests
+        tide_io.savetonifti(
+            tempout.reshape((xsize, ysize, numslices, args.numtests)),
+            theheader,
+            args.outputrootname + "_" + methodname + "_predict_all",
+        )
+    else:
+        tempout = np.zeros((numspatiallocs), dtype="float")
+        tempout[proclocs] = Y_predict_all[:]
+        tide_io.savetonifti(
+            tempout.reshape((xsize, ysize, numslices, 1)),
+            datafile_hdr,
+            args.outputrootname + "_" + methodname + "_predict_all",
+        )
+
+
+if __name__ == "__main__":
+    main()
