@@ -144,8 +144,8 @@ for leftout in range(no_sub):
     pos_mask_all *= pos_mask
     neg_mask_all *= neg_mask
 
-    % get sum of all edges in TRAIN subs (divide by 2 to control for the
-    % fact that matrices are symmetric)
+    #% get sum of all edges in TRAIN subs (divide by 2 to control for the
+    #% fact that matrices are symmetric)
 
     train_sumpos = zeros(no_sub-1,1);
     train_sumneg = zeros(no_sub-1,1);
@@ -157,8 +157,8 @@ for leftout in range(no_sub):
         train_sumboth(ss) = train_sumpos(ss)-train_sumneg(ss);
     end
 
-    % build model on TRAIN subs %%could also add in behavior here to build
-    % to model (then add fit_pos3 below)
+    #% build model on TRAIN subs %%could also add in behavior here to build
+    #% to model (then add fit_pos3 below)
 
     fit_pos = polyfit(train_sumpos, train_behav,1);
     fit_neg = polyfit(train_sumneg, train_behav,1);
