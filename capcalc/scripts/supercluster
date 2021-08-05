@@ -277,11 +277,11 @@ else:
     proclocs = np.where(thediffs > 0.0)
 
 # construct the arrays
-y_known = rs_classfile[knownlocs]
+Y_known = rs_classfile[knownlocs]
 
 X_known = rs_datafile[knownlocs, :][0]
 X_predict = rs_datafile[proclocs, :][0]
-print(rs_datafile.shape, X_known.shape, X_predict.shape, y_known.shape)
+print(rs_datafile.shape, X_known.shape, X_predict.shape, Y_known.shape)
 n_features = rs_datafile.shape[1]
 
 print("data has", n_features, "features")
@@ -436,26 +436,26 @@ ncomps = timepoints
 # check the accuracy of the model
 accuracies = []
 if multirun:
-    y_predict_all = np.zeros((X_predict.shape[0], numtests), dtype=float)
+    Y_predict_all = np.zeros((X_predict.shape[0], numtests), dtype=float)
 for testrun in range(numtests):
     print(f"test {testrun}")
     print("\tsplitting data")
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_known[:, 0:ncomps], y_known, test_size=0.2
+    X_train, X_test, Y_train, Y_test = train_test_split(
+        X_known[:, 0:ncomps], Y_known, test_size=0.2
     )
 
     print("\tfitting model")
-    theclassifier.fit(X_train, y_train)
+    theclassifier.fit(X_train, Y_train)
 
     # now make predictions on the test data
     print("\tpredicting on test data")
-    y_predict = theclassifier.predict(X_test)
-    accuracies.append(accuracy_score(y_test, y_predict))
+    Y_predict = theclassifier.predict(X_test)
+    accuracies.append(accuracy_score(Y_test, Y_predict))
 
     # if we are doing multirun, make a prediction on all known data for each training
     if multirun:
-        print("predicting on all data")
-        y_predict_all[:, testrun] = theclassifier.predict(X_predict)
+        print("\tpredicting on all data")
+        Y_predict_all[:, testrun] = theclassifier.predict(X_predict)
 
 if len(accuracies) > 0:
     theaccuracies = np.asarray(accuracies, dtype=float)
@@ -483,10 +483,10 @@ if len(accuracies) > 0:
         text_file.write(",".join(fieldlist) + "\n")
 
 # now classify all the known data to calculate metrics
-y_predict_known = theclassifier.predict(X_known)
+Y_predict_known = theclassifier.predict(X_known)
 print("prediction of known locations complete")
-confusion = confusion_matrix(y_known, y_predict_known)
-classreport = classification_report(y_known, y_predict_known)
+confusion = confusion_matrix(Y_known, Y_predict_known)
+classreport = classification_report(Y_known, Y_predict_known)
 tide_io.writenpvecs(
     confusion, outputrootname + "_" + methodname + "_predict_all_confusion_matrix.txt"
 )
@@ -494,7 +494,7 @@ print(classreport)
 
 if not multirun:
     # now classify the entire image
-    y_predict_all = theclassifier.predict(X_predict)
+    Y_predict_all = theclassifier.predict(X_predict)
     print("prediction of all locations complete")
 
 # run other classifier-specific metrics
@@ -514,7 +514,7 @@ theheader["dim"][4] = 1
 
 # output classification of all known data
 tempout = np.zeros((numspatiallocs), dtype="float")
-tempout[knownlocs] = y_predict_known[:]
+tempout[knownlocs] = Y_predict_known[:]
 tide_io.savetonifti(
     tempout.reshape((xsize, ysize, numslices, 1)),
     datafile_hdr,
@@ -529,7 +529,7 @@ tide_io.writevec(
 # output classification of all known data
 if multirun:
     tempout = np.zeros((numspatiallocs, numtests), dtype="float")
-    tempout[proclocs, :] = y_predict_all[:, :]
+    tempout[proclocs, :] = Y_predict_all[:, :]
     theheader = datafile_hdr
     theheader["dim"][4] = numtests
     tide_io.savetonifti(
@@ -539,7 +539,7 @@ if multirun:
     )
 else:
     tempout = np.zeros((numspatiallocs), dtype="float")
-    tempout[proclocs] = y_predict_all[:]
+    tempout[proclocs] = Y_predict_all[:]
     tide_io.savetonifti(
         tempout.reshape((xsize, ysize, numslices, 1)),
         datafile_hdr,
