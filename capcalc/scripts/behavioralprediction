@@ -20,8 +20,9 @@
 #       $Id: showstxcorr,v 1.11 2016/06/14 12:04:51 frederic Exp $
 #
 import os
-import rapidtide.io as tide_io
+
 import numpy as np
+import rapidtide.io as tide_io
 
 '''% This code is released under the terms of the GNU GPL v2. This code
 % is not FDA approved for clinical use; it is provided

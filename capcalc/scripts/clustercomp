@@ -18,31 +18,32 @@
 #       $Date: 2016/01/25 20:17:55 $
 #       $Id: pixelcomp,v 1.4 2016/01/25 20:17:55 frederic Exp $
 #
-from __future__ import print_function, division
+from __future__ import division, print_function
 
-import sys
 import getopt
 import string
-import rapidtide.io as tide_io
+import sys
 
 import matplotlib.pyplot as plt
-import numpy as np
-
-from pylab import *
 import nibabel as nib
+import numpy as np
+import rapidtide.io as tide_io
+from pylab import *
+
 
 def bland_altman_plot(data1, data2, *args, **kwargs):
-    data1     = np.asarray(data1)
-    data2     = np.asarray(data2)
-    mean      = np.mean([data1, data2], axis=0)
-    diff      = data1 - data2                   # Difference between data1 and data2
-    md        = np.mean(diff)                   # Mean of the difference
-    sd        = np.std(diff, axis=0)            # Standard deviation of the difference
+    data1 = np.asarray(data1)
+    data2 = np.asarray(data2)
+    mean = np.mean([data1, data2], axis=0)
+    diff = data1 - data2  # Difference between data1 and data2
+    md = np.mean(diff)  # Mean of the difference
+    sd = np.std(diff, axis=0)  # Standard deviation of the difference
 
     plt.scatter(mean, diff, *args, **kwargs)
-    plt.axhline(md,        color='gray', linestyle='--')
-    plt.axhline(md + 2*sd, color='gray', linestyle='--')
-    plt.axhline(md - 2*sd, color='gray', linestyle='--')
+    plt.axhline(md, color="gray", linestyle="--")
+    plt.axhline(md + 2 * sd, color="gray", linestyle="--")
+    plt.axhline(md - 2 * sd, color="gray", linestyle="--")
+
 
 def usage():
     print("usage: pixelcomp inputfile1 maskfile1 inputfile2 maskfile2 outputfile")
@@ -57,25 +58,26 @@ def usage():
     print("optional arguments:")
     print("	-l		- perform linear fit only")
     print("")
-    return()
+    return ()
+
 
 # set default variable values
-displayplots=False
-fastfilter=True
-linfitonly=False
-order=3
+displayplots = False
+fastfilter = True
+linfitonly = False
+order = 3
 
 # get the command line parameters
-if len(sys.argv)<6:
+if len(sys.argv) < 6:
     usage()
     exit()
 
 # handle required args first
-inputfilename1=sys.argv[1]
-maskfilename1=sys.argv[2]
-inputfilename2=sys.argv[3]
-maskfilename2=sys.argv[4]
-outputfilename=sys.argv[5]
+inputfilename1 = sys.argv[1]
+maskfilename1 = sys.argv[2]
+inputfilename2 = sys.argv[3]
+maskfilename2 = sys.argv[4]
+outputfilename = sys.argv[5]
 
 # now scan for optional arguments
 try:
@@ -95,66 +97,70 @@ for o, a in opts:
 input1_img = nib.load(inputfilename1)
 input1_data = input1_img.get_data()
 input1_hdr = input1_img.get_header()
-thedims1=input1_hdr['dim']
+thedims1 = input1_hdr["dim"]
 
 mask1_img = nib.load(maskfilename1)
 mask1_data = mask1_img.get_data()
 mask1_hdr = mask1_img.get_header()
-themaskdims1=mask1_hdr['dim']
+themaskdims1 = mask1_hdr["dim"]
 
 if not tide_io.checkspacematch(input1_hdr, mask1_hdr):
-    print('input mask 1 does not match spatial coverage of image 1')
+    print("input mask 1 does not match spatial coverage of image 1")
     exit()
 
 input2_img = nib.load(inputfilename2)
 input2_data = input2_img.get_data()
 input2_hdr = input2_img.get_header()
-thedims2=input2_hdr['dim']
+thedims2 = input2_hdr["dim"]
 
 mask2_img = nib.load(maskfilename2)
 mask2_data = mask2_img.get_data()
 mask2_hdr = mask2_img.get_header()
-themaskdims2=mask2_hdr['dim']
+themaskdims2 = mask2_hdr["dim"]
 
 if not tide_io.checkspacematch(input2_hdr, mask2_hdr):
-    print('input mask 2 does not match spatial coverage of image 2')
+    print("input mask 2 does not match spatial coverage of image 2")
     exit()
 
-if not tide_io.checkspacematch(input1_hdr, image2_hdr):
-    print('input images 1 and 2 do not have matching spatial coverage')
+if not tide_io.checkspacematch(input1_hdr, input2_hdr):
+    print("input images 1 and 2 do not have matching spatial coverage")
     exit()
 
-totalmask=mask1_data*mask2_data
+totalmask = mask1_data * mask2_data
 nonzeropoints = np.where(totalmask > 0)
 pairlist = []
-for i in range(0,len(nonzeropoints[0])):
-    pairlist.append( [\
-        input1_data[nonzeropoints[0][i],nonzeropoints[1][i],nonzeropoints[2][i]],\
-        input2_data[nonzeropoints[0][i],nonzeropoints[1][i],nonzeropoints[2][i]]\
-        ])
+for i in range(0, len(nonzeropoints[0])):
+    pairlist.append(
+        [
+            input1_data[nonzeropoints[0][i], nonzeropoints[1][i], nonzeropoints[2][i]],
+            input2_data[nonzeropoints[0][i], nonzeropoints[1][i], nonzeropoints[2][i]],
+        ]
+    )
 
-thearray=np.asarray(pairlist)
-print(thearray[:,0])
+thearray = np.asarray(pairlist)
+print(thearray[:, 0])
 
 # construct a 2d histogram
 numbins = 100
-H, xedges, yedges = np.histogram2d(thearray[:,0],thearray[:,1], bins=numbins, normed=True)
+H, xedges, yedges = np.histogram2d(
+    thearray[:, 0], thearray[:, 1], bins=numbins, normed=True
+)
 extent = [yedges[0], yedges[-1], xedges[0], xedges[-1]]
-cset = plt.contour(H,extent=extent)
-#plt.plot(thearray[:,0], thearray[:,1], 'k.')
+cset = plt.contour(H, extent=extent)
+# plt.plot(thearray[:,0], thearray[:,1], 'k.')
 show()
 
 # now fit the line
-fitorder=1
+fitorder = 1
 thecoffs = np.polyfit(np.array(pairlist[0]), np.array(pairlist[1]), fitorder)
-print('thecoffs=',thecoffs)
-with open(outputfilename+'_linfit', 'w') as file:
+print("thecoffs=", thecoffs)
+with open(outputfilename + "_linfit", "w") as file:
     file.writelines(str(thecoffs))
 
 if not linfitonly:
-    with open(outputfilename, 'w') as file:
+    with open(outputfilename, "w") as file:
         for pair in pairlist:
-            file.writelines(str(pair[0])+'\t'+str(pair[1])+'\n')
-    bland_altman_plot(thearray[:,0],thearray[:,1])
-    plt.title('Bland-Altman Plot')
+            file.writelines(str(pair[0]) + "\t" + str(pair[1]) + "\n")
+    bland_altman_plot(thearray[:, 0], thearray[:, 1])
+    plt.title("Bland-Altman Plot")
     plt.show()

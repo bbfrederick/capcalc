@@ -19,33 +19,36 @@
 #       $Date: 2016/06/14 12:04:50 $
 #       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
 #
-from __future__ import print_function, division
-import sys
+from __future__ import division, print_function
+
 import getopt
-import string
-import platform
-import rapidtide.io as tide_io
 import os
+import platform
+import string
+import sys
 
 import numpy as np
-from pylab import *
-from sklearn.feature_extraction.image import grid_to_graph
-from sklearn import metrics
-from sklearn.cluster import AgglomerativeClustering, KMeans, MiniBatchKMeans, DBSCAN
-from sklearn.manifold import TSNE
-from sklearn.neighbors import kneighbors_graph
-from sklearn.decomposition import FastICA, PCA, SparsePCA
-from sklearn.preprocessing import StandardScaler, RobustScaler
+import rapidtide.io as tide_io
 import scipy.sparse as ss
 from matplotlib import pyplot as plt
+from pylab import *
 from scipy.cluster.hierarchy import dendrogram
+from sklearn import metrics
+from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans, MiniBatchKMeans
+from sklearn.decomposition import PCA, FastICA, SparsePCA
+from sklearn.feature_extraction.image import grid_to_graph
+from sklearn.manifold import TSNE
+from sklearn.neighbors import kneighbors_graph
+from sklearn.preprocessing import RobustScaler, StandardScaler
 
 try:
     import hdbscan as hdbs
+
     hdbpresent = True
-    print('hdbscan is present')
+    print("hdbscan is present")
 except:
     hdbpresent = False
+
 
 def plot_dendrogram(model, **kwargs):
 
@@ -57,24 +60,32 @@ def plot_dendrogram(model, **kwargs):
     distance = np.arange(children.shape[0])
 
     # The number of observations contained in each cluster level
-    no_of_observations = np.arange(2, children.shape[0]+2)
+    no_of_observations = np.arange(2, children.shape[0] + 2)
 
     # Create linkage matrix and then plot the dendrogram
-    linkage_matrix = np.column_stack([children, distance, no_of_observations]).astype(float)
+    linkage_matrix = np.column_stack([children, distance, no_of_observations]).astype(
+        float
+    )
 
     # Plot the corresponding dendrogram
     dendrogram(linkage_matrix, **kwargs)
 
 
-def save_sparse_csr(filename,array):
-    np.savez(filename,data = array.data ,indices=array.indices,
-             indptr =array.indptr, shape=array.shape )
+def save_sparse_csr(filename, array):
+    np.savez(
+        filename,
+        data=array.data,
+        indices=array.indices,
+        indptr=array.indptr,
+        shape=array.shape,
+    )
 
 
 def load_sparse_csr(filename):
     loader = np.load(filename)
-    return ss.csr_matrix((  loader['data'], loader['indices'], loader['indptr']),
-                         shape = loader['shape'])
+    return ss.csr_matrix(
+        (loader["data"], loader["indices"], loader["indptr"]), shape=loader["shape"]
+    )
 
 
 def N2one(loc, strides):
@@ -119,15 +130,15 @@ def mkconnectivity(ptlist, radius, theshape, dodiag=False, dims=None):
     else:
         for thepoint in ptlist:
             ptlistconv.append(one2N(thepoint, ndmods))
-    
+
     # now make the connectivity matrix for nearest neighbors with given radius
-    print('len ptlist =',len(ptlist))
-    sm = ss.lil_matrix((len(ptlist), len(ptlist)), dtype='int')
+    print("len ptlist =", len(ptlist))
+    sm = ss.lil_matrix((len(ptlist), len(ptlist)), dtype="int")
 
     # sanity check first
     rangeinpts = int(np.floor(radius))
     if rangeinpts < 1:
-        print('radius too small - no points in connectivity matrix')
+        print("radius too small - no points in connectivity matrix")
         sys.exit()
 
     # now iterate over every pair
@@ -138,20 +149,27 @@ def mkconnectivity(ptlist, radius, theshape, dodiag=False, dims=None):
     checkpointstep = 20000
     for ridx in range(len(ptlist)):
         if ridx % reportstep == 0:
-            print('row:', ridx, ', nonzero elements:', nonzeroelems, ', loc:', ptlistconv[ridx])
+            print(
+                "row:",
+                ridx,
+                ", nonzero elements:",
+                nonzeroelems,
+                ", loc:",
+                ptlistconv[ridx],
+            )
         if ridx % checkpointstep == 0:
-            print('checkpoint file')
-            save_sparse_csr('connectivity_checkpoint', sm.tocsr())
+            print("checkpoint file")
+            save_sparse_csr("connectivity_checkpoint", sm.tocsr())
         distarray = np.sum(np.square(ptlistnp[:, :] - ptlistnp[ridx, :]), axis=1)
         print
         matchlocs = np.where(distarray < radsq)[0]
-        sm[ridx,matchlocs] = 1
+        sm[ridx, matchlocs] = 1
         nonzeroelems += len(matchlocs)
-    print(nonzeroelems, 'nonzero elements')
+    print(nonzeroelems, "nonzero elements")
 
     # now stuff this into a sparse matrix
-    #sm = ss.lil_matrix((len(ptlist), len(ptlist)), dtype='int')
-    #for thepair in pairlist:
+    # sm = ss.lil_matrix((len(ptlist), len(ptlist)), dtype='int')
+    # for thepair in pairlist:
     #    sm[thepair[0], thepair[1]] = 1
     return sm.tocsr()
 
@@ -164,26 +182,38 @@ def usage():
     print("    outputroot    - the root name of the output nifti files")
     print("")
     print("optional arguments:")
-    print("    --dmask=DATAMASK            - use DATAMASK to specify which voxels in the data to use")
-    print('    --prescale                  - prescale data prior to clustering')
-    print('    --nclusters=NCLUSTERS       - set the number of clusters to NCLUSTERS (default is 8)')
-    print('    --type=CLUSTERTYPE          - set the clustering type (options are agglomerative, kmeans,')
-    print('                                  dbscan (and hdbscan if installed). Default is kmeans)')
-    print('    --connfile=CONNECTIVITY     - use a precomputed connectivity file)')
-    print('    --eps=EPS                   - set eps to EPS')
-    print('    --alpha=ALPHA               - set alpha to ALPHA')
-    print('    --min_samples=MINSAMPLES    - set min_samples to MINSAMPLES')
-    print('    --min_cluster_size=SIZE     - set min_cluster_size to SIZE')
-    print('    --affinity=AFFINITY         - set affinity to AFFINITY')
-    print('    --linkage=LINKAGE           - set linkage to LINKAGE')
-    print('    --radius=RADIUS             - set connectivity radius to RADIUS')
-    print('    --noconn                    - do not use a connectivity matrix')
-    print('    --display                   - display a 2d representation of the input data')
-    print('    --prescale                  - prescale input data prior to clustering')
-    print('    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently')
-    print('                                  NOTE: turns on prescaling')
+    print(
+        "    --dmask=DATAMASK            - use DATAMASK to specify which voxels in the data to use"
+    )
+    print("    --prescale                  - prescale data prior to clustering")
+    print(
+        "    --nclusters=NCLUSTERS       - set the number of clusters to NCLUSTERS (default is 8)"
+    )
+    print(
+        "    --type=CLUSTERTYPE          - set the clustering type (options are agglomerative, kmeans,"
+    )
+    print(
+        "                                  dbscan (and hdbscan if installed). Default is kmeans)"
+    )
+    print("    --connfile=CONNECTIVITY     - use a precomputed connectivity file)")
+    print("    --eps=EPS                   - set eps to EPS")
+    print("    --alpha=ALPHA               - set alpha to ALPHA")
+    print("    --min_samples=MINSAMPLES    - set min_samples to MINSAMPLES")
+    print("    --min_cluster_size=SIZE     - set min_cluster_size to SIZE")
+    print("    --affinity=AFFINITY         - set affinity to AFFINITY")
+    print("    --linkage=LINKAGE           - set linkage to LINKAGE")
+    print("    --radius=RADIUS             - set connectivity radius to RADIUS")
+    print("    --noconn                    - do not use a connectivity matrix")
+    print(
+        "    --display                   - display a 2d representation of the input data"
+    )
+    print("    --prescale                  - prescale input data prior to clustering")
+    print(
+        "    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently"
+    )
+    print("                                  NOTE: turns on prescaling")
     print("")
-    return()
+    return ()
 
 
 # set default variable values
@@ -193,10 +223,10 @@ max_iter = 250
 n_init = 100
 batch_size = 1000
 minibatch = True
-clustertype = 'kmeans'
+clustertype = "kmeans"
 connfilename = None
-affinity='euclidean'
-linkage='ward'
+affinity = "euclidean"
+linkage = "ward"
 eps = 0.3
 radius = 1.0
 min_samples = 100
@@ -204,91 +234,101 @@ min_cluster_size = 20
 alpha = 1.0
 display = False
 prescale = False
-scaler = 'robust'
+scaler = "robust"
 intlist = None
 
 # parse command line arguments
 try:
-    opts, args = getopt.gnu_getopt(sys.argv, 'h', ["help",
-                                                    "linkage=",
-                                                    "scaleintervals=",
-                                                    "display",
-                                                    "dmask=",
-                                                    "radius=",
-                                                    "eps=",
-                                                    "noconn",
-                                                    "prescale",
-                                                    "min_samples=",
-                                                    "min_cluster_size=",
-                                                    "alpha=",
-                                                    "affinity=",
-                                                    "nclusters=",
-                                                    "type=",
-                                                    "connfile="])
+    opts, args = getopt.gnu_getopt(
+        sys.argv,
+        "h",
+        [
+            "help",
+            "linkage=",
+            "scaleintervals=",
+            "display",
+            "dmask=",
+            "radius=",
+            "eps=",
+            "noconn",
+            "prescale",
+            "min_samples=",
+            "min_cluster_size=",
+            "alpha=",
+            "affinity=",
+            "nclusters=",
+            "type=",
+            "connfile=",
+        ],
+    )
 except getopt.GetoptError as err:
     # print(help information and exit:
-    print(str(err)) # will print something like "option -a not recognized"
+    print(str(err))  # will print something like "option -a not recognized"
     usage()
     sys.exit(2)
 
 # handle required args first
 if len(args) < 3:
-    print('spatial fit has 2 required arguments - ', len(args) - 1, 'found')
+    print("spatial fit has 2 required arguments - ", len(args) - 1, "found")
     usage()
     sys.exit()
 
-datafilename=args[1]
-outputrootname=args[2]
+datafilename = args[1]
+outputrootname = args[2]
 
 for o, a in opts:
     if o == "--nclusters":
         n_clusters = int(a)
-        print('will use', n_clusters, 'clusters')
+        print("will use", n_clusters, "clusters")
     elif o == "--dmask":
         usedmask = True
         datamaskname = a
-        print('using', datamaskname, 'as data mask')
+        print("using", datamaskname, "as data mask")
     elif o == "--connfile":
         connfilename = a
-        print('will use connectivity information from', connfilename)
+        print("will use connectivity information from", connfilename)
     elif o == "--radius":
         radius = float(a)
-        print('will use connectivity radius of', radius)
+        print("will use connectivity radius of", radius)
     elif o == "--eps":
         eps = float(a)
-        print('will use eps of', eps)
+        print("will use eps of", eps)
     elif o == "--alpha":
         alpha = float(a)
-        print('will use alpha of', alpha)
+        print("will use alpha of", alpha)
     elif o == "--min_cluster_size":
         min_cluster_size = int(a)
-        print('will use min_cluster_size of', min_cluster_size)
+        print("will use min_cluster_size of", min_cluster_size)
     elif o == "--min_samples":
         min_samples = int(a)
-        print('will use min_samples of', min_samples)
+        print("will use min_samples of", min_samples)
     elif o == "--prescale":
         prescale = True
-        print('will prescale data prior to fitting')
+        print("will prescale data prior to fitting")
     elif o == "--display":
         display = True
-        print('will display representation of data')
+        print("will display representation of data")
     elif o == "--scaleintervals":
         prescale = True
-        intlist = list(map(int, a.split(',')))
-        print('will use intervals', intlist)
+        intlist = list(map(int, a.split(",")))
+        print("will use intervals", intlist)
     elif o == "--linkage":
         linkage = a
-        print('will use linkage', linkage)
+        print("will use linkage", linkage)
     elif o == "--affinity":
         affinity = a
-        print('will use affinity', affinity)
+        print("will use affinity", affinity)
     elif o == "--type":
         clustertype = a
-        if clustertype != 'kmeans' and \
-            clustertype != 'agglomerative' and \
-            clustertype != 'hdbscan' and \
-            clustertype != 'dbscan':
-            print('illegal clustering mode - must be kmeans, (h)dbscan, or agglomerative')
+        if (
+            clustertype != "kmeans"
+            and clustertype != "agglomerative"
+            and clustertype != "hdbscan"
+            and clustertype != "dbscan"
+        ):
+            print(
+                "illegal clustering mode - must be kmeans, (h)dbscan, or agglomerative"
+            )
             sys.exit()
     elif o in ("-h", "--help"):
         usage()
@@ -297,25 +337,37 @@ for o, a in opts:
         assert False, "unhandled option"
 
 
-print('Will perform', clustertype, 'clustering')
-    
+print("Will perform", clustertype, "clustering")
+
 # read in data
 print("reading in data arrays")
-datafile_img, datafile_data, datafile_hdr, datafiledims, datafilesizes = tide_io.readfromnifti(datafilename)
+(
+    datafile_img,
+    datafile_data,
+    datafile_hdr,
+    datafiledims,
+    datafilesizes,
+) = tide_io.readfromnifti(datafilename)
 if usedmask:
-    datamask_img, datamask_data, datamask_hdr, datamaskdims, datamasksizes = tide_io.readfromnifti(datamaskname)
+    (
+        datamask_img,
+        datamask_data,
+        datamask_hdr,
+        datamaskdims,
+        datamasksizes,
+    ) = tide_io.readfromnifti(datamaskname)
 
 xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
 xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
-    
+
 # check dimensions
 if usedmask:
     print("checking mask dimensions")
     if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
-        print('input mask spatial dimensions do not match image')
+        print("input mask spatial dimensions do not match image")
         exit()
     if not datamaskdims[4] == 1:
-        print('input mask time must have time dimension of 1')
+        print("input mask time must have time dimension of 1")
         exit()
 
 # allocating arrays
@@ -339,25 +391,43 @@ print(rs_datafile.shape, procdata.shape)
 if intlist is None:
     intlist = [timepoints]
 for coff in range(timepoints):
-    print('coefficient', coff, 'mean, std:', np.mean(procdata[:, coff]), np.std(procdata[:, coff]))
+    print(
+        "coefficient",
+        coff,
+        "mean, std:",
+        np.mean(procdata[:, coff]),
+        np.std(procdata[:, coff]),
+    )
 print()
 if prescale:
     coefficients = procdata * 0.0
     thepos = 0
     for interval in intlist:
-        if scaler == 'standard':
-            coefficients[:, thepos:(thepos + interval)] = StandardScaler().fit_transform(procdata[:, thepos:(thepos + interval)])
+        if scaler == "standard":
+            coefficients[
+                :, thepos : (thepos + interval)
+            ] = StandardScaler().fit_transform(
+                procdata[:, thepos : (thepos + interval)]
+            )
         else:
-            coefficients[:, thepos:(thepos + interval)] = RobustScaler().fit_transform(procdata[:, thepos:(thepos + interval)])
+            coefficients[
+                :, thepos : (thepos + interval)
+            ] = RobustScaler().fit_transform(procdata[:, thepos : (thepos + interval)])
         thepos += interval
-    print('After prescaling...')
+    print("After prescaling...")
     for coff in range(timepoints):
-        print('coefficient', coff, 'mean, std:', np.mean(coefficients[:, coff]), np.std(coefficients[:, coff]))
+        print(
+            "coefficient",
+            coff,
+            "mean, std:",
+            np.mean(coefficients[:, coff]),
+            np.std(coefficients[:, coff]),
+        )
     print()
-    prescalename = 'prescale_'
+    prescalename = "prescale_"
 else:
     coefficients = procdata
-    prescalename = ''
+    prescalename = ""
 
 # take a look at it
 if display:
@@ -366,30 +436,40 @@ if display:
     plt.show()
 
 # now cluster the data
-if clustertype == 'agglomerative':
+if clustertype == "agglomerative":
     theshape = (xsize, ysize, numslices)
-    print('computing connectivity matrix')
+    print("computing connectivity matrix")
     themask = np.zeros((xsize, ysize, numslices), dtype=bool).reshape((numspatiallocs))
     themask[proclocs] = True
     thecartmask = themask.reshape((xsize, ysize, numslices))
-    #connectivity = grid_to_graph(n_x=np.uint32(xsize), n_y=np.uint32(ysize), n_z=np.uint32(numslices), mask=thecartmask)
+    # connectivity = grid_to_graph(n_x=np.uint32(xsize), n_y=np.uint32(ysize), n_z=np.uint32(numslices), mask=thecartmask)
     connectivity = kneighbors_graph(coefficients, n_neighbors=5, n_jobs=-1)
-    print('Done')
-    agg = AgglomerativeClustering(n_clusters=n_clusters, 
-                                    memory=os.getcwd(), 
-                                    compute_full_tree=False,
-                                    linkage=linkage,
-                                    connectivity=connectivity,
-                                    affinity=affinity)
+    print("Done")
+    agg = AgglomerativeClustering(
+        n_clusters=n_clusters,
+        memory=os.getcwd(),
+        compute_full_tree=False,
+        linkage=linkage,
+        connectivity=connectivity,
+        affinity=affinity,
+    )
     agg.fit(coefficients)
     theregionlabels = agg.labels_
-    print('there are', agg.n_components_, 'components and', agg.n_leaves_, 'leaves')
-    methodname = 'agg_' + prescalename + linkage + '_' + affinity + '_' + str(n_clusters).zfill(2)
+    print("there are", agg.n_components_, "components and", agg.n_leaves_, "leaves")
+    methodname = (
+        "agg_"
+        + prescalename
+        + linkage
+        + "_"
+        + affinity
+        + "_"
+        + str(n_clusters).zfill(2)
+    )
     print(agg.children_)
-    #ii = itertools.count(coefficients.shape[0])
-    #[{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
+    # ii = itertools.count(coefficients.shape[0])
+    # [{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
 
-elif clustertype == 'dbscan':
+elif clustertype == "dbscan":
     db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(coefficients)
     core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
     core_samples_mask[db.core_sample_indices_] = True
@@ -399,46 +479,64 @@ elif clustertype == 'dbscan':
     # Number of clusters in labels, ignoring noise if present.
     n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
 
-    print('Estimated number of clusters: %d' % n_clusters_)
-    methodname = 'dbscan_' + prescalename + str(n_clusters).zfill(2)
+    print("Estimated number of clusters: %d" % n_clusters_)
+    methodname = "dbscan_" + prescalename + str(n_clusters).zfill(2)
 
-elif clustertype == 'hdbscan':
-    hdb = hdbs.HDBSCAN(min_samples=min_samples,
-                        min_cluster_size=min_cluster_size,
-                        alpha=alpha, 
-                        memory=os.getcwd()).fit(coefficients)
+elif clustertype == "hdbscan":
+    hdb = hdbs.HDBSCAN(
+        min_samples=min_samples,
+        min_cluster_size=min_cluster_size,
+        alpha=alpha,
+        memory=os.getcwd(),
+    ).fit(coefficients)
     theregionlabels = hdb.labels_
     print(theregionlabels)
 
     # Number of clusters in labels, ignoring noise if present.
     n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
 
-    print('Estimated number of clusters: %d' % n_clusters_)
-    methodname = 'hdbscan_' + prescalename + 'minsamples_' + str(min_samples) + 'minclustersize_' + str(min_cluster_size) + str(n_clusters).zfill(2)
+    print("Estimated number of clusters: %d" % n_clusters_)
+    methodname = (
+        "hdbscan_"
+        + prescalename
+        + "minsamples_"
+        + str(min_samples)
+        + "minclustersize_"
+        + str(min_cluster_size)
+        + str(n_clusters).zfill(2)
+    )
 
 else:
-    print('coefficients shape:', coefficients.shape)
+    print("coefficients shape:", coefficients.shape)
     if minibatch:
-        kmeans = MiniBatchKMeans(n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter).fit(coefficients)
+        kmeans = MiniBatchKMeans(
+            n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter
+        ).fit(coefficients)
     else:
-        kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(coefficients)
+        kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(
+            coefficients
+        )
 
     theclusters = np.transpose(kmeans.cluster_centers_)
-    print('cluster_centers shape', theclusters.shape)
+    print("cluster_centers shape", theclusters.shape)
     theregionlabels = kmeans.labels_
-    #print("Silhouette Coefficient: %0.3f"
-          #% metrics.silhouette_score(coefficients, theregionlabels))
-    methodname = 'kmeans_' + prescalename + str(n_clusters).zfill(2)
+    # print("Silhouette Coefficient: %0.3f"
+    #% metrics.silhouette_score(coefficients, theregionlabels))
+    methodname = "kmeans_" + prescalename + str(n_clusters).zfill(2)
 
 # save the command line
-tide_io.writevec([' '.join(sys.argv)], outputrootname + '_' + methodname + '_commandline.txt')
+tide_io.writevec(
+    [" ".join(sys.argv)], outputrootname + "_" + methodname + "_commandline.txt"
+)
 
-print('theregionlabels shape', theregionlabels.shape)
-print('clustering done')
+print("theregionlabels shape", theregionlabels.shape)
+print("clustering done")
 theheader = datafile_hdr
-theheader['dim'][4] = 1
-tempout = np.zeros((numspatiallocs), dtype='float')
+theheader["dim"][4] = 1
+tempout = np.zeros((numspatiallocs), dtype="float")
 tempout[proclocs] = theregionlabels[:] + 1
-tide_io.savetonifti(tempout.reshape((xsize, ysize, numslices, 1)),
-                    datafile_hdr,
-                    outputrootname + '_' + methodname + '_regions')
+tide_io.savetonifti(
+    tempout.reshape((xsize, ysize, numslices, 1)),
+    datafile_hdr,
+    outputrootname + "_" + methodname + "_regions",
+)

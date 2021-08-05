@@ -19,13 +19,13 @@
 #       $Date: 2016/06/14 12:04:51 $
 #       $Id: showstxcorr,v 1.11 2016/06/14 12:04:51 frederic Exp $
 #
-from __future__ import print_function, division
+from __future__ import division, print_function
+
 import sys
-import matplotlib.pyplot as plt
+
 import numpy as np
 import rapidtide.io as tide_io
-
-from pylab import plot, legend, show, figure
+from pylab import figure, legend, plot, show
 
 
 def usage():
@@ -55,19 +55,19 @@ outfile = sys.argv[3]
 inputdata1 = tide_io.readvec(infile1).astype(int)
 inputdata2 = tide_io.readvec(infile2).astype(int)
 if len(inputdata1) != len(inputdata2):
-    print('input file lengths do not match')
+    print("input file lengths do not match")
     sys.exit()
-    
+
 min1 = np.min(inputdata1)
 min2 = np.min(inputdata2)
 max1 = np.max(inputdata1)
 max2 = np.max(inputdata2)
 
 if (max1 - min1) != (max2 - min2):
-    print('timecourses do not have the same number of states')
+    print("timecourses do not have the same number of states")
     sys.exit()
 numstates = max1 - min1 + 1
- 
+
 matcharray = np.zeros((numstates, numstates), dtype=float)
 for i in range(len(inputdata1)):
     loc1 = inputdata1[i] - min1
@@ -79,11 +79,19 @@ for i in range(numstates):
     maxpos = np.argmax(matcharray[:, i])
     maparray[i] = maxpos
     percentmatch = 100.0 * matcharray[maxpos, i] / np.sum(matcharray[:, i])
-    print('state', maxpos + min1, 'in tc1 matches state', i + min2, 'in tc2', percentmatch, '% of the time')
+    print(
+        "state",
+        maxpos + min1,
+        "in tc1 matches state",
+        i + min2,
+        "in tc2",
+        percentmatch,
+        "% of the time",
+    )
 
 remapped2 = inputdata2 * 0
 for i in range(len(inputdata1)):
     remapped2[i] = maparray[inputdata2[i] - min2] + min1
 
-tide_io.writenpvecs(remapped2, outfile + '_remapped.txt')
-tide_io.writenpvecs(matcharray, outfile + '_matcharray.txt')
+tide_io.writenpvecs(remapped2, outfile + "_remapped.txt")
+tide_io.writenpvecs(matcharray, outfile + "_matcharray.txt")

@@ -19,32 +19,35 @@
 #       $Date: 2016/07/11 14:50:43 $
 #       $Id: showxcorr,v 1.41 2016/07/11 14:50:43 frederic Exp $
 #
-from __future__ import print_function, division
-
-import sys
-import platform
-
-import numpy as np
+from __future__ import division, print_function
 
 import getopt
-import rapidtide.io as tide_io
+import platform
+import sys
+
+import numpy as np
 import rapidtide.fit as tide_fit
+import rapidtide.io as tide_io
 
 
 def usage():
-    print("normtcs - remove the mean (and optionally the trend) from all timecourses in a text file and normalize")
-    print("")
     print(
-        "usage: demeantcs infile outfile [-t]")
+        "normtcs - remove the mean (and optionally the trend) from all timecourses in a text file and normalize"
+    )
+    print("")
+    print("usage: demeantcs infile outfile [-t]")
     print("")
     print("required arguments:")
-    print("	infile:      a text file containing one or more time series in whitespace separated columns")
+    print(
+        "	infile:      a text file containing one or more time series in whitespace separated columns"
+    )
     print("	outfile:     the name of the processes output file")
     print("")
     print("optional arguments:")
     print("     -t           - detrend the data")
     print("")
     return ()
+
 
 # get the command line parameters
 detrendorder = 0
@@ -69,14 +72,14 @@ except getopt.GetoptError as err:
 for o, a in opts:
     if o == "-t":
         detrendorder = 1
-        print('detrending data')
+        print("detrending data")
     else:
         assert False, "unhandled option"
 
 inputdata = tide_io.readvecs(infilename)
 outputdata = inputdata * 0.0
 for i in range(inputdata.shape[0]):
-    print('processing column', i)
+    print("processing column", i)
     if detrendorder > 0:
         outputdata[i, :] = tide_fit.detrend(inputdata[i, :], order=detrendorder)
     else:

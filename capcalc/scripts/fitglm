@@ -20,10 +20,12 @@
 #       $Id: glmfilt,v 1.25 2016/06/14 12:04:50 frederic Exp $
 #
 from __future__ import print_function
+
 import sys
+
 import numpy as np
-import rapidtide.io as tide_io
 import rapidtide.fit as tide_fit
+import rapidtide.io as tide_io
 
 
 def main():
@@ -32,12 +34,12 @@ def main():
     #
     # read in the datafile
     nargs = len(sys.argv)
-    if (nargs < 5):
+    if nargs < 5:
         print("usage: fitglm tcfile outputroot evfile [evfile_2...evfile_n]")
         print("    Fits multiple evs to timecourses in a file")
         exit()
 
-    #initialize some variables
+    # initialize some variables
     evdata = []
     evfilename = []
 
@@ -47,7 +49,7 @@ def main():
     evfilename.append(sys.argv[3])
     numfiles = 1
     print(evfilename[0])
-    if (nargs > 4):
+    if nargs > 4:
         for i in range(4, nargs):
             numfiles += 1
             evfilename.append(sys.argv[i])
@@ -73,17 +75,16 @@ def main():
             exit()
 
     print("will perform GLM with ", numregressors, " regressors")
-    meandata = np.zeros((numtcs), dtype='float')
-    coefficient = np.zeros((numtcs, numregressors), dtype='float')
-    Rdata = np.zeros((numtcs), dtype='float')
-    component = np.zeros((numtcs, timepoints, numregressors), dtype='float')
-    thefit = np.zeros((numtcs, timepoints), dtype='float')
+    meandata = np.zeros((numtcs), dtype="float")
+    coefficient = np.zeros((numtcs, numregressors), dtype="float")
+    Rdata = np.zeros((numtcs), dtype="float")
+    component = np.zeros((numtcs, timepoints, numregressors), dtype="float")
+    thefit = np.zeros((numtcs, timepoints), dtype="float")
     residuals = 1.0 * thefit
     trimmeddata = 1.0 * tc_data[:, :]
-    print('numtcs = ', numtcs)
-    print('timepoints = ', timepoints)
-    print('numregressors = ', numregressors)
-
+    print("numtcs = ", numtcs)
+    print("timepoints = ", timepoints)
+    print("numregressors = ", numregressors)
 
     for thetc in range(0, numtcs):
         regressorvec = []
@@ -108,20 +109,23 @@ def main():
     print("processing complete: about to save data")
 
     # first save the things with a single timepoint
-    tide_io.writenpvecs(meandata, outputroot + '_mean.txt')
+    tide_io.writenpvecs(meandata, outputroot + "_mean.txt")
     for j in range(0, numregressors):
-        tide_io.writenpvecs(coefficient[:, j], outputroot + "_coefficient_" + str(j).zfill(2))
+        tide_io.writenpvecs(
+            coefficient[:, j], outputroot + "_coefficient_" + str(j).zfill(2)
+        )
     tide_io.writenpvecs(Rdata, outputroot + "_R")
 
     # now save the things with full timecourses
     for j in range(0, numregressors):
-        tide_io.writenpvecs(component[:, :, j], outputroot + "_component_" + str(j).zfill(2))
+        tide_io.writenpvecs(
+            component[:, :, j], outputroot + "_component_" + str(j).zfill(2)
+        )
     tide_io.writenpvecs(thefit, outputroot + "_fit")
     tide_io.writenpvecs(residuals, outputroot + "_residuals")
 
 
 if __name__ == "__main__":
-    #import cProfile as profile
-    #profile.run('main()', 'rapidtide_profile')
+    # import cProfile as profile
+    # profile.run('main()', 'rapidtide_profile')
     main()
-

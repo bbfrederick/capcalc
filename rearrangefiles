@@ -1,40 +1,46 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import pandas as pd
+
+import sys  # this goes up at the top where you are importing things
+
 import numpy as np
-import sys       # this goes up at the top where you are importing things
- 
-if len(sys.argv) != 2:         # sys.argv[0] is always the name of the program, so the first command line argument is sys.argv[1].  Because arrays start at 0, that means the length is 2 if you have one argument.
-    print('you should have one and only argument')
+import pandas as pd
+
+if (
+    len(sys.argv) != 2
+):  # sys.argv[0] is always the name of the program, so the first command line argument is sys.argv[1].  Because arrays start at 0, that means the length is 2 if you have one argument.
+    print("you should have one and only argument")
     sys.exit()
- 
+
 thefilenames = sys.argv[1]
 
 # read the filenames in from the file with pandas, convert the 0th column to a python list
-nameframe = pd.read_csv(thefilenames, header=None, engine='python')
+nameframe = pd.read_csv(thefilenames, header=None, engine="python")
 thefiles = nameframe.ix[:, 0].tolist()
 
 output_df = None
 for thefilename in thefiles:
-    df =  pd.read_csv(thefilename, engine='python')
+    df = pd.read_csv(thefilename, engine="python")
 
-    columnlist = df.columns.values.tolist()[1:]     # the index at the end cuts out the first column, which is the row names, not data
-    rowlist = df['sources'].values.tolist()
-    
+    columnlist = df.columns.values.tolist()[
+        1:
+    ]  # the index at the end cuts out the first column, which is the row names, not data
+    rowlist = df["sources"].values.tolist()
+
     names = []
     values = []
-    for row in range(len(rowlist)): 
+    for row in range(len(rowlist)):
         for col in range(len(columnlist)):
             names.append(rowlist[row] + " " + columnlist[col])
             values.append(df[columnlist[col]][row])
-    thedata = {thefilename : np.asarray(values, dtype=np.float64)}
+    thedata = {thefilename: np.asarray(values, dtype=np.float64)}
     if output_df is None:
-        print(thefilename, 'is the first file - initializing output frame')
+        print(thefilename, "is the first file - initializing output frame")
         output_df = pd.DataFrame(data=thedata, index=np.asarray(names, dtype=np.str))
     else:
-        print(thefilename, 'is a subsequent file - appending to output frame')
+        print(thefilename, "is a subsequent file - appending to output frame")
         temp_df = pd.DataFrame(data=thedata, index=np.asarray(names, dtype=np.str))
         output_df = pd.merge(output_df, temp_df, right_index=True, left_index=True)
 
 print(output_df)
-output_df.to_csv('allsubjects.csv')
+output_df.to_csv("allsubjects.csv")
