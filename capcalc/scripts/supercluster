@@ -98,6 +98,16 @@ def _get_parser():
     )
 
     parser.add_argument(
+        "--n_jobs",
+        dest="n_jobs",
+        metavar="NUM",
+        action="store",
+        type=int,
+        help=("Number of parallel jobs to run. Default is -1 (maximum)"),
+        default=-1,
+    )
+
+    parser.add_argument(
         "--numruns",
         dest="numtests",
         metavar="NUM",
@@ -193,7 +203,6 @@ def main():
         raise
 
     intlist = None
-    n_jobs = -1
 
     print("Will perform", args.classifiertype, "classification")
 
@@ -322,7 +331,7 @@ def main():
                     max_features=max_features,
                     max_depth=None,
                     min_samples_split=2,
-                    n_jobs=n_jobs,
+                    n_jobs=args.n_jobs,
                 ),
                 max_samples=0.5,
                 max_features=0.5,
@@ -341,7 +350,7 @@ def main():
                 max_depth=None,
                 min_samples_split=2,
                 random_state=0,
-                n_jobs=n_jobs,
+                n_jobs=args.n_jobs,
             )
             methodname = (
                 "randomforest_"
@@ -359,7 +368,7 @@ def main():
                     max_features=max_features,
                     max_depth=None,
                     min_samples_split=2,
-                    n_jobs=n_jobs,
+                    n_jobs=args.n_jobs,
                 ),
                 max_samples=0.5,
                 max_features=0.5,
@@ -378,7 +387,7 @@ def main():
                 max_depth=None,
                 min_samples_split=2,
                 random_state=0,
-                n_jobs=n_jobs,
+                n_jobs=args.n_jobs,
             )
             methodname = (
                 "extratrees_"
@@ -404,7 +413,7 @@ def main():
                 KNeighborsClassifier(
                     n_neighbors=args.n_neighbors,
                     weights=args.weights,
-                    n_jobs=n_jobs,
+                    n_jobs=args.n_jobs,
                     algorithm=args.k_algorithm,
                 ),
                 max_samples=0.5,
@@ -421,7 +430,7 @@ def main():
             theclassifier = KNeighborsClassifier(
                 n_neighbors=args.n_neighbors,
                 weights=args.weights,
-                n_jobs=n_jobs,
+                n_jobs=args.n_jobs,
                 algorithm=args.k_algorithm,
             )
             methodname = (
