@@ -22,6 +22,7 @@
 from __future__ import division, print_function
 
 import argparse
+import os
 
 import rapidtide.io as tide_io
 import rapidtide.workflows.parser_funcs as pf
@@ -117,6 +118,15 @@ def _get_parser():
     )
 
     parser.add_argument(
+        "--k_algorithm",
+        dest="k_algorithm",
+        action="store",
+        type=str,
+        choices=["brute", "kd_tree", "ball_tree", "auto"],
+        help=("Set the nearest neighbors algorithm. Default is kd_tree."),
+        default="kd_tree",
+    )
+    parser.add_argument(
         "--type",
         dest="classifiertype",
         action="store",
@@ -164,6 +174,13 @@ def _get_parser():
         default=False,
     )
 
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        dest="debug",
+        help="Output additional debugging information.",
+        default=False,
+    )
     return parser
 
 
@@ -175,10 +192,7 @@ def main():
         _get_parser().print_help()
         raise
 
-    multirun = False
-    numtests = 100
     intlist = None
-    kalgorithm = "brute"
     n_jobs = -1
 
     print("Will perform", args.classifiertype, "classification")
@@ -391,7 +405,7 @@ def main():
                     n_neighbors=args.n_neighbors,
                     weights=args.weights,
                     n_jobs=n_jobs,
-                    algorithm=kalgorithm,
+                    algorithm=args.k_algorithm,
                 ),
                 max_samples=0.5,
                 max_features=0.5,
@@ -408,7 +422,7 @@ def main():
                 n_neighbors=args.n_neighbors,
                 weights=args.weights,
                 n_jobs=n_jobs,
-                algorithm=kalgorithm,
+                algorithm=args.k_algorithm,
             )
             methodname = (
                 "knn_"
@@ -489,7 +503,7 @@ def main():
     )
     print(classreport)
 
-    if not multirun:
+    if args.numtests == 1:
         # now classify the entire image
         Y_predict_all = theclassifier.predict(X_predict)
         print("prediction of all locations complete")
@@ -527,6 +541,9 @@ def main():
     # output classification of all known data
     if args.numtests > 1:
         tempout = np.zeros((numspatiallocs, args.numtests), dtype="float")
+        if args.debug:
+            print(f"Y_predice_all.shape: {Y_predict_all.shape}")
+            print(f"temput.shape: {tempout.shape}")
         tempout[proclocs, :] = Y_predict_all[:, :]
         theheader = datafile_hdr
         theheader["dim"][4] = args.numtests
