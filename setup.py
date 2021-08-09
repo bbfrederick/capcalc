@@ -34,16 +34,17 @@ modules_list = [
 
 
 script_list = [
-    "capcalc/scripts/kmeans",
     "capcalc/scripts/capfromtcs",
-    "capcalc/scripts/statematch",
-    "capcalc/scripts/roidecompose",
     "capcalc/scripts/clusternifti",
-    "capcalc/scripts/supercluster",
-    "capcalc/scripts/maptoroi",
     "capcalc/scripts/fitglm",
-    "capcalc/scripts/tcfrom3col",
+    "capcalc/scripts/kmeans",
+    "capcalc/scripts/maptoroi",
     "capcalc/scripts/normtcs",
+    "capcalc/scripts/roidecompose",
+    "capcalc/scripts/statematch",
+    "capcalc/scripts/statlasgen",
+    "capcalc/scripts/supercluster",
+    "capcalc/scripts/tcfrom3col",
 ]
 
 
