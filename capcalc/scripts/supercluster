@@ -26,7 +26,7 @@ import os
 
 import rapidtide.io as tide_io
 import rapidtide.workflows.parser_funcs as pf
-from pylab import *
+import matplotlib.pyplot as plt
 from sklearn.ensemble import (
     AdaBoostClassifier,
     BaggingClassifier,
@@ -39,6 +39,7 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.inspection import permutation_importance
 
 
 def _get_parser():
@@ -318,7 +319,9 @@ def main():
 
     # take a look at it
     if args.display and False:
-        projection = TSNE().fit_transform(X_known)
+        print("running TSNE")
+        theTSNE = TSNE(n_jobs=args.n_jobs, perplexity=args.n_neighbors)
+        projection = theTSNE.fit_transform(X_known)
         plt.scatter(*projection.T)
         plt.show()
 
@@ -452,8 +455,18 @@ def main():
 
     # check the accuracy of the model
     accuracies = []
+
+    # make space for saved data
+    if (
+        args.classifiertype == "randomforest"
+        or args.classifiertype == "extratrees"
+        or args.classifiertype == "adaboost"
+        or args.classifiertype == "gradientboost"
+    ):
+        feature_importances = []
     if args.numtests > 1:
         Y_predict_all = np.zeros((X_predict.shape[0], args.numtests), dtype=float)
+
     for testrun in range(args.numtests):
         print(f"test {testrun}")
         print("\tsplitting data")
@@ -463,6 +476,18 @@ def main():
 
         print("\tfitting model")
         theclassifier.fit(X_train, Y_train)
+
+        if (
+            args.classifiertype == "randomforest"
+            or args.classifiertype == "extratrees"
+            or args.classifiertype == "adaboost"
+            or args.classifiertype == "gradientboost"
+        ):
+            print("\tcalculating feature importances")
+            feature_importances.append(theclassifier.feature_importances_)
+            if args.display and False:
+                plt.plot(feature_importances[-1])
+                plt.show()
 
         # now make predictions on the test data
         print("\tpredicting on test data")
@@ -517,17 +542,6 @@ def main():
         Y_predict_all = theclassifier.predict(X_predict)
         print("prediction of all locations complete")
 
-    # run other classifier-specific metrics
-    if args.display:
-        if (
-            args.classifiertype == "randomforest"
-            or args.classifiertype == "extratrees"
-            or args.classifiertype == "adaboost"
-            or args.classifiertype == "gradientboost"
-        ):
-            plt.plot(theclassifier.feature_importances_)
-            plt.show()
-
     # save the data
     theheader = datafile_hdr
     theheader["dim"][4] = 1
@@ -569,6 +583,31 @@ def main():
             datafile_hdr,
             args.outputrootname + "_" + methodname + "_predict_all",
         )
+
+    # save other classifier-specific metrics
+    if (
+        args.classifiertype == "randomforest"
+        or args.classifiertype == "extratrees"
+        or args.classifiertype == "adaboost"
+        or args.classifiertype == "gradientboost"
+    ):
+        importancemeans = np.mean(np.array(feature_importances), axis=1)
+        importancestds = np.std(np.array(feature_importances), axis=1)
+        tide_io.writenpvecs(
+            np.array(feature_importances),
+            args.outputrootname + "_" + methodname + "_featureimportances.txt",
+        )
+        tide_io.writenpvecs(
+            importancemeans,
+            args.outputrootname + "_" + methodname + "_featureimportances_mean.txt",
+        )
+        tide_io.writenpvecs(
+            importancestds,
+            args.outputrootname + "_" + methodname + "_featureimportances_mean.txt",
+        )
+        xaxis = range(len(importancemeans))
+        plt.errorbar(xaxis, importancemeans, yerr=importancestds)
+        plt.show()
 
 
 if __name__ == "__main__":
