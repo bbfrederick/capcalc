@@ -23,10 +23,12 @@ from __future__ import division, print_function
 
 import argparse
 import os
+import sys
 
 import rapidtide.io as tide_io
 import rapidtide.workflows.parser_funcs as pf
 import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.ensemble import (
     AdaBoostClassifier,
     BaggingClassifier,
@@ -204,6 +206,7 @@ def main():
         raise
 
     intlist = None
+    usepermutation = True
 
     print("Will perform", args.classifiertype, "classification")
 
@@ -484,7 +487,14 @@ def main():
             or args.classifiertype == "gradientboost"
         ):
             print("\tcalculating feature importances")
-            feature_importances.append(theclassifier.feature_importances_)
+            if usepermutation:
+                feature_importances.append(
+                    permutation_importance(theclassifier, X_train, Y_train)[
+                        "importances_mean"
+                    ]
+                )
+            else:
+                feature_importances.append(theclassifier.feature_importances_)
             if args.display and False:
                 plt.plot(feature_importances[-1])
                 plt.show()
@@ -591,8 +601,8 @@ def main():
         or args.classifiertype == "adaboost"
         or args.classifiertype == "gradientboost"
     ):
-        importancemeans = np.mean(np.array(feature_importances), axis=1)
-        importancestds = np.std(np.array(feature_importances), axis=1)
+        importancemeans = np.mean(np.array(feature_importances), axis=0)
+        importancestds = np.std(np.array(feature_importances), axis=0)
         tide_io.writenpvecs(
             np.array(feature_importances),
             args.outputrootname + "_" + methodname + "_featureimportances.txt",
@@ -606,6 +616,8 @@ def main():
             args.outputrootname + "_" + methodname + "_featureimportances_mean.txt",
         )
         xaxis = range(len(importancemeans))
+        plt.plot(xaxis, importancemeans)
+        plt.show()
         plt.errorbar(xaxis, importancemeans, yerr=importancestds)
         plt.show()
 
