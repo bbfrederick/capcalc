@@ -160,6 +160,14 @@ def _get_parser():
     )
 
     parser.add_argument(
+        "--usepermutation",
+        action="store_true",
+        dest="display",
+        help="Calculate feature importances using permutation method (MUCH slower).",
+        default=False,
+    )
+
+    parser.add_argument(
         "--display",
         action="store_true",
         dest="display",
@@ -206,7 +214,6 @@ def main():
         raise
 
     intlist = None
-    usepermutation = True
 
     print("Will perform", args.classifiertype, "classification")
 
@@ -487,7 +494,7 @@ def main():
             or args.classifiertype == "gradientboost"
         ):
             print("\tcalculating feature importances")
-            if usepermutation:
+            if args.usepermutation:
                 feature_importances.append(
                     permutation_importance(theclassifier, X_train, Y_train)[
                         "importances_mean"
