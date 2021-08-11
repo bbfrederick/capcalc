@@ -472,14 +472,14 @@ def main():
             probability=args.svc_probability,
         )
         methodname = (
-            f"svc_{prescalename}{args.svm_kernel}_{args.svm_polydegree}_{args.svm_C}"
+            f"svc_{prescalename}{args.svc_kernel}_{args.svc_polydegree}_{args.svc_C}"
         )
 
     elif args.classifiertype == "lsvc":
         theclassifier = LinearSVC(
             C=args.svc_C,
         )
-        methodname = f"lsvc_{prescalename}{args.svm_kernel}_{args.svm_C}"
+        methodname = f"lsvc_{prescalename}{args.svc_kernel}_{args.svc_C}"
 
     elif args.classifiertype == "adaboost":
         theclassifier = AdaBoostClassifier(n_estimators=args.n_estimators)
