@@ -586,7 +586,12 @@ def main():
             print("\tpredicting on all data")
             Y_predict_all[:, testrun] = theclassifier.predict(X_predict)
 
-    if len(accuracies) > 0:
+        # save a status value
+        tide_io.writenpvecs(
+            np.asarray([testrun], dtype=int),
+            args.outputrootname + "_" + methodname + "_currentiteration.txt",
+
+        if len(accuracies) > 0:
         theaccuracies = np.asarray(accuracies, dtype=np.double)
         print(
             "Accuracies for",
