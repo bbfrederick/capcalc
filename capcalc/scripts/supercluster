@@ -274,7 +274,6 @@ def main():
     if args.datamaskname is not None:
         proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.9)
     else:
-        datamaskdims = [1, xsize, ysize, numslices, 1]
         themaxes = np.max(rs_datafile, axis=1)
         themins = np.min(rs_datafile, axis=1)
         thediffs = (themaxes - themins).reshape((numspatiallocs))
@@ -475,7 +474,7 @@ def main():
     ):
         feature_importances = []
     if args.numtests > 1:
-        Y_predict_all = np.zeros((X_predict.shape[0], args.numtests), dtype=float)
+        Y_predict_all = np.zeros((X_predict.shape[0], args.numtests), dtype=np.double)
 
     for testrun in range(args.numtests):
         print(f"test {testrun}")
@@ -484,6 +483,15 @@ def main():
             X_known[:, 0:ncomps], Y_known, test_size=0.2
         )
 
+        # check array information
+        if args.debug:
+            print("Image data:")
+            print(f"\tX flags: {X_train.flags}")
+            print(f"\tX type: {X_train.dtype}")
+            print(f"\tY flags: {Y_train.flags}")
+            print(f"\tY type: {Y_train.dtype}")
+
+        # fit the model
         print("\tfitting model")
         theclassifier.fit(X_train, Y_train)
 
@@ -517,7 +525,7 @@ def main():
             Y_predict_all[:, testrun] = theclassifier.predict(X_predict)
 
     if len(accuracies) > 0:
-        theaccuracies = np.asarray(accuracies, dtype=float)
+        theaccuracies = np.asarray(accuracies, dtype=np.double)
         print(
             "Accuracies for",
             ncomps,
@@ -564,7 +572,7 @@ def main():
     theheader["dim"][4] = 1
 
     # output classification of all known data
-    tempout = np.zeros((numspatiallocs), dtype="float")
+    tempout = np.zeros((numspatiallocs), dtype=np.double)
     tempout[knownlocs] = Y_predict_known[:]
     tide_io.savetonifti(
         tempout.reshape((xsize, ysize, numslices, 1)),
@@ -580,7 +588,7 @@ def main():
 
     # output classification of all known data
     if args.numtests > 1:
-        tempout = np.zeros((numspatiallocs, args.numtests), dtype="float")
+        tempout = np.zeros((numspatiallocs, args.numtests), dtype=np.double)
         if args.debug:
             print(f"Y_predice_all.shape: {Y_predict_all.shape}")
             print(f"temput.shape: {tempout.shape}")
@@ -593,7 +601,7 @@ def main():
             args.outputrootname + "_" + methodname + "_predict_all",
         )
     else:
-        tempout = np.zeros((numspatiallocs), dtype="float")
+        tempout = np.zeros((numspatiallocs), dtype=np.double)
         tempout[proclocs] = Y_predict_all[:]
         tide_io.savetonifti(
             tempout.reshape((xsize, ysize, numslices, 1)),
@@ -620,7 +628,7 @@ def main():
         )
         tide_io.writenpvecs(
             importancestds,
-            args.outputrootname + "_" + methodname + "_featureimportances_mean.txt",
+            args.outputrootname + "_" + methodname + "_featureimportances_std.txt",
         )
         xaxis = range(len(importancemeans))
         plt.plot(xaxis, importancemeans)
