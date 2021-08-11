@@ -36,6 +36,7 @@ from sklearn.ensemble import (
     GradientBoostingClassifier,
     RandomForestClassifier,
 )
+from sklearn.svm import SVC, LinearSVC
 from sklearn.manifold import TSNE
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import cross_val_score, train_test_split
@@ -77,6 +78,33 @@ def _get_parser():
         help=("Use DATAMASK to specify which voxels in the data to classify."),
         default=None,
     )
+    parser.add_argument(
+        "--prescaler",
+        dest="prescaler",
+        action="store",
+        type=str,
+        choices=["standard", "robust", "None"],
+        help=(
+            "What sort of prescaler to apply to data prior to classification.  Default is None"
+        ),
+        default="None",
+    )
+    parser.add_argument(
+        "--bagging",
+        action="store_true",
+        dest="bagging",
+        help="Use a bagging classifier.",
+        default=False,
+    )
+    parser.add_argument(
+        "--numruns",
+        dest="numtests",
+        metavar="NUM",
+        action="store",
+        type=int,
+        help=("Set the number of independent iterations to run.  Default is 1."),
+        default=1,
+    )
 
     parser.add_argument(
         "--n_estimators",
@@ -111,52 +139,21 @@ def _get_parser():
     )
 
     parser.add_argument(
-        "--numruns",
-        dest="numtests",
-        metavar="NUM",
-        action="store",
-        type=int,
-        help=("Set the number of independent iterations to run.  Default is 1."),
-        default=1,
-    )
-
-    parser.add_argument(
-        "--n_neighbors",
-        dest="n_neighbors",
-        metavar="NUM",
-        action="store",
-        type=int,
-        help=("Set the number of neighbors for KNN classifiers.  Default is 5."),
-        default=5,
-    )
-
-    parser.add_argument(
-        "--k_algorithm",
-        dest="k_algorithm",
-        action="store",
-        type=str,
-        choices=["brute", "kd_tree", "ball_tree", "auto"],
-        help=("Set the nearest neighbors algorithm. Default is kd_tree."),
-        default="kd_tree",
-    )
-    parser.add_argument(
         "--type",
         dest="classifiertype",
         action="store",
         type=str,
-        choices=["randomforest", "knn", "gradientboost", "adaboost", "extratrees"],
+        choices=[
+            "randomforest",
+            "knn",
+            "gradientboost",
+            "adaboost",
+            "extratrees",
+            "svc",
+            "lsvc",
+        ],
         help=("Set the classifier type. Default is randomforest."),
         default="randomforest",
-    )
-
-    parser.add_argument(
-        "--weights",
-        dest="weights",
-        action="store",
-        type=str,
-        choices=["uniform", "distance"],
-        help=("Set the weighting for KNN classifiers.  Default is distance."),
-        default="distance",
     )
 
     parser.add_argument(
@@ -167,31 +164,89 @@ def _get_parser():
         default=False,
     )
 
+    kopts = parser.add_argument_group("KNN options")
+    kopts.add_argument(
+        "--n_neighbors",
+        dest="n_neighbors",
+        metavar="NUM",
+        action="store",
+        type=int,
+        help=("Set the number of neighbors for KNN classifiers.  Default is 5."),
+        default=5,
+    )
+    kopts.add_argument(
+        "--k_algorithm",
+        dest="k_algorithm",
+        action="store",
+        type=str,
+        choices=["brute", "kd_tree", "ball_tree", "auto"],
+        help=("Set the nearest neighbors algorithm. Default is kd_tree."),
+        default="kd_tree",
+    )
+    kopts.add_argument(
+        "--weights",
+        dest="weights",
+        action="store",
+        type=str,
+        choices=["uniform", "distance"],
+        help=("Set the weighting for KNN classifiers.  Default is distance."),
+        default="distance",
+    )
+
+    svcopts = parser.add_argument_group("SVC options")
+    svcopts.add_argument(
+        "--svc_C",
+        dest="svc_C",
+        metavar="NUM",
+        action="store",
+        type=float,
+        help=(
+            "Regularization parameter.  Default is 1.0.  Reduce for more regularization."
+        ),
+        default=1,
+    )
+    svcopts.add_argument(
+        "--svc_kernel",
+        dest="svc_kernel",
+        action="store",
+        type=str,
+        choices=["linear", "poly", "rbf", "sigmoid", "precomputed"],
+        help=("Kernel to use.  Default is rbf"),
+        default="rbf",
+    )
+    svcopts.add_argument(
+        "--svc_polydegree",
+        dest="svc_polydegree",
+        metavar="NUM",
+        action="store",
+        type=int,
+        help=("Degree for polynomial kernel.  Default is 3"),
+        default=3,
+    )
+    svcopts.add_argument(
+        "--svc_gamma",
+        dest="svc_gamma",
+        action="store",
+        type=str,
+        choices=["scale", "auto"],
+        help=(
+            "Kernel coefficient for rbf, poly, and sigmoid kernels.  Default is scale"
+        ),
+        default="scale",
+    )
+    svcopts.add_argument(
+        "--probability",
+        action="store_true",
+        dest="svc_probability",
+        help="Calculate classification probabilities.  Very slow.  Default is False.",
+        default=False,
+    )
+
     parser.add_argument(
         "--display",
         action="store_true",
         dest="display",
         help="Display feature importances if available.",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--prescaler",
-        dest="prescaler",
-        action="store",
-        type=str,
-        choices=["standard", "robust", "None"],
-        help=(
-            "What sort of prescaler to apply to data prior to classification.  Default is None"
-        ),
-        default="None",
-    )
-
-    parser.add_argument(
-        "--bagging",
-        action="store_true",
-        dest="bagging",
-        help="Use a bagging classifier.",
         default=False,
     )
 
@@ -408,16 +463,33 @@ def main():
                 + "_"
                 + str(max_features).zfill(3)
             )
+    elif args.classifiertype == "svc":
+        theclassifier = SVC(
+            C=args.svc_C,
+            kernel=args.svc_kernel,
+            degree=args.svc_polydegree,
+            gamma=args.svc_gamma,
+            probability=args.svc_probability,
+        )
+        methodname = (
+            f"svc_{prescalename}{args.svm_kernel}_{args.svm_polydegree}_{args.svm_C}"
+        )
+
+    elif args.classifiertype == "lsvc":
+        theclassifier = LinearSVC(
+            C=args.svc_C,
+        )
+        methodname = f"lsvc_{prescalename}{args.svm_kernel}_{args.svm_C}"
 
     elif args.classifiertype == "adaboost":
         theclassifier = AdaBoostClassifier(n_estimators=args.n_estimators)
-        methodname = "ada_" + prescalename + str(args.n_estimators).zfill(3)
+        methodname = f"ada_{prescalename}{str(args.n_estimators).zfill(3)}"
 
     elif args.classifiertype == "gradientboost":
         theclassifier = GradientBoostingClassifier(
             n_estimators=args.n_estimators, max_features="auto"
         )
-        methodname = "gbc_" + prescalename + str(args.n_estimators).zfill(3)
+        methodname = f"gbc_{prescalename}{str(args.n_estimators).zfill(3)}"
 
     elif args.classifiertype == "knn":
         if args.bagging:
@@ -431,13 +503,7 @@ def main():
                 max_samples=0.5,
                 max_features=0.5,
             )
-            methodname = (
-                "knn_bagging_"
-                + prescalename
-                + args.weights
-                + "_"
-                + str(args.n_neighbors).zfill(2)
-            )
+            methodname = f"knn_bagging_{prescalename}{args.weights}_{str(args.n_neighbors).zfill(2)}"
         else:
             theclassifier = KNeighborsClassifier(
                 n_neighbors=args.n_neighbors,
@@ -446,11 +512,7 @@ def main():
                 algorithm=args.k_algorithm,
             )
             methodname = (
-                "knn_"
-                + prescalename
-                + args.weights
-                + "_"
-                + str(args.n_neighbors).zfill(2)
+                f"knn_{prescalename}{args.weights}_{str(args.n_neighbors).zfill(2)}"
             )
 
     else:
