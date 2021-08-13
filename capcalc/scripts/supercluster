@@ -25,24 +25,29 @@ import argparse
 import os
 import sys
 
-import rapidtide.io as tide_io
-import rapidtide.workflows.parser_funcs as pf
+try:
+    from sklearnex import patch_sklearn
+
+    print("using sklearnex")
+    patch_sklearn()
+except ImportError:
+    pass
+
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.ensemble import (
-    AdaBoostClassifier,
-    BaggingClassifier,
-    ExtraTreesClassifier,
-    GradientBoostingClassifier,
-    RandomForestClassifier,
-)
-from sklearn.svm import SVC, LinearSVC
+import rapidtide.io as tide_io
+import rapidtide.workflows.parser_funcs as pf
+from sklearn.ensemble import (AdaBoostClassifier, BaggingClassifier,
+                              ExtraTreesClassifier, GradientBoostingClassifier,
+                              RandomForestClassifier)
+from sklearn.inspection import permutation_importance
 from sklearn.manifold import TSNE
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import (accuracy_score, classification_report,
+                             confusion_matrix)
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import RobustScaler, StandardScaler
-from sklearn.inspection import permutation_importance
+from sklearn.svm import SVC, LinearSVC
 
 
 def _get_parser():
@@ -157,7 +162,7 @@ def _get_parser():
     parser.add_argument(
         "--usepermutation",
         action="store_true",
-        dest="display",
+        dest="usepermutation",
         help="Calculate feature importances using permutation method (MUCH slower).",
         default=False,
     )
@@ -321,8 +326,12 @@ def main():
     numspatiallocs = int(xsize) * int(ysize) * int(numslices)
     rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
     rs_classfile = classfile_data.reshape((numspatiallocs))
+
+    # find known data
+    print("calculating knownlocs")
     knownlocs = np.where(rs_classfile > 0)
 
+    # mask the data
     print("masking arrays")
     if args.datamaskname is not None:
         proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.9)
@@ -529,7 +538,7 @@ def main():
         or args.classifiertype == "extratrees"
         or args.classifiertype == "adaboost"
         or args.classifiertype == "gradientboost"
-    ):
+    ) and not args.bagging:
         feature_importances = []
     if args.numtests > 1:
         Y_predict_all = np.zeros((X_predict.shape[0], args.numtests), dtype=np.double)
@@ -558,7 +567,7 @@ def main():
             or args.classifiertype == "extratrees"
             or args.classifiertype == "adaboost"
             or args.classifiertype == "gradientboost"
-        ):
+        ) and not args.bagging:
             print("\tcalculating feature importances")
             if args.usepermutation:
                 feature_importances.append(
@@ -679,7 +688,7 @@ def main():
         or args.classifiertype == "extratrees"
         or args.classifiertype == "adaboost"
         or args.classifiertype == "gradientboost"
-    ):
+    ) and not args.bagging:
         importancemeans = np.mean(np.array(feature_importances), axis=0)
         importancestds = np.std(np.array(feature_importances), axis=0)
         tide_io.writenpvecs(
@@ -695,10 +704,9 @@ def main():
             args.outputrootname + "_" + methodname + "_featureimportances_std.txt",
         )
         xaxis = range(len(importancemeans))
-        plt.plot(xaxis, importancemeans)
-        plt.show()
-        plt.errorbar(xaxis, importancemeans, yerr=importancestds)
-        plt.show()
+        if args.display:
+            plt.errorbar(xaxis, importancemeans, yerr=importancestds)
+            plt.show()
 
 
 if __name__ == "__main__":
