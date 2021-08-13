@@ -8,7 +8,6 @@ https://github.com/pypa/sampleproject
 import re
 import subprocess
 import sys
-
 # To use a consistent encoding
 from codecs import open
 from os import path
@@ -135,17 +134,13 @@ setup(
     # dependencies). You can install these using the following syntax,
     # for example:
     # $ pip install -e .[dev,test]
-    extras_require={
-        "jit": ["numba"],
-    },
+    extras_require={"jit": ["numba"],},
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     include_package_data=False,
     zip_safe=False,
-    package_data={
-        "reference": ["reference/*.nii.gz"],
-    },
+    package_data={"reference": ["reference/*.nii.gz"],},
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow
     # pip to create the appropriate form of executable for the target platform.

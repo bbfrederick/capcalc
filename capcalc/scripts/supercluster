@@ -66,9 +66,7 @@ def _get_parser():
     )
 
     parser.add_argument(
-        "outputrootname",
-        type=str,
-        help=("The root name of the output nifti files."),
+        "outputrootname", type=str, help=("The root name of the output nifti files."),
     )
 
     parser.add_argument(
@@ -476,9 +474,7 @@ def main():
         )
 
     elif args.classifiertype == "lsvc":
-        theclassifier = LinearSVC(
-            C=args.svc_C,
-        )
+        theclassifier = LinearSVC(C=args.svc_C,)
         methodname = f"lsvc_{prescalename}{args.svc_kernel}_{args.svc_C}"
 
     elif args.classifiertype == "adaboost":
@@ -590,33 +586,34 @@ def main():
         tide_io.writenpvecs(
             np.asarray([testrun], dtype=int),
             args.outputrootname + "_" + methodname + "_currentiteration.txt",
+        )
 
         if len(accuracies) > 0:
-        theaccuracies = np.asarray(accuracies, dtype=np.double)
-        print(
-            "Accuracies for",
-            ncomps,
-            "components (mean, std, min, max):",
-            np.mean(theaccuracies),
-            np.std(theaccuracies),
-            np.min(theaccuracies),
-            np.max(theaccuracies),
-        )
-        with open(
-            args.outputrootname + "_" + methodname + "_accuracy.csv", "w"
-        ) as text_file:
-            dpath, dfile = os.path.split(args.datafilename)
-            cpath, cfile = os.path.split(args.classfilename)
-            fieldlist = [
-                dfile,
-                cfile,
-                methodname,
-                str(np.mean(theaccuracies)),
-                str(np.std(theaccuracies)),
-                str(np.min(theaccuracies)),
-                str(np.max(theaccuracies)),
-            ]
-            text_file.write(",".join(fieldlist) + "\n")
+            theaccuracies = np.asarray(accuracies, dtype=np.double)
+            print(
+                "Accuracies for",
+                ncomps,
+                "components (mean, std, min, max):",
+                np.mean(theaccuracies),
+                np.std(theaccuracies),
+                np.min(theaccuracies),
+                np.max(theaccuracies),
+            )
+            with open(
+                args.outputrootname + "_" + methodname + "_accuracy.csv", "w"
+            ) as text_file:
+                dpath, dfile = os.path.split(args.datafilename)
+                cpath, cfile = os.path.split(args.classfilename)
+                fieldlist = [
+                    dfile,
+                    cfile,
+                    methodname,
+                    str(np.mean(theaccuracies)),
+                    str(np.std(theaccuracies)),
+                    str(np.min(theaccuracies)),
+                    str(np.max(theaccuracies)),
+                ]
+                text_file.write(",".join(fieldlist) + "\n")
 
     # now classify all the known data to calculate metrics
     Y_predict_known = theclassifier.predict(X_known)
