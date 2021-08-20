@@ -1,0 +1,37 @@
+# OS Things
+*.swp
+*/*.swp
+*/*/*.swp
+.DS_Store
+.thumbnails
+
+# editor things
+.idea
+
+# setup things
+build/*
+dist/*
+capcalc.egg-info/*
+
+# the git version itself
+capcalc/_gittag.py
+
+# big data
+capcalc/data/output/*
+
+# cache
+.cache
+__pycache__
+capcalc/*.pyc
+
+# temporary manual files
+docs/~$Manual.html
+docs/Manual.fld
+
+# notes to myself
+newrelease_todo
+files.txt
+
+# files for local testing
+
+# temporary items
