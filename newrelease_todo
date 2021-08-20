@@ -1,0 +1,29 @@
++ Fix the version numbers in files:
+
+    vi newrelease_todo
+
+    newrelease_todo
+        fix tag numbers in this file
+
++ Edit CHANGELOG.md (use git log to get the history)
+
++ Sync everything to github.
+
++ Build capcalc
+
+    python setup.py install
+
++ Create a new tag (instructions from https://git-scm.com/book/en/v2/Git-Basics-Tagging) and push to github:
+
+    git tag -a v1.1.0 -m "v1.1.0"
+    git push origin v1.1.0
+
++ Build capcalc
+
+    python setup.py install
+
++ Edit the release notes on github
+
++ Build and sync new docker images
+
+    builddocker.sh
