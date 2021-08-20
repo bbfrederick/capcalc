@@ -32,6 +32,7 @@ except PermissionError:
 
 modules_list = [
     "capcalc/utils",
+    "capcalc/_version",
 ]
 
 
