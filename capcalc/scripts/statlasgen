@@ -148,7 +148,9 @@ def main():
         args.gausssigma = np.mean([xdim, ydim, slicethickness]) / 2.0
     if args.gausssigma > 0.0:
         print(f"applying gaussian spatial filter with sigma={args.gausssigma}")
-        rs_outputhistogram = outputhistogram.reshape((xsize, ysize, numslices, numregions))
+        rs_outputhistogram = outputhistogram.reshape(
+            (xsize, ysize, numslices, numregions)
+        )
         for i in range(0, numregions):
             rs_outputhistogram[:, :, :, i] = tide_filt.ssmooth(
                 xdim,
@@ -196,7 +198,9 @@ def main():
             numslices = inputdims[3]
             numregions = inputdims[4]
             numvoxels = int(xsize) * int(ysize) * int(numslices)
-            inputvoxels = np.around(np.reshape(input_data, (numvoxels, numregions))).astype("int")
+            inputvoxels = np.around(
+                np.reshape(input_data, (numvoxels, numregions))
+            ).astype("int")
         else:
             print("FSL directory not found - aborting")
             sys.exit()

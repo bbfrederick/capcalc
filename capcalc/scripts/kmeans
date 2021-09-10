@@ -22,11 +22,8 @@
 from __future__ import print_function
 
 import getopt
-import string
-import sys
 
 import rapidtide.io as tide_io
-from numpy import ones, r_, shape, sort, where, zeros
 from pylab import *
 from sklearn.cluster import KMeans, MiniBatchKMeans
 

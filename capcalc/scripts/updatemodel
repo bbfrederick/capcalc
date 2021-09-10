@@ -3,7 +3,6 @@
 # For converting Python 2 pickles to Python 3
 
 import argparse
-import json
 import os
 
 import joblib

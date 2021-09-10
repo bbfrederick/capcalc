@@ -22,7 +22,6 @@
 from __future__ import division, print_function
 
 import getopt
-import platform
 import sys
 
 import numpy as np
