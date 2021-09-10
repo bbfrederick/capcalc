@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import getopt
+
 import rapidtide.io as tide_io
 import rapidtide.miscmath as tide_math
 from pylab import *
