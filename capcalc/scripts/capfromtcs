@@ -24,6 +24,7 @@ from __future__ import division, print_function
 import getopt
 import sys
 
+import joblib
 import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
@@ -37,7 +38,6 @@ from sklearn import metrics
 from sklearn.cluster import DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA, FastICA, IncrementalPCA
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.externals import joblib
 from sklearn.feature_selection import (
     RFE,
     SelectFdr,
@@ -294,8 +294,8 @@ sampletime = None
 Fs = None
 outfilename = None
 
-theprefilter = tide_filter.noncausalfilter()
-theprefilter.setbutter(usebutterworthfilter, filtorder)
+theprefilter = tide_filter.NoncausalFilter(transferfunc="butterworth")
+theprefilter.setbutterorder(filtorder)
 
 # set the default characteristics
 theprefilter.settype("none")
