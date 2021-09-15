@@ -38,13 +38,8 @@ from sklearn import metrics
 from sklearn.cluster import DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA, FastICA, IncrementalPCA
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.feature_selection import (
-    RFE,
-    SelectFdr,
-    SelectKBest,
-    SelectPercentile,
-    f_classif,
-)
+from sklearn.feature_selection import (RFE, SelectFdr, SelectKBest,
+                                       SelectPercentile, f_classif)
 from sklearn.preprocessing import StandardScaler
 
 try:
@@ -1091,7 +1086,7 @@ elif clustertype == "hdbscan":
         ).fit(X)
 
         # save the model
-        joblib.dump(db, outfilename + "_hdbscan.joblib")
+        joblib.dump(hdb, outfilename + "_hdbscan.joblib")
     else:
         modelfilename = trainedmodelroot + "_hdbscan.joblib"
         print("reading hdbscan model from", modelfilename)
