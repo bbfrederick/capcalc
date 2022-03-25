@@ -22,10 +22,6 @@
 from __future__ import division, print_function
 
 import getopt
-import os
-import platform
-import string
-import sys
 
 import numpy as np
 import rapidtide.io as tide_io
@@ -428,6 +424,73 @@ if prescale:
 else:
     coefficients = procdata
     prescalename = ""
+
+if preprocessingtype == "pca":
+    print("running PCA")
+    print("shape going in:", X.shape)
+    if trainedmodelroot is None:
+        print("running PCA")
+        if n_pca <= 0:
+            thepca = PCA(n_components="mle", svd_solver="full").fit(X)
+        else:
+            thepca = PCA(n_components=n_pca).fit(X)
+
+        # save the model
+        joblib.dump(thepca, outfilename + "_pca.joblib")
+    else:
+        modelfilename = trainedmodelroot + "_pca.joblib"
+        print("reading PCA from", modelfilename)
+        try:
+            thepca = joblib.load(modelfilename)
+        except Exception as ex:
+            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            message = template.format(type(ex).__name__, modelfilename, ex.args)
+            print(message)
+            sys.exit()
+
+    thetransform = thepca.transform(X)
+    X = thepca.inverse_transform(thetransform)
+    print("shape coming out:", X.shape)
+    for i in range(thepca.n_components_):
+        print(
+            "component",
+            i,
+            "explained variance:",
+            thepca.explained_variance_[i],
+            "explained variance %:",
+            100.0 * thepca.explained_variance_ratio_[i],
+        )
+    tide_io.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
+    tide_io.writenpvecs(
+        np.transpose(thepca.components_), outfilename + "_pcacomponents_transpose.txt"
+    )
+elif preprocessingtype == "ica":
+    print("running FastICA")
+    if n_pca <= 1.0:
+        n_pca = int(0)
+    if trainedmodelroot is None:
+        theica = FastICA(n_components=n_pca, algorithm="deflation").fit(X)
+
+        # save the model
+        joblib.dump(theica, outfilename + "_ica.joblib")
+    else:
+        modelfilename = trainedmodelroot + "_ica.joblib"
+        print("reading ICA from", modelfilename)
+        try:
+            theica = joblib.load(modelfilename)
+        except Exception as ex:
+            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            message = template.format(type(ex).__name__, modelfilename, ex.args)
+            print(message)
+            sys.exit()
+
+    thetransform = theica.transform(X)
+    X = theica.inverse_transform(thetransform)
+    tide_io.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
+    tide_io.writenpvecs(
+        np.transpose(theica.components_), outfilename + "_icacomponents_transpose.txt"
+    )
+
 
 # take a look at it
 if display:
