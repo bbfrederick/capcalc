@@ -654,6 +654,8 @@ def main():
         if args.n_pca <= 0:
             thepca = PCA(n_components="mle", svd_solver="full").fit(coefficients)
         else:
+            if args.n_pca >= 1.0:
+                args.n_pca = int(args.n_pca)
             thepca = PCA(n_components=args.n_pca).fit(coefficients)
 
         thetransform = thepca.transform(coefficients)
