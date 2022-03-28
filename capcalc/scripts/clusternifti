@@ -19,31 +19,27 @@
 #       $Date: 2016/06/14 12:04:50 $
 #       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
 #
-from __future__ import division, print_function
+import argparse
 
-import getopt
-
-import numpy as np
 import rapidtide.io as tide_io
+import rapidtide.workflows.parser_funcs as pf
 import scipy.sparse as ss
-from matplotlib import pyplot as plt
 from pylab import *
 from scipy.cluster.hierarchy import dendrogram
-from sklearn import metrics
 from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans, MiniBatchKMeans
-from sklearn.decomposition import PCA, FastICA, SparsePCA
-from sklearn.feature_extraction.image import grid_to_graph
+from sklearn.decomposition import PCA, FastICA
 from sklearn.manifold import TSNE
 from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import RobustScaler, StandardScaler
 
+clusteringmethods = ["kmeans", "agglomerative", "dbscan"]
+
 try:
     import hdbscan as hdbs
 
-    hdbpresent = True
-    print("hdbscan is present")
+    clusteringmethods.append("hdbscan")
 except:
-    hdbpresent = False
+    pass
 
 
 def plot_dendrogram(model, **kwargs):
@@ -157,7 +153,7 @@ def mkconnectivity(ptlist, radius, theshape, dodiag=False, dims=None):
             print("checkpoint file")
             save_sparse_csr("connectivity_checkpoint", sm.tocsr())
         distarray = np.sum(np.square(ptlistnp[:, :] - ptlistnp[ridx, :]), axis=1)
-        print
+        print()
         matchlocs = np.where(distarray < radsq)[0]
         sm[ridx, matchlocs] = 1
         nonzeroelems += len(matchlocs)
@@ -168,6 +164,201 @@ def mkconnectivity(ptlist, radius, theshape, dodiag=False, dims=None):
     # for thepair in pairlist:
     #    sm[thepair[0], thepair[1]] = 1
     return sm.tocsr()
+
+
+DEFAULT_NCLUSTERS = 8
+DEFAULT_NCOMPONENTS = 8
+
+
+def _get_parser():
+    # get the command line parameters
+    parser = argparse.ArgumentParser(
+        prog="clusternifti",
+        description="Generates a histogram of the values in a NIFTI file.",
+        usage="%(prog)s  datafile outputroot",
+    )
+    parser.add_argument(
+        "datafilename", help="The name of the 4 dimensional nifti file to cluster."
+    )
+    parser.add_argument("outputrootname", help="The root of the output file names.")
+    parser.add_argument(
+        "--dmask",
+        dest="datamaskname",
+        type=lambda x: pf.is_valid_file(parser, x),
+        metavar="MASK",
+        help="Only process voxels within the 3D mask MASK.",
+        default=None,
+    )
+    parser.add_argument(
+        "--preprocessingtype",
+        dest="preprocessingtype",
+        action="store",
+        type=str,
+        choices=["ica", "pca"],
+        help=(
+            "Select an initial data reduction step. "
+            "Default is not to perform dimensionality reduction."
+        ),
+        default=None,
+    )
+    parser.add_argument(
+        "--scaler",
+        dest="scaler",
+        action="store",
+        type=str,
+        choices=["robust", "standard"],
+        help=("Type of prescaler to use. Default is None."),
+        default=None,
+    )
+
+    parser.add_argument(
+        "--clustertype",
+        dest="clustertype",
+        action="store",
+        type=str,
+        choices=clusteringmethods,
+        help=("Select clustering type.  Default is kmeans. "),
+        default="kmeans",
+    )
+    parser.add_argument(
+        "--linkage",
+        dest="linkage",
+        action="store",
+        type=str,
+        choices=["ward"],
+        help=("Select linkage type.  Default is ward. "),
+        default="ward",
+    )
+    parser.add_argument(
+        "--affinity",
+        dest="affinity",
+        action="store",
+        type=str,
+        choices=["euclidean"],
+        help=("Select affinity type.  Default is euclidian. "),
+        default="euclidian",
+    )
+    parser.add_argument(
+        "--minval",
+        dest="minval",
+        action="store",
+        type=lambda x: pf.is_float(parser, x),
+        metavar="MINVAL",
+        help="Minimum bin value in histogram.",
+        default=None,
+    )
+    parser.add_argument(
+        "--n_clusters",
+        dest="n_clusters",
+        action="store",
+        type=lambda x: pf.is_int(parser, x),
+        metavar="NCLUSTERS",
+        help=f"Number of clusters.  Default is {DEFAULT_NCLUSTERS}.",
+        default=DEFAULT_NCLUSTERS,
+    )
+    parser.add_argument(
+        "--n_components",
+        dest="n_pca",
+        action="store",
+        type=lambda x: pf.is_float(parser, x),
+        metavar="NCOMPONENTS",
+        help=f"Number of components to use for dimensionality reduction.  Default is {DEFAULT_NCOMPONENTS}.",
+        default=DEFAULT_NCOMPONENTS,
+    )
+    parser.add_argument(
+        "--display",
+        dest="display",
+        action="store_true",
+        help=("Display intitial tSNE map."),
+        default=False,
+    )
+    parser.add_argument(
+        "--min_samples",
+        dest="min_samples",
+        action="store",
+        type=lambda x: pf.is_int(parser, x),
+        metavar="MIN_SAMPLES",
+        help="Minimum number of samples.  Default is 100",
+        default=100,
+    )
+    parser.add_argument(
+        "--eps",
+        dest="eps",
+        action="store",
+        type=lambda x: pf.is_float(parser, x),
+        metavar="EPS",
+        help="Epsilon.  Default is 0.3",
+        default=0.3,
+    )
+    parser.add_argument(
+        "--alpha",
+        dest="alpha",
+        action="store",
+        type=lambda x: pf.is_float(parser, x),
+        metavar="ALPHA",
+        help="Alpha.  Default is 1.0",
+        default=1.0,
+    )
+    parser.add_argument(
+        "--min_cluster_size",
+        dest="min_cluster_size",
+        action="store",
+        type=lambda x: pf.is_int(parser, x),
+        metavar="MIN_CLUSTER_SIZE",
+        help="Minimum cluster size.  Default is 20",
+        default=20,
+    )
+    parser.add_argument(
+        "--nominibatch",
+        dest="minibatch",
+        action="store_false",
+        help=("Disable minibatches for kmeans clustering."),
+        default=True,
+    )
+    parser.add_argument(
+        "--batch_size",
+        dest="batch_size",
+        action="store",
+        type=lambda x: pf.is_int(parser, x),
+        metavar="BATCH_SIZE",
+        help="Minibatch size.  Default is 1000",
+        default=1000,
+    )
+    parser.add_argument(
+        "--max_iter",
+        dest="max_iter",
+        action="store",
+        type=lambda x: pf.is_int(parser, x),
+        metavar="MAX_ITER",
+        help="Maximum number of iterations.  Default is 250",
+        default=250,
+    )
+    parser.add_argument(
+        "--n_init",
+        dest="n_init",
+        action="store",
+        type=lambda x: pf.is_int(parser, x),
+        metavar="N_INIT",
+        help="N initial.  Default is 100",
+        default=100,
+    )
+    parser.add_argument(
+        "--nozerothresh",
+        dest="nozerothresh",
+        action="store",
+        type=lambda x: pf.is_float(parser, x),
+        metavar="THRESH",
+        help="Absolute values less than this are considered zero.  Default is 0.01.",
+        default=0.01,
+    )
+    parser.add_argument(
+        "--normhist",
+        dest="normhist",
+        action="store_true",
+        help=("Return a probability density instead of raw counts."),
+        default=False,
+    )
+    return parser
 
 
 def usage():
@@ -212,394 +403,392 @@ def usage():
     return ()
 
 
-# set default variable values
-usedmask = False
-n_clusters = 8
-max_iter = 250
-n_init = 100
-batch_size = 1000
-minibatch = True
-clustertype = "kmeans"
-connfilename = None
-affinity = "euclidean"
-linkage = "ward"
-eps = 0.3
-radius = 1.0
-min_samples = 100
-min_cluster_size = 20
-alpha = 1.0
-display = False
-prescale = False
-scaler = "robust"
-intlist = None
+def main():
+    # set default variable values
+    """
+    max_iter = 250
+    n_init = 100
+    batch_size = 1000
+    minibatch = True
+    clustertype = "kmeans"
+    connfilename = None
+    affinity = "euclidean"
+    linkage = "ward"
+    eps = 0.3
+    radius = 1.0
+    min_samples = 100
+    min_cluster_size = 20
+    alpha = 1.0
+    display = False
+    scaler = "robust"
+    intlist = None
 
-# parse command line arguments
-try:
-    opts, args = getopt.gnu_getopt(
-        sys.argv,
-        "h",
-        [
-            "help",
-            "linkage=",
-            "scaleintervals=",
-            "display",
-            "dmask=",
-            "radius=",
-            "eps=",
-            "noconn",
-            "prescale",
-            "min_samples=",
-            "min_cluster_size=",
-            "alpha=",
-            "affinity=",
-            "nclusters=",
-            "type=",
-            "connfile=",
-        ],
-    )
-except getopt.GetoptError as err:
-    # print(help information and exit:
-    print(str(err))  # will print something like "option -a not recognized"
-    usage()
-    sys.exit(2)
+    # parse command line arguments
+    try:
+        opts, args = getopt.gnu_getopt(
+            sys.argv,
+            "h",
+            [
+                "help",
+                "linkage=",
+                "scaleintervals=",
+                "display",
+                "dmask=",
+                "radius=",
+                "eps=",
+                "noconn",
+                "prescale",
+                "min_samples=",
+                "min_cluster_size=",
+                "alpha=",
+                "affinity=",
+                "nclusters=",
+                "type=",
+                "connfile=",
+            ],
+        )
+    except getopt.GetoptError as err:
+        # print(help information and exit:
+        print(str(err))  # will print something like "option -a not recognized"
+        usage()
+        sys.exit(2)
 
-# handle required args first
-if len(args) < 3:
-    print("spatial fit has 2 required arguments - ", len(args) - 1, "found")
-    usage()
-    sys.exit()
-
-datafilename = args[1]
-outputrootname = args[2]
-
-for o, a in opts:
-    if o == "--nclusters":
-        n_clusters = int(a)
-        print("will use", n_clusters, "clusters")
-    elif o == "--dmask":
-        usedmask = True
-        datamaskname = a
-        print("using", datamaskname, "as data mask")
-    elif o == "--connfile":
-        connfilename = a
-        print("will use connectivity information from", connfilename)
-    elif o == "--radius":
-        radius = float(a)
-        print("will use connectivity radius of", radius)
-    elif o == "--eps":
-        eps = float(a)
-        print("will use eps of", eps)
-    elif o == "--alpha":
-        alpha = float(a)
-        print("will use alpha of", alpha)
-    elif o == "--min_cluster_size":
-        min_cluster_size = int(a)
-        print("will use min_cluster_size of", min_cluster_size)
-    elif o == "--min_samples":
-        min_samples = int(a)
-        print("will use min_samples of", min_samples)
-    elif o == "--prescale":
-        prescale = True
-        print("will prescale data prior to fitting")
-    elif o == "--display":
-        display = True
-        print("will display representation of data")
-    elif o == "--scaleintervals":
-        prescale = True
-        intlist = list(map(int, a.split(",")))
-        print("will use intervals", intlist)
-    elif o == "--linkage":
-        linkage = a
-        print("will use linkage", linkage)
-    elif o == "--affinity":
-        affinity = a
-        print("will use affinity", affinity)
-    elif o == "--type":
-        clustertype = a
-        if (
-            clustertype != "kmeans"
-            and clustertype != "agglomerative"
-            and clustertype != "hdbscan"
-            and clustertype != "dbscan"
-        ):
-            print(
-                "illegal clustering mode - must be kmeans, (h)dbscan, or agglomerative"
-            )
-            sys.exit()
-    elif o in ("-h", "--help"):
+    # handle required args first
+    if len(args) < 3:
+        print("spatial fit has 2 required arguments - ", len(args) - 1, "found")
         usage()
         sys.exit()
-    else:
-        assert False, "unhandled option"
 
+    datafilename = args[1]
+    outputrootname = args[2]
 
-print("Will perform", clustertype, "clustering")
-
-# read in data
-print("reading in data arrays")
-(
-    datafile_img,
-    datafile_data,
-    datafile_hdr,
-    datafiledims,
-    datafilesizes,
-) = tide_io.readfromnifti(datafilename)
-if usedmask:
-    (
-        datamask_img,
-        datamask_data,
-        datamask_hdr,
-        datamaskdims,
-        datamasksizes,
-    ) = tide_io.readfromnifti(datamaskname)
-
-xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
-xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
-
-# check dimensions
-if usedmask:
-    print("checking mask dimensions")
-    if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
-        print("input mask spatial dimensions do not match image")
-        exit()
-    if not datamaskdims[4] == 1:
-        print("input mask time must have time dimension of 1")
-        exit()
-
-# allocating arrays
-print("reshaping arrays")
-numspatiallocs = int(xsize) * int(ysize) * int(numslices)
-rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
-
-print("masking arrays")
-if usedmask:
-    proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.9)
-else:
-    datamaskdims = [1, xsize, ysize, numslices, 1]
-    themaxes = np.max(rs_datafile, axis=1)
-    themins = np.min(rs_datafile, axis=1)
-    thediffs = (themaxes - themins).reshape((numspatiallocs))
-    proclocs = np.where(thediffs > 0.0)
-procdata = rs_datafile[proclocs, :][0]
-print(rs_datafile.shape, procdata.shape)
-
-# Scale the data
-if intlist is None:
-    intlist = [timepoints]
-for coff in range(timepoints):
-    print(
-        "coefficient",
-        coff,
-        "mean, std:",
-        np.mean(procdata[:, coff]),
-        np.std(procdata[:, coff]),
-    )
-print()
-if prescale:
-    coefficients = procdata * 0.0
-    thepos = 0
-    for interval in intlist:
-        if scaler == "standard":
-            coefficients[
-                :, thepos : (thepos + interval)
-            ] = StandardScaler().fit_transform(
-                procdata[:, thepos : (thepos + interval)]
-            )
+    for o, a in opts:
+        if o == "--nclusters":
+            n_clusters = int(a)
+            print("will use", n_clusters, "clusters")
+        elif o == "--dmask":
+            usedmask = True
+            datamaskname = a
+            print("using", datamaskname, "as data mask")
+        elif o == "--connfile":
+            connfilename = a
+            print("will use connectivity information from", connfilename)
+        elif o == "--radius":
+            radius = float(a)
+            print("will use connectivity radius of", radius)
+        elif o == "--eps":
+            eps = float(a)
+            print("will use eps of", eps)
+        elif o == "--alpha":
+            alpha = float(a)
+            print("will use alpha of", alpha)
+        elif o == "--min_cluster_size":
+            min_cluster_size = int(a)
+            print("will use min_cluster_size of", min_cluster_size)
+        elif o == "--min_samples":
+            min_samples = int(a)
+            print("will use min_samples of", min_samples)
+        elif o == "--prescale":
+            prescale = True
+            print("will prescale data prior to fitting")
+        elif o == "--display":
+            display = True
+            print("will display representation of data")
+        elif o == "--scaleintervals":
+            prescale = True
+            intlist = list(map(int, a.split(",")))
+            print("will use intervals", intlist)
+        elif o == "--linkage":
+            linkage = a
+            print("will use linkage", linkage)
+        elif o == "--affinity":
+            affinity = a
+            print("will use affinity", affinity)
+        elif o == "--type":
+            clustertype = a
+            if (
+                clustertype != "kmeans"
+                and clustertype != "agglomerative"
+                and clustertype != "hdbscan"
+                and clustertype != "dbscan"
+            ):
+                print(
+                    "illegal clustering mode - must be kmeans, (h)dbscan, or agglomerative"
+                )
+                sys.exit()
+        elif o in ("-h", "--help"):
+            usage()
+            sys.exit()
         else:
-            coefficients[
-                :, thepos : (thepos + interval)
-            ] = RobustScaler().fit_transform(procdata[:, thepos : (thepos + interval)])
-        thepos += interval
-    print("After prescaling...")
+            assert False, "unhandled option"
+    """
+
+    # get the command line parameters
+    try:
+        args = _get_parser().parse_args()
+    except SystemExit:
+        _get_parser().print_help()
+        raise
+
+    print("Will perform", args.clustertype, "clustering")
+
+    # read in data
+    print("reading in data arrays")
+    (
+        datafile_img,
+        datafile_data,
+        datafile_hdr,
+        datafiledims,
+        datafilesizes,
+    ) = tide_io.readfromnifti(args.datafilename)
+    if args.datamaskname is not None:
+        (
+            datamask_img,
+            datamask_data,
+            datamask_hdr,
+            datamaskdims,
+            datamasksizes,
+        ) = tide_io.readfromnifti(args.datamaskname)
+
+    xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
+    xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
+
+    # check dimensions
+    if args.datamaskname is not None:
+        print("checking mask dimensions")
+        if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
+            print("input mask spatial dimensions do not match image")
+            exit()
+        if not datamaskdims[4] == 1:
+            print("input mask time must have time dimension of 1")
+            exit()
+
+    # allocating arrays
+    print("reshaping arrays")
+    numspatiallocs = int(xsize) * int(ysize) * int(numslices)
+    rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
+
+    print("masking arrays")
+    if args.datamaskname is not None:
+        proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.9)
+    else:
+        datamaskdims = [1, xsize, ysize, numslices, 1]
+        themaxes = np.max(rs_datafile, axis=1)
+        themins = np.min(rs_datafile, axis=1)
+        thediffs = (themaxes - themins).reshape((numspatiallocs))
+        proclocs = np.where(thediffs > 0.0)
+    procdata = rs_datafile[proclocs, :][0]
+    print(rs_datafile.shape, procdata.shape)
+
+    # Scale the data
+    intlist = None
+    if intlist is None:
+        intlist = [timepoints]
     for coff in range(timepoints):
         print(
             "coefficient",
             coff,
             "mean, std:",
-            np.mean(coefficients[:, coff]),
-            np.std(coefficients[:, coff]),
+            np.mean(procdata[:, coff]),
+            np.std(procdata[:, coff]),
         )
     print()
-    prescalename = "prescale_"
-else:
-    coefficients = procdata
-    prescalename = ""
+    if args.scaler is not None:
+        coefficients = procdata * 0.0
+        thepos = 0
+        for interval in intlist:
+            if args.scaler == "standard":
+                coefficients[
+                    :, thepos : (thepos + interval)
+                ] = StandardScaler().fit_transform(
+                    procdata[:, thepos : (thepos + interval)]
+                )
+            else:
+                coefficients[
+                    :, thepos : (thepos + interval)
+                ] = RobustScaler().fit_transform(
+                    procdata[:, thepos : (thepos + interval)]
+                )
+            thepos += interval
+        print("After prescaling...")
+        for coff in range(timepoints):
+            print(
+                "coefficient",
+                coff,
+                "mean, std:",
+                np.mean(coefficients[:, coff]),
+                np.std(coefficients[:, coff]),
+            )
+        print()
+        prescalename = "prescale_"
+    else:
+        coefficients = procdata
+        prescalename = ""
 
-if preprocessingtype == "pca":
-    print("running PCA")
-    print("shape going in:", X.shape)
-    if trainedmodelroot is None:
+    if args.preprocessingtype == "pca":
         print("running PCA")
-        if n_pca <= 0:
-            thepca = PCA(n_components="mle", svd_solver="full").fit(X)
+        print("shape going in:", coefficients.shape)
+        print("running PCA")
+
+        if args.n_pca <= 0:
+            thepca = PCA(n_components="mle", svd_solver="full").fit(coefficients)
         else:
-            thepca = PCA(n_components=n_pca).fit(X)
+            thepca = PCA(n_components=args.n_pca).fit(coefficients)
 
-        # save the model
-        joblib.dump(thepca, outfilename + "_pca.joblib")
-    else:
-        modelfilename = trainedmodelroot + "_pca.joblib"
-        print("reading PCA from", modelfilename)
-        try:
-            thepca = joblib.load(modelfilename)
-        except Exception as ex:
-            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
-            message = template.format(type(ex).__name__, modelfilename, ex.args)
-            print(message)
-            sys.exit()
-
-    thetransform = thepca.transform(X)
-    X = thepca.inverse_transform(thetransform)
-    print("shape coming out:", X.shape)
-    for i in range(thepca.n_components_):
-        print(
-            "component",
-            i,
-            "explained variance:",
-            thepca.explained_variance_[i],
-            "explained variance %:",
-            100.0 * thepca.explained_variance_ratio_[i],
+        thetransform = thepca.transform(coefficients)
+        coefficients = thepca.inverse_transform(thetransform)
+        print("shape coming out:", coefficients.shape)
+        for i in range(thepca.n_components_):
+            print(
+                "component",
+                i,
+                "explained variance:",
+                thepca.explained_variance_[i],
+                "explained variance %:",
+                100.0 * thepca.explained_variance_ratio_[i],
+            )
+        tide_io.writenpvecs(thepca.components_, args.outfilename + "_pcacomponents.txt")
+        tide_io.writenpvecs(
+            np.transpose(thepca.components_),
+            args.outfilename + "_pcacomponents_transpose.txt",
         )
-    tide_io.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
-    tide_io.writenpvecs(
-        np.transpose(thepca.components_), outfilename + "_pcacomponents_transpose.txt"
-    )
-elif preprocessingtype == "ica":
-    print("running FastICA")
-    if n_pca <= 1.0:
-        n_pca = int(0)
-    if trainedmodelroot is None:
-        theica = FastICA(n_components=n_pca, algorithm="deflation").fit(X)
-
-        # save the model
-        joblib.dump(theica, outfilename + "_ica.joblib")
-    else:
-        modelfilename = trainedmodelroot + "_ica.joblib"
-        print("reading ICA from", modelfilename)
-        try:
-            theica = joblib.load(modelfilename)
-        except Exception as ex:
-            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
-            message = template.format(type(ex).__name__, modelfilename, ex.args)
-            print(message)
-            sys.exit()
-
-    thetransform = theica.transform(X)
-    X = theica.inverse_transform(thetransform)
-    tide_io.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
-    tide_io.writenpvecs(
-        np.transpose(theica.components_), outfilename + "_icacomponents_transpose.txt"
-    )
-
-
-# take a look at it
-if display:
-    projection = TSNE().fit_transform(coefficients)
-    plt.scatter(*projection.T, **plot_kwds)
-    plt.show()
-
-# now cluster the data
-if clustertype == "agglomerative":
-    theshape = (xsize, ysize, numslices)
-    print("computing connectivity matrix")
-    themask = np.zeros((xsize, ysize, numslices), dtype=bool).reshape((numspatiallocs))
-    themask[proclocs] = True
-    thecartmask = themask.reshape((xsize, ysize, numslices))
-    # connectivity = grid_to_graph(n_x=np.uint32(xsize), n_y=np.uint32(ysize), n_z=np.uint32(numslices), mask=thecartmask)
-    connectivity = kneighbors_graph(coefficients, n_neighbors=5, n_jobs=-1)
-    print("Done")
-    agg = AgglomerativeClustering(
-        n_clusters=n_clusters,
-        memory=os.getcwd(),
-        compute_full_tree=False,
-        linkage=linkage,
-        connectivity=connectivity,
-        affinity=affinity,
-    )
-    agg.fit(coefficients)
-    theregionlabels = agg.labels_
-    print("there are", agg.n_components_, "components and", agg.n_leaves_, "leaves")
-    methodname = (
-        "agg_"
-        + prescalename
-        + linkage
-        + "_"
-        + affinity
-        + "_"
-        + str(n_clusters).zfill(2)
-    )
-    print(agg.children_)
-    # ii = itertools.count(coefficients.shape[0])
-    # [{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
-
-elif clustertype == "dbscan":
-    db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(coefficients)
-    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-    core_samples_mask[db.core_sample_indices_] = True
-    theregionlabels = db.labels_
-    print(theregionlabels)
-
-    # Number of clusters in labels, ignoring noise if present.
-    n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
-
-    print("Estimated number of clusters: %d" % n_clusters_)
-    methodname = "dbscan_" + prescalename + str(n_clusters).zfill(2)
-
-elif clustertype == "hdbscan":
-    hdb = hdbs.HDBSCAN(
-        min_samples=min_samples,
-        min_cluster_size=min_cluster_size,
-        alpha=alpha,
-        memory=os.getcwd(),
-    ).fit(coefficients)
-    theregionlabels = hdb.labels_
-    print(theregionlabels)
-
-    # Number of clusters in labels, ignoring noise if present.
-    n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
-
-    print("Estimated number of clusters: %d" % n_clusters_)
-    methodname = (
-        "hdbscan_"
-        + prescalename
-        + "minsamples_"
-        + str(min_samples)
-        + "minclustersize_"
-        + str(min_cluster_size)
-        + str(n_clusters).zfill(2)
-    )
-
-else:
-    print("coefficients shape:", coefficients.shape)
-    if minibatch:
-        kmeans = MiniBatchKMeans(
-            n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter
-        ).fit(coefficients)
-    else:
-        kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(
+    elif args.preprocessingtype == "ica":
+        print("running FastICA")
+        if args.n_pca <= 1.0:
+            args.n_pca = int(0)
+        theica = FastICA(n_components=args.n_pca, algorithm="deflation").fit(
             coefficients
         )
 
-    theclusters = np.transpose(kmeans.cluster_centers_)
-    print("cluster_centers shape", theclusters.shape)
-    theregionlabels = kmeans.labels_
-    # print("Silhouette Coefficient: %0.3f"
-    #% metrics.silhouette_score(coefficients, theregionlabels))
-    methodname = "kmeans_" + prescalename + str(n_clusters).zfill(2)
+        thetransform = theica.transform(coefficients)
+        coefficients = theica.inverse_transform(thetransform)
+        tide_io.writenpvecs(theica.components_, args.outfilename + "_icacomponents.txt")
+        tide_io.writenpvecs(
+            np.transpose(theica.components_),
+            args.outfilename + "_icacomponents_transpose.txt",
+        )
 
-# save the command line
-tide_io.writevec(
-    [" ".join(sys.argv)], outputrootname + "_" + methodname + "_commandline.txt"
-)
+    # take a look at it
+    if args.display:
+        print("calculating TSNE projection...")
+        projection = TSNE().fit_transform(coefficients)
+        print("done")
+        plt.scatter(*projection.T)
+        plt.show()
 
-print("theregionlabels shape", theregionlabels.shape)
-print("clustering done")
-theheader = datafile_hdr
-theheader["dim"][4] = 1
-tempout = np.zeros((numspatiallocs), dtype="float")
-tempout[proclocs] = theregionlabels[:] + 1
-tide_io.savetonifti(
-    tempout.reshape((xsize, ysize, numslices, 1)),
-    datafile_hdr,
-    outputrootname + "_" + methodname + "_regions",
-)
+    # now cluster the data
+    if args.clustertype == "agglomerative":
+        theshape = (xsize, ysize, numslices)
+        print("computing connectivity matrix")
+        themask = np.zeros((xsize, ysize, numslices), dtype=bool).reshape(
+            (numspatiallocs)
+        )
+        themask[proclocs] = True
+        thecartmask = themask.reshape((xsize, ysize, numslices))
+        # connectivity = grid_to_graph(n_x=np.uint32(xsize), n_y=np.uint32(ysize), n_z=np.uint32(numslices), mask=thecartmask)
+        connectivity = kneighbors_graph(coefficients, n_neighbors=5, n_jobs=-1)
+        print("Done")
+        agg = AgglomerativeClustering(
+            n_clusters=args.n_clusters,
+            memory=os.getcwd(),
+            compute_full_tree=False,
+            linkage=args.linkage,
+            connectivity=connectivity,
+            affinity=args.affinity,
+        )
+        agg.fit(coefficients)
+        theregionlabels = agg.labels_
+        print("there are", agg.n_components_, "components and", agg.n_leaves_, "leaves")
+        methodname = (
+            "agg_"
+            + prescalename
+            + args.linkage
+            + "_"
+            + args.affinity
+            + "_"
+            + str(args.n_clusters).zfill(2)
+        )
+        print(agg.children_)
+        # ii = itertools.count(coefficients.shape[0])
+        # [{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
+
+    elif args.clustertype == "dbscan":
+        db = DBSCAN(eps=args.eps, min_samples=args.min_samples, n_jobs=-1).fit(
+            coefficients
+        )
+        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+        core_samples_mask[db.core_sample_indices_] = True
+        theregionlabels = db.labels_
+        print(theregionlabels)
+
+        # Number of clusters in labels, ignoring noise if present.
+        n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
+
+        print("Estimated number of clusters: %d" % n_clusters_)
+        methodname = "dbscan_" + prescalename + str(n_clusters_).zfill(2)
+
+    elif args.clustertype == "hdbscan":
+        hdb = hdbs.HDBSCAN(
+            min_samples=args.min_samples,
+            min_cluster_size=args.min_cluster_size,
+            alpha=args.alpha,
+            memory=os.getcwd(),
+        ).fit(coefficients)
+        theregionlabels = hdb.labels_
+        print(theregionlabels)
+
+        # Number of clusters in labels, ignoring noise if present.
+        n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
+
+        print("Estimated number of clusters: %d" % n_clusters_)
+        methodname = (
+            "hdbscan_"
+            + prescalename
+            + "minsamples_"
+            + str(args.min_samples)
+            + "minclustersize_"
+            + str(args.min_cluster_size)
+            + str(n_clusters_).zfill(2)
+        )
+
+    else:
+        print("coefficients shape:", coefficients.shape)
+        if args.minibatch:
+            kmeans = MiniBatchKMeans(
+                n_clusters=args.n_clusters,
+                batch_size=args.batch_size,
+                max_iter=args.max_iter,
+            ).fit(coefficients)
+        else:
+            kmeans = KMeans(
+                n_clusters=args.n_clusters, max_iter=args.max_iter, n_init=args.n_init
+            ).fit(coefficients)
+
+        theclusters = np.transpose(kmeans.cluster_centers_)
+        print("cluster_centers shape", theclusters.shape)
+        theregionlabels = kmeans.labels_
+        # print("Silhouette Coefficient: %0.3f"
+        #% metrics.silhouette_score(coefficients, theregionlabels))
+        methodname = "kmeans_" + prescalename + str(args.n_clusters).zfill(2)
+
+    # save the command line
+    tide_io.writevec(
+        [" ".join(sys.argv)],
+        args.outputrootname + "_" + methodname + "_commandline.txt",
+    )
+
+    print("theregionlabels shape", theregionlabels.shape)
+    print("clustering done")
+    theheader = datafile_hdr
+    theheader["dim"][4] = 1
+    tempout = np.zeros((numspatiallocs), dtype="float")
+    tempout[proclocs] = theregionlabels[:] + 1
+    tide_io.savetonifti(
+        tempout.reshape((xsize, ysize, numslices, 1)),
+        datafile_hdr,
+        args.outputrootname + "_" + methodname + "_regions",
+    )
+
+
+if __name__ == "__main__":
+    main()
