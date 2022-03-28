@@ -27,7 +27,8 @@ import rapidtide.workflows.parser_funcs as pf
 import scipy.sparse as ss
 from pylab import *
 from scipy.cluster.hierarchy import dendrogram
-from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans, MiniBatchKMeans
+from sklearn.cluster import (DBSCAN, AgglomerativeClustering, KMeans,
+                             MiniBatchKMeans)
 from sklearn.decomposition import PCA, FastICA
 from sklearn.manifold import TSNE
 from sklearn.neighbors import kneighbors_graph
@@ -182,6 +183,7 @@ def _get_parser():
         "datafilename", help="The name of the 4 dimensional nifti file to cluster."
     )
     parser.add_argument("outputrootname", help="The root of the output file names.")
+
     parser.add_argument(
         "--dmask",
         dest="datamaskname",
@@ -191,8 +193,8 @@ def _get_parser():
         default=None,
     )
     parser.add_argument(
-        "--preprocessingtype",
-        dest="preprocessingtype",
+        "--datareduction",
+        dest="datareduction",
         action="store",
         type=str,
         choices=["ica", "pca"],
@@ -203,6 +205,15 @@ def _get_parser():
         default=None,
     )
     parser.add_argument(
+        "--n_components",
+        dest="n_pca",
+        action="store",
+        type=lambda x: pf.is_float(parser, x),
+        metavar="NCOMPONENTS",
+        help=f"Number of components to use for dimensionality reduction.  Default is {DEFAULT_NCOMPONENTS}.",
+        default=DEFAULT_NCOMPONENTS,
+    )
+    parser.add_argument(
         "--scaler",
         dest="scaler",
         action="store",
@@ -210,6 +221,13 @@ def _get_parser():
         choices=["robust", "standard"],
         help=("Type of prescaler to use. Default is None."),
         default=None,
+    )
+    parser.add_argument(
+        "--normalize",
+        dest="normalize",
+        action="store_true",
+        help=("Normalize each vector along the time dimension."),
+        default=False,
     )
 
     parser.add_argument(
@@ -240,15 +258,6 @@ def _get_parser():
         default="euclidian",
     )
     parser.add_argument(
-        "--minval",
-        dest="minval",
-        action="store",
-        type=lambda x: pf.is_float(parser, x),
-        metavar="MINVAL",
-        help="Minimum bin value in histogram.",
-        default=None,
-    )
-    parser.add_argument(
         "--n_clusters",
         dest="n_clusters",
         action="store",
@@ -258,26 +267,10 @@ def _get_parser():
         default=DEFAULT_NCLUSTERS,
     )
     parser.add_argument(
-        "--n_components",
-        dest="n_pca",
-        action="store",
-        type=lambda x: pf.is_float(parser, x),
-        metavar="NCOMPONENTS",
-        help=f"Number of components to use for dimensionality reduction.  Default is {DEFAULT_NCOMPONENTS}.",
-        default=DEFAULT_NCOMPONENTS,
-    )
-    parser.add_argument(
         "--display",
         dest="display",
         action="store_true",
         help=("Display intitial tSNE map."),
-        default=False,
-    )
-    parser.add_argument(
-        "--normalize",
-        dest="normalize",
-        action="store_true",
-        help=("Normalize each vector along the time dimension."),
         default=False,
     )
     parser.add_argument(
@@ -349,22 +342,6 @@ def _get_parser():
         metavar="N_INIT",
         help="N initial.  Default is 100",
         default=100,
-    )
-    parser.add_argument(
-        "--nozerothresh",
-        dest="nozerothresh",
-        action="store",
-        type=lambda x: pf.is_float(parser, x),
-        metavar="THRESH",
-        help="Absolute values less than this are considered zero.  Default is 0.01.",
-        default=0.01,
-    )
-    parser.add_argument(
-        "--normhist",
-        dest="normhist",
-        action="store_true",
-        help=("Return a probability density instead of raw counts."),
-        default=False,
     )
     return parser
 
@@ -606,6 +583,7 @@ def main():
         )
 
     # scale every timepoint, if selected
+    preprocname = ""
     if args.scaler is not None:
         print("prescaling each timepoint")
         coefficients = procdata * 0.0
@@ -634,20 +612,21 @@ def main():
                 np.std(coefficients[:, coff]),
             )
 
-        # normalize if selected
-        if args.normalize:
-            print("normalizing each spatial location")
-            for i in range(numvalid):
-                modulus = np.linalg.norm(coefficients[i, :])
-                if modulus > 0.0:
-                    coefficients[i, :] /= modulus
         print()
-        prescalename = "prescale_"
+        preprocname += f"{args.scaler}_"
     else:
         coefficients = procdata
-        prescalename = ""
 
-    if args.preprocessingtype == "pca":
+    # normalize if selected
+    if args.normalize:
+        print("normalizing each spatial location")
+        for i in range(numvalid):
+            modulus = np.linalg.norm(coefficients[i, :])
+            if modulus > 0.0:
+                coefficients[i, :] /= modulus
+        preprocname += "normalize_"
+
+    if args.datareduction == "pca":
         print("running PCA")
         print("shape going in:", coefficients.shape)
 
@@ -658,8 +637,11 @@ def main():
                 args.n_pca = int(args.n_pca)
             thepca = PCA(n_components=args.n_pca).fit(coefficients)
 
-        thetransform = thepca.transform(coefficients)
-        coefficients = thepca.inverse_transform(thetransform)
+        print(f"n_components found: {thepca.n_components_}")
+        print(f"n_samples: {thepca.n_samples_}")
+        print(f"n_features: {thepca.n_features_}")
+        coefficients = thepca.transform(coefficients)
+        # coefficients = thepca.inverse_transform(thetransform)
         print("shape coming out:", coefficients.shape)
         for i in range(thepca.n_components_):
             print(
@@ -677,11 +659,23 @@ def main():
             np.transpose(thepca.components_),
             args.outputrootname + "_pcacomponents_transpose.txt",
         )
-    elif args.preprocessingtype == "ica":
+        print("data reduction done")
+        theheader = datafile_hdr
+        theheader["dim"][4] = thepca.n_components_
+        tempout = np.zeros((numspatiallocs, thepca.n_components_), dtype="float")
+        tempout[proclocs, :] = coefficients[:, :]
+        tide_io.savetonifti(
+            tempout.reshape((xsize, ysize, numslices, thepca.n_components_)),
+            datafile_hdr,
+            args.outputrootname + "_" + "pcareduced",
+        )
+        preprocname += "pca_"
+
+    elif args.datareduction == "ica":
         print("running FastICA")
         if args.n_pca <= 1.0:
             args.n_pca = int(0)
-        theica = FastICA(n_components=args.n_pca, algorithm="deflation").fit(
+        theica = FastICA(n_components=int(args.n_pca), algorithm="deflation").fit(
             coefficients
         )
 
@@ -694,6 +688,7 @@ def main():
             np.transpose(theica.components_),
             args.outputrootname + "_icacomponents_transpose.txt",
         )
+        preprocname += "ica_"
 
     # take a look at it
     if args.display:
@@ -728,7 +723,7 @@ def main():
         print("there are", agg.n_components_, "components and", agg.n_leaves_, "leaves")
         methodname = (
             "agg_"
-            + prescalename
+            + preprocname
             + args.linkage
             + "_"
             + args.affinity
@@ -752,7 +747,7 @@ def main():
         n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
 
         print("Estimated number of clusters: %d" % n_clusters_)
-        methodname = "dbscan_" + prescalename + str(n_clusters_).zfill(2)
+        methodname = "dbscan_" + preprocname + str(n_clusters_).zfill(2)
 
     elif args.clustertype == "hdbscan":
         hdb = hdbs.HDBSCAN(
@@ -770,7 +765,7 @@ def main():
         print("Estimated number of clusters: %d" % n_clusters_)
         methodname = (
             "hdbscan_"
-            + prescalename
+            + preprocname
             + "minsamples_"
             + str(args.min_samples)
             + "minclustersize_"
@@ -796,7 +791,7 @@ def main():
         theregionlabels = kmeans.labels_
         # print("Silhouette Coefficient: %0.3f"
         #% metrics.silhouette_score(coefficients, theregionlabels))
-        methodname = "kmeans_" + prescalename + str(args.n_clusters).zfill(2)
+        methodname = "kmeans_" + preprocname + str(args.n_clusters).zfill(2)
 
     # save the command line
     tide_io.writevec(
