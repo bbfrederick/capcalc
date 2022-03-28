@@ -20,6 +20,7 @@
 #       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
 #
 import argparse
+import numpy as np
 
 import rapidtide.io as tide_io
 import rapidtide.workflows.parser_funcs as pf
@@ -270,6 +271,13 @@ def _get_parser():
         dest="display",
         action="store_true",
         help=("Display intitial tSNE map."),
+        default=False,
+    )
+    parser.add_argument(
+        "--normalize",
+        dest="normalize",
+        action="store_true",
+        help=("Normalize each vector along the time dimension."),
         default=False,
     )
     parser.add_argument(
@@ -582,6 +590,7 @@ def main():
         proclocs = np.where(thediffs > 0.0)
     procdata = rs_datafile[proclocs, :][0]
     print(f"unmasked shape: {rs_datafile.shape}, masked shape: {procdata.shape}")
+    numvalid = procdata.shape[0]
 
     # Scale the data
     intlist = None
@@ -595,17 +604,25 @@ def main():
             np.mean(procdata[:, coff]),
             np.std(procdata[:, coff]),
         )
+
+    # scale every timepoint, if selected
     if args.scaler is not None:
         print("prescaling each timepoint")
         coefficients = procdata * 0.0
         thepos = 0
         for interval in intlist:
             if args.scaler == "standard":
-                for i in range(thepos, thepos + interval):
-                    coefficients[:, i] = StandardScaler().fit_transform(procdata[:, i])
+                coefficients[
+                    :, thepos : (thepos + interval)
+                ] = StandardScaler().fit_transform(
+                    procdata[:, thepos : (thepos + interval)]
+                )
             else:
-                for i in range(thepos, thepos + interval):
-                    coefficients[:, i] = RobustScaler().fit_transform(procdata[:, i])
+                coefficients[
+                    :, thepos : (thepos + interval)
+                ] = RobustScaler().fit_transform(
+                    procdata[:, thepos : (thepos + interval)]
+                )
             thepos += interval
         print("After prescaling...")
         for coff in range(timepoints):
@@ -616,6 +633,14 @@ def main():
                 np.mean(coefficients[:, coff]),
                 np.std(coefficients[:, coff]),
             )
+
+        # normalize if selected
+        if args.normalize:
+            print("normalizing each spatial location")
+            for i in range(numvalid):
+                modulus = np.linalg.norm(coefficients[i, :])
+                if modulus > 0.0:
+                    coefficients[i, :] /= modulus
         print()
         prescalename = "prescale_"
     else:
