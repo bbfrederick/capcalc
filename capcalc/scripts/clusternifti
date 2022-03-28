@@ -20,8 +20,8 @@
 #       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
 #
 import argparse
-import numpy as np
 
+import numpy as np
 import rapidtide.io as tide_io
 import rapidtide.workflows.parser_funcs as pf
 import scipy.sparse as ss
@@ -261,7 +261,6 @@ def _get_parser():
         "--n_components",
         dest="n_pca",
         action="store",
-        type=lambda x: pf.is_float(parser, x),
         metavar="NCOMPONENTS",
         help=f"Number of components to use for dimensionality reduction.  Default is {DEFAULT_NCOMPONENTS}.",
         default=DEFAULT_NCOMPONENTS,
@@ -649,6 +648,7 @@ def main():
 
     if args.preprocessingtype == "pca":
         print("running PCA")
+        print(f"type, value of n_pca: {type(args.n_pca)}, {args.n_pca}")
         print("shape going in:", coefficients.shape)
 
         if args.n_pca <= 0:
@@ -656,6 +656,7 @@ def main():
         else:
             if args.n_pca >= 1.0:
                 args.n_pca = int(args.n_pca)
+            print(f"type, value of n_pca: {type(args.n_pca)}, {args.n_pca}")
             thepca = PCA(n_components=args.n_pca).fit(coefficients)
 
         thetransform = thepca.transform(coefficients)
