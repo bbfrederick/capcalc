@@ -27,8 +27,7 @@ import rapidtide.workflows.parser_funcs as pf
 import scipy.sparse as ss
 from pylab import *
 from scipy.cluster.hierarchy import dendrogram
-from sklearn.cluster import (DBSCAN, AgglomerativeClustering, KMeans,
-                             MiniBatchKMeans)
+from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA, FastICA
 from sklearn.manifold import TSNE
 from sklearn.neighbors import kneighbors_graph
@@ -262,6 +261,7 @@ def _get_parser():
         "--n_components",
         dest="n_pca",
         action="store",
+        type=lambda x: pf.is_float(parser, x),
         metavar="NCOMPONENTS",
         help=f"Number of components to use for dimensionality reduction.  Default is {DEFAULT_NCOMPONENTS}.",
         default=DEFAULT_NCOMPONENTS,
@@ -652,7 +652,7 @@ def main():
         print(f"type, value of n_pca: {type(args.n_pca)}, {args.n_pca}")
         print("shape going in:", coefficients.shape)
 
-        if float(args.n_pca) <= 0:
+        if args.n_pca <= 0.0:
             thepca = PCA(n_components="mle", svd_solver="full").fit(coefficients)
         else:
             if args.n_pca >= 1.0:
