@@ -533,7 +533,7 @@ def main():
     print("Will perform", args.clustertype, "clustering")
 
     # read in data
-    print("reading in data arrays")
+    print("reading in data array")
     (
         datafile_img,
         datafile_data,
@@ -541,6 +541,8 @@ def main():
         datafiledims,
         datafilesizes,
     ) = tide_io.readfromnifti(args.datafilename)
+
+    print("reading in mask array")
     if args.datamaskname is not None:
         (
             datamask_img,
@@ -566,6 +568,7 @@ def main():
     # allocating arrays
     print("reshaping arrays")
     numspatiallocs = int(xsize) * int(ysize) * int(numslices)
+    print(f"there are {numspatiallocs} voxels")
     rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
 
     print("masking arrays")
@@ -578,7 +581,7 @@ def main():
         thediffs = (themaxes - themins).reshape((numspatiallocs))
         proclocs = np.where(thediffs > 0.0)
     procdata = rs_datafile[proclocs, :][0]
-    print(rs_datafile.shape, procdata.shape)
+    print(f"unmasked shape: {rs_datafile.shape}, masked shape: {procdata.shape}")
 
     # Scale the data
     intlist = None
@@ -592,23 +595,17 @@ def main():
             np.mean(procdata[:, coff]),
             np.std(procdata[:, coff]),
         )
-    print()
     if args.scaler is not None:
+        print("prescaling each timepoint")
         coefficients = procdata * 0.0
         thepos = 0
         for interval in intlist:
             if args.scaler == "standard":
-                coefficients[
-                    :, thepos : (thepos + interval)
-                ] = StandardScaler().fit_transform(
-                    procdata[:, thepos : (thepos + interval)]
-                )
+                for i in range(thepos, thepos + interval):
+                    coefficients[:, i] = StandardScaler().fit_transform(procdata[:, i])
             else:
-                coefficients[
-                    :, thepos : (thepos + interval)
-                ] = RobustScaler().fit_transform(
-                    procdata[:, thepos : (thepos + interval)]
-                )
+                for i in range(thepos, thepos + interval):
+                    coefficients[:, i] = RobustScaler().fit_transform(procdata[:, i])
             thepos += interval
         print("After prescaling...")
         for coff in range(timepoints):
