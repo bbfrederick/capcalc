@@ -650,7 +650,6 @@ def main():
     if args.preprocessingtype == "pca":
         print("running PCA")
         print("shape going in:", coefficients.shape)
-        print("running PCA")
 
         if args.n_pca <= 0:
             thepca = PCA(n_components="mle", svd_solver="full").fit(coefficients)
