@@ -1,6 +1,17 @@
 #!/bin/bash
 
 rm -r build dist capcalc.egg-info __pycache__ */__pycache__ */*/__pycache__
-pip uninstall -y capcalc
-pip uninstall -y capcalc
-pip uninstall -y capcalc
+
+pipresult="True"
+
+while [ -n "$pipresult" ]
+do
+    pipresult=`pip uninstall -y capcalc | grep "Found existing"`
+    if [[ -z $pipresult ]]
+    then
+        echo No installations found - quitting.
+        break
+    else
+        echo "$pipresult" - removing.
+    fi
+done
