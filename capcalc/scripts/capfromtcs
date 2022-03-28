@@ -38,8 +38,13 @@ from sklearn import metrics
 from sklearn.cluster import DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA, FastICA, IncrementalPCA
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.feature_selection import (RFE, SelectFdr, SelectKBest,
-                                       SelectPercentile, f_classif)
+from sklearn.feature_selection import (
+    RFE,
+    SelectFdr,
+    SelectKBest,
+    SelectPercentile,
+    f_classif,
+)
 from sklearn.preprocessing import StandardScaler
 
 try:
