@@ -194,6 +194,15 @@ def _get_parser():
         default=None,
     )
     parser.add_argument(
+        "--dmaskthresh",
+        dest="dmaskthresh",
+        action="store",
+        type=lambda x: pf.is_float(parser, x),
+        metavar="THRESH",
+        help="Mask cutoff value.  Default is 0.5",
+        default=0.5,
+    )
+    parser.add_argument(
         "--datareduction",
         dest="datareduction",
         action="store",
@@ -559,7 +568,7 @@ def main():
 
     print("masking arrays")
     if args.datamaskname is not None:
-        proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.9)
+        proclocs = np.where(datamask_data.reshape((numspatiallocs)) > args.dmaskthresh)
     else:
         datamaskdims = [1, xsize, ysize, numslices, 1]
         themaxes = np.max(rs_datafile, axis=1)
