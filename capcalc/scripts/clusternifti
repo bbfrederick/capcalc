@@ -27,8 +27,7 @@ import rapidtide.workflows.parser_funcs as pf
 import scipy.sparse as ss
 from pylab import *
 from scipy.cluster.hierarchy import dendrogram
-from sklearn.cluster import (DBSCAN, AgglomerativeClustering, KMeans,
-                             MiniBatchKMeans)
+from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA, FastICA
 from sklearn.manifold import TSNE
 from sklearn.neighbors import kneighbors_graph
@@ -721,15 +720,7 @@ def main():
         agg.fit(coefficients)
         theregionlabels = agg.labels_
         print("there are", agg.n_components_, "components and", agg.n_leaves_, "leaves")
-        methodname = (
-            "agg_"
-            + preprocname
-            + args.linkage
-            + "_"
-            + args.affinity
-            + "_"
-            + str(args.n_clusters).zfill(2)
-        )
+        methodname = f"agg_{preprocname}{args.linkage}_{args.affinity}_{str(args.n_clusters).zfill(2)}"
         print(agg.children_)
         # ii = itertools.count(coefficients.shape[0])
         # [{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
@@ -747,7 +738,7 @@ def main():
         n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
 
         print("Estimated number of clusters: %d" % n_clusters_)
-        methodname = "dbscan_" + preprocname + str(n_clusters_).zfill(2)
+        methodname = f"dbscan_{preprocname}{str(n_clusters_).zfill(2)}"
 
     elif args.clustertype == "hdbscan":
         hdb = hdbs.HDBSCAN(
@@ -764,13 +755,9 @@ def main():
 
         print("Estimated number of clusters: %d" % n_clusters_)
         methodname = (
-            "hdbscan_"
-            + preprocname
-            + "minsamples_"
-            + str(args.min_samples)
-            + "minclustersize_"
-            + str(args.min_cluster_size)
-            + str(n_clusters_).zfill(2)
+            f"hdbscan_{preprocname}"
+            + f"minsamples_{str(args.min_samples)}"
+            + f"minclustersize_{str(args.min_cluster_size)}_{str(n_clusters_).zfill(2)}"
         )
 
     else:
@@ -791,7 +778,7 @@ def main():
         theregionlabels = kmeans.labels_
         # print("Silhouette Coefficient: %0.3f"
         #% metrics.silhouette_score(coefficients, theregionlabels))
-        methodname = "kmeans_" + preprocname + str(args.n_clusters).zfill(2)
+        methodname = f"kmeans_{preprocname}{str(args.n_clusters).zfill(2)}"
 
     # save the command line
     tide_io.writevec(
