@@ -20,9 +20,11 @@
 #       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
 #
 import argparse
+import os
 
 import numpy as np
 import rapidtide.io as tide_io
+import rapidtide.miscmath as tide_math
 import rapidtide.workflows.parser_funcs as pf
 import scipy.sparse as ss
 from pylab import *
@@ -572,45 +574,24 @@ def main():
     intlist = None
     if intlist is None:
         intlist = [timepoints]
-    for coff in range(timepoints):
-        print(
-            "coefficient",
-            coff,
-            "mean, std:",
-            np.mean(procdata[:, coff]),
-            np.std(procdata[:, coff]),
-        )
 
     # scale every timepoint, if selected
     preprocname = ""
     if args.scaler is not None:
         print("prescaling each timepoint")
         coefficients = procdata * 0.0
+
         thepos = 0
         for interval in intlist:
             if args.scaler == "standard":
-                coefficients[
-                    :, thepos : (thepos + interval)
-                ] = StandardScaler().fit_transform(
-                    procdata[:, thepos : (thepos + interval)]
-                )
+                for coff in range(timepoints):
+                    print(f"normalizing {coff}")
+                    coefficients[:, coff] = tide_math.stdnormalize(procdata[:, coff])
             else:
-                coefficients[
-                    :, thepos : (thepos + interval)
-                ] = RobustScaler().fit_transform(
-                    procdata[:, thepos : (thepos + interval)]
-                )
-            thepos += interval
+                for coff in range(timepoints):
+                    print(f"normalizing {coff}")
+                    coefficients[:, coff] = tide_math.madnormalize(procdata[:, coff])
         print("After prescaling...")
-        for coff in range(timepoints):
-            print(
-                "coefficient",
-                coff,
-                "mean, std:",
-                np.mean(coefficients[:, coff]),
-                np.std(coefficients[:, coff]),
-            )
-
         print()
         preprocname += f"{args.scaler}_"
     else:
@@ -619,10 +600,11 @@ def main():
     # normalize if selected
     if args.normalize:
         print("normalizing each spatial location")
-        for i in range(numvalid):
-            modulus = np.linalg.norm(coefficients[i, :])
-            if modulus > 0.0:
-                coefficients[i, :] /= modulus
+        print("calculating moduli")
+        moduli = np.linalg.norm(coefficients, axis=1)
+        moduli[np.where(moduli == 0.0)] = 1.0
+        print("normalizing")
+        coefficients /= moduli[:, None]
         preprocname += "normalize_"
 
     if args.datareduction == "pca":
@@ -698,6 +680,7 @@ def main():
         plt.show()
 
     # now cluster the data
+    print(f"clustering: {args.clustertype}")
     if args.clustertype == "agglomerative":
         theshape = (xsize, ysize, numslices)
         print("computing connectivity matrix")
