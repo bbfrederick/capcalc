@@ -171,6 +171,7 @@ def mkconnectivity(ptlist, radius, theshape, dodiag=False, dims=None):
 
 DEFAULT_NCLUSTERS = 8
 DEFAULT_NCOMPONENTS = 8
+DEFAULT_MINCLUSTERSIZE = 50
 
 
 def _get_parser():
@@ -316,8 +317,8 @@ def _get_parser():
         action="store",
         type=lambda x: pf.is_int(parser, x),
         metavar="MIN_CLUSTER_SIZE",
-        help="Minimum cluster size.  Default is 20",
-        default=20,
+        help=f"Minimum cluster size.  Default is {DEFAULT_MINCLUSTERSIZE}",
+        default=DEFAULT_MINCLUSTERSIZE,
     )
     parser.add_argument(
         "--nominibatch",
@@ -577,7 +578,9 @@ def main():
         proclocs = np.where(thediffs > 0.0)
     procdata = rs_datafile[proclocs, :][0]
     print(f"unmasked shape: {rs_datafile.shape}, masked shape: {procdata.shape}")
-    numvalid = procdata.shape[0]
+
+    # set the initial methodname
+    methodname = args.clustertype
 
     # Scale the data
     intlist = None
@@ -585,7 +588,6 @@ def main():
         intlist = [timepoints]
 
     # scale every timepoint, if selected
-    preprocname = ""
     if args.scaler is not None:
         print("prescaling each timepoint")
         coefficients = procdata * 0.0
@@ -602,7 +604,7 @@ def main():
                     coefficients[:, coff] = tide_math.madnormalize(procdata[:, coff])
         print("After prescaling...")
         print()
-        preprocname += f"{args.scaler}_"
+        methodname += f"_{args.scaler}"
     else:
         coefficients = procdata
 
@@ -614,10 +616,11 @@ def main():
         moduli[np.where(moduli == 0.0)] = 1.0
         print("normalizing")
         coefficients /= moduli[:, None]
-        preprocname += "normalize_"
+        methodname += "_normalize"
 
     if args.datareduction == "pca":
         print("running PCA")
+        methodname += "_pca"
         print("shape going in:", coefficients.shape)
 
         if args.n_pca <= 0.0:
@@ -643,11 +646,12 @@ def main():
                 100.0 * thepca.explained_variance_ratio_[i],
             )
         tide_io.writenpvecs(
-            thepca.components_, args.outputrootname + "_pcacomponents.txt"
+            thepca.components_,
+            args.outputrootname + "_" + methodname + "_pcacomponents.txt",
         )
         tide_io.writenpvecs(
             np.transpose(thepca.components_),
-            args.outputrootname + "_pcacomponents_transpose.txt",
+            args.outputrootname + "_" + methodname + "_pcacomponents_transpose.txt",
         )
         print("data reduction done")
         theheader = datafile_hdr
@@ -657,12 +661,12 @@ def main():
         tide_io.savetonifti(
             tempout.reshape((xsize, ysize, numslices, thepca.n_components_)),
             datafile_hdr,
-            args.outputrootname + "_" + "pcareduced",
+            args.outputrootname + "_" + methodname + "_pcareduced",
         )
-        preprocname += "pca_"
 
     elif args.datareduction == "ica":
         print("running FastICA")
+        methodname += "_ica"
         if args.n_pca <= 1.0:
             args.n_pca = int(0)
         theica = FastICA(n_components=int(args.n_pca), algorithm="deflation").fit(
@@ -672,13 +676,23 @@ def main():
         thetransform = theica.transform(coefficients)
         coefficients = theica.inverse_transform(thetransform)
         tide_io.writenpvecs(
-            theica.components_, args.outputrootname + "_icacomponents.txt"
+            theica.components_,
+            args.outputrootname + "_" + methodname + "_icacomponents.txt",
         )
         tide_io.writenpvecs(
             np.transpose(theica.components_),
-            args.outputrootname + "_icacomponents_transpose.txt",
+            args.outputrootname + methodname + "_" + "_icacomponents_transpose.txt",
         )
-        preprocname += "ica_"
+        print("data reduction done")
+        theheader = datafile_hdr
+        theheader["dim"][4] = theica.n_components_
+        tempout = np.zeros((numspatiallocs, theica.n_components_), dtype="float")
+        tempout[proclocs, :] = coefficients[:, :]
+        tide_io.savetonifti(
+            tempout.reshape((xsize, ysize, numslices, theica.n_components_)),
+            datafile_hdr,
+            args.outputrootname + "_" + methodname + "_icareduced",
+        )
 
     # take a look at it
     if args.display:
@@ -701,6 +715,7 @@ def main():
         # connectivity = grid_to_graph(n_x=np.uint32(xsize), n_y=np.uint32(ysize), n_z=np.uint32(numslices), mask=thecartmask)
         connectivity = kneighbors_graph(coefficients, n_neighbors=5, n_jobs=-1)
         print("Done")
+        methodname += f"_{args.linkage}_{args.affinity}_{str(args.n_clusters).zfill(2)}"
         agg = AgglomerativeClustering(
             n_clusters=args.n_clusters,
             memory=os.getcwd(),
@@ -712,7 +727,6 @@ def main():
         agg.fit(coefficients)
         theregionlabels = agg.labels_
         print("there are", agg.n_components_, "components and", agg.n_leaves_, "leaves")
-        methodname = f"agg_{preprocname}{args.linkage}_{args.affinity}_{str(args.n_clusters).zfill(2)}"
         print(agg.children_)
         # ii = itertools.count(coefficients.shape[0])
         # [{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
@@ -730,7 +744,7 @@ def main():
         n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
 
         print("Estimated number of clusters: %d" % n_clusters_)
-        methodname = f"dbscan_{preprocname}{str(n_clusters_).zfill(2)}"
+        methodname += f"_{str(n_clusters_).zfill(2)}"
 
     elif args.clustertype == "hdbscan":
         hdb = hdbs.HDBSCAN(
@@ -746,13 +760,13 @@ def main():
         n_clusters_ = len(set(theregionlabels)) - (1 if -1 in theregionlabels else 0)
 
         print("Estimated number of clusters: %d" % n_clusters_)
-        methodname = (
-            f"hdbscan_{preprocname}"
-            + f"minsamples_{str(args.min_samples)}"
-            + f"minclustersize_{str(args.min_cluster_size)}_{str(n_clusters_).zfill(2)}"
+        methodname += (
+            f"_minsamples_{args.min_samples}_"
+            + f"minclustersize_{args.min_cluster_size}"
         )
+        methodname += f"_{str(n_clusters_).zfill(2)}"
 
-    else:
+    elif args.clustertype == "kmeans":
         print("coefficients shape:", coefficients.shape)
         if args.minibatch:
             kmeans = MiniBatchKMeans(
@@ -768,9 +782,14 @@ def main():
         theclusters = np.transpose(kmeans.cluster_centers_)
         print("cluster_centers shape", theclusters.shape)
         theregionlabels = kmeans.labels_
+        methodname += f"_{str(args.n_clusters).zfill(2)}"
+
         # print("Silhouette Coefficient: %0.3f"
         #% metrics.silhouette_score(coefficients, theregionlabels))
-        methodname = f"kmeans_{preprocname}{str(args.n_clusters).zfill(2)}"
+
+    else:
+        print("illegal clustering mode")
+        sys.exit()
 
     # save the command line
     tide_io.writevec(
