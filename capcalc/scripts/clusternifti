@@ -33,6 +33,7 @@ from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans, MiniBatchKM
 from sklearn.decomposition import PCA, FastICA
 from sklearn.manifold import TSNE
 from sklearn.neighbors import kneighbors_graph
+from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.preprocessing import RobustScaler, StandardScaler
 
 clusteringmethods = ["kmeans", "agglomerative", "dbscan"]
@@ -172,6 +173,8 @@ def mkconnectivity(ptlist, radius, theshape, dodiag=False, dims=None):
 DEFAULT_NCLUSTERS = 8
 DEFAULT_NCOMPONENTS = 8
 DEFAULT_MINCLUSTERSIZE = 50
+DEFAULT_REPEATS = 1
+DEFAULT_NINIT = 100
 
 
 def _get_parser():
@@ -278,6 +281,15 @@ def _get_parser():
         default=DEFAULT_NCLUSTERS,
     )
     parser.add_argument(
+        "--repeats",
+        dest="repeats",
+        action="store",
+        type=lambda x: pf.is_int(parser, x),
+        metavar="REPS",
+        help=f"Number of times to perform clustering.  Default is {DEFAULT_REPEATS}.",
+        default=DEFAULT_REPEATS,
+    )
+    parser.add_argument(
         "--display",
         dest="display",
         action="store_true",
@@ -351,8 +363,8 @@ def _get_parser():
         action="store",
         type=lambda x: pf.is_int(parser, x),
         metavar="N_INIT",
-        help="N initial.  Default is 100",
-        default=100,
+        help=f"N initial.  Default is {DEFAULT_NINIT}",
+        default=DEFAULT_NINIT,
     )
     return parser
 
@@ -768,21 +780,34 @@ def main():
 
     elif args.clustertype == "kmeans":
         print("coefficients shape:", coefficients.shape)
-        if args.minibatch:
-            kmeans = MiniBatchKMeans(
-                n_clusters=args.n_clusters,
-                batch_size=args.batch_size,
-                max_iter=args.max_iter,
-            ).fit(coefficients)
-        else:
-            kmeans = KMeans(
-                n_clusters=args.n_clusters, max_iter=args.max_iter, n_init=args.n_init
-            ).fit(coefficients)
+        theregionlabels = np.zeros((coefficients.shape[0], args.repeats), dtype="int")
+        dbscores = np.zeros((args.repeats), dtype="float")
+        for therepeat in range(args.repeats):
+            if args.minibatch:
+                kmeans = MiniBatchKMeans(
+                    n_clusters=args.n_clusters,
+                    batch_size=args.batch_size,
+                    max_iter=args.max_iter,
+                ).fit(coefficients)
+            else:
+                kmeans = KMeans(
+                    n_clusters=args.n_clusters,
+                    max_iter=args.max_iter,
+                    n_init=args.n_init,
+                ).fit(coefficients)
 
-        theclusters = np.transpose(kmeans.cluster_centers_)
-        print("cluster_centers shape", theclusters.shape)
-        theregionlabels = kmeans.labels_
+            theclusters = np.transpose(kmeans.cluster_centers_)
+            print("cluster_centers shape", theclusters.shape)
+            theregionlabels[:, therepeat] = kmeans.labels_ + 0
+            dbscores[therepeat] = davies_bouldin_score(coefficients, kmeans.labels_)
+            print(
+                f"Davies Bouldin score for repeat {therepeat} = {dbscores[therepeat]}"
+            )
         methodname += f"_{str(args.n_clusters).zfill(2)}"
+        tide_io.writevec(
+            [np.mean(dbscores)],
+            args.outputrootname + "_" + methodname + "_dbscore.txt",
+        )
 
         # print("Silhouette Coefficient: %0.3f"
         #% metrics.silhouette_score(coefficients, theregionlabels))
@@ -800,11 +825,11 @@ def main():
     print("theregionlabels shape", theregionlabels.shape)
     print("clustering done")
     theheader = datafile_hdr
-    theheader["dim"][4] = 1
-    tempout = np.zeros((numspatiallocs), dtype="float")
-    tempout[proclocs] = theregionlabels[:] + 1
+    theheader["dim"][4] = args.repeats
+    tempout = np.zeros((numspatiallocs, args.repeats), dtype="int")
+    tempout[proclocs] = theregionlabels[:, :] + 1
     tide_io.savetonifti(
-        tempout.reshape((xsize, ysize, numslices, 1)),
+        tempout.reshape((xsize, ysize, numslices, args.repeats)),
         datafile_hdr,
         args.outputrootname + "_" + methodname + "_regions",
     )
