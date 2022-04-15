@@ -1,0 +1,173 @@
+#!/usr/bin/env python
+#
+#   Copyright 2016 Blaise Frederick
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+#
+#       $Author: frederic $
+#       $Date: 2016/06/14 12:04:50 $
+#       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
+#
+import argparse
+import os
+
+import numpy as np
+import rapidtide.io as tide_io
+import rapidtide.miscmath as tide_math
+import rapidtide.workflows.parser_funcs as pf
+import scipy.sparse as ss
+from pylab import *
+from scipy.cluster.hierarchy import dendrogram
+from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans, MiniBatchKMeans
+from sklearn.decomposition import PCA, FastICA
+from sklearn.manifold import TSNE
+from sklearn.metrics import davies_bouldin_score, silhouette_score
+from sklearn.neighbors import kneighbors_graph
+from sklearn.preprocessing import RobustScaler, StandardScaler
+
+
+def calccorrs(indata1, indata2, numregions, debug=False):
+    # first calculate all correlations
+    thecorrmat = np.zeros((numregions, numregions), dtype=np.float64)
+    outdata = indata2 * 0
+    print("matching components")
+    for i in range(numregions):
+        if debug:
+            print(f"index {i}")
+        cluster1 = np.where(indata1 == (i + 1), 1.0, 0.0)
+        for j in range(numregions):
+            cluster2 = np.where(indata2 == (i + 1), 1.0, 0.0)
+            thecorrmat[i, j], dummy = np.pearsonr(cluster1, cluster2)
+
+    # now find the best match for each element of the first data array
+    thebestmatches = np.argmax(thecorrmat, axis=1)
+
+    if debug:
+        for i in range(numregions):
+            print(
+                f"component {i}: best match of {thecorrmat[i, thebestmatches[i]]} at component {thebestmatches[i]}"
+            )
+
+    for i in numregions:
+        outdata[np.where(indata2 == (thebestmatches[i] + 1))] = i + 1
+
+    return outdata
+
+
+def _get_parser():
+    # get the command line parameters
+    parser = argparse.ArgumentParser(
+        prog="clustercombine",
+        description="Renumber regions in a 4D cluster file to optimally match.",
+        usage="%(prog)s  datafile outputroot",
+    )
+    parser.add_argument(
+        "datafilename",
+        help="The name of the 4 dimensional nifti file of cluster labels.",
+    )
+    parser.add_argument("outputrootname", help="The root of the output file names.")
+
+    parser.add_argument(
+        "--dmask",
+        dest="datamaskname",
+        type=lambda x: pf.is_valid_file(parser, x),
+        metavar="MASK",
+        help="Only process voxels within the 3D mask MASK.",
+        default=None,
+    )
+    return parser
+
+
+def main():
+    # set default variable values
+
+    # get the command line parameters
+    try:
+        args = _get_parser().parse_args()
+    except SystemExit:
+        _get_parser().print_help()
+        raise
+
+    # read in data
+    print("reading in data array")
+    (
+        datafile_img,
+        datafile_data,
+        datafile_hdr,
+        datafiledims,
+        datafilesizes,
+    ) = tide_io.readfromnifti(args.datafilename)
+
+    print("reading in mask array")
+    if args.datamaskname is not None:
+        (
+            datamask_img,
+            datamask_data,
+            datamask_hdr,
+            datamaskdims,
+            datamasksizes,
+        ) = tide_io.readfromnifti(args.datamaskname)
+
+    xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
+    xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
+
+    # check dimensions
+    if args.datamaskname is not None:
+        print("checking mask dimensions")
+        if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
+            print("input mask spatial dimensions do not match image")
+            exit()
+        if not datamaskdims[4] == 1:
+            print("input mask time must have time dimension of 1")
+            exit()
+
+    # allocating arrays
+    print("reshaping arrays")
+    numspatiallocs = int(xsize) * int(ysize) * int(numslices)
+    print(f"there are {numspatiallocs} voxels")
+    rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
+
+    print("masking arrays")
+    if args.datamaskname is not None:
+        proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.5)
+    else:
+        themaxes = np.max(rs_datafile, axis=1).reshape((numspatiallocs))
+        proclocs = np.where(themaxes > 0)
+    procdata = rs_datafile[proclocs, :][0]
+    print(f"unmasked shape: {rs_datafile.shape}, masked shape: {procdata.shape}")
+
+    outputarray = procdata * 0
+    outputarray[:, 0] = procdata[:, 0]
+    numregions = np.max(rs_datafile)
+
+    for thetimepoint in range(1, timepoints):
+        # compare labels to the first timepoint
+        outputarray[:, thetimepoint] = calccorrs(
+            rs_datafile[proclocs, 0],
+            rs_datafile[proclocs, thetimepoint],
+            numregions,
+            debug=False,
+        )
+
+    tempout = np.zeros((numspatiallocs, timepoints), dtype="int")
+    tempout[proclocs, :] = outputarray[:, :]
+    tide_io.savetonifti(
+        tempout.reshape((xsize, ysize, numslices, timepoints)),
+        datafile_hdr,
+        args.outputrootname,
+    )
+
+
+if __name__ == "__main__":
+    main()
