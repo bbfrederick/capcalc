@@ -41,6 +41,7 @@ script_list = [
     "capcalc/scripts/capcalc_dispatcher",
     "capcalc/scripts/capfromtcs",
     "capcalc/scripts/clustercomp",
+    "capcalc/scripts/clustersort",
     "capcalc/scripts/clusternifti",
     "capcalc/scripts/fitglm",
     "capcalc/scripts/kmeans",
