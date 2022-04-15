@@ -20,46 +20,45 @@
 #       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
 #
 import argparse
-import os
 
 import numpy as np
 import rapidtide.io as tide_io
-import rapidtide.miscmath as tide_math
 import rapidtide.workflows.parser_funcs as pf
-import scipy.sparse as ss
 from pylab import *
-from scipy.cluster.hierarchy import dendrogram
-from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans, MiniBatchKMeans
-from sklearn.decomposition import PCA, FastICA
-from sklearn.manifold import TSNE
-from sklearn.metrics import davies_bouldin_score, silhouette_score
-from sklearn.neighbors import kneighbors_graph
-from sklearn.preprocessing import RobustScaler, StandardScaler
+from scipy.stats import pearsonr
 
 
 def calccorrs(indata1, indata2, numregions, debug=False):
     # first calculate all correlations
+    if debug:
+        print("calccorrs:")
+        print(f"\tlen(indata1): {len(indata1)}")
+        print(f"\tlen(indata2): {len(indata2)}")
+        print(f"\tnumregions: {numregions}")
+
     thecorrmat = np.zeros((numregions, numregions), dtype=np.float64)
     outdata = indata2 * 0
     print("matching components")
     for i in range(numregions):
+        cluster1 = np.where(indata1 == (i + 1), 1.0, 0.0)
         if debug:
             print(f"index {i}")
-        cluster1 = np.where(indata1 == (i + 1), 1.0, 0.0)
         for j in range(numregions):
-            cluster2 = np.where(indata2 == (i + 1), 1.0, 0.0)
-            thecorrmat[i, j], dummy = np.pearsonr(cluster1, cluster2)
+            cluster2 = np.where(indata2 == (j + 1), 1.0, 0.0)
+            thecorrmat[i, j], dummy = pearsonr(cluster1, cluster2)
 
     # now find the best match for each element of the first data array
     thebestmatches = np.argmax(thecorrmat, axis=1)
 
     if debug:
+        print(thecorrmat)
+        print(thebestmatches)
         for i in range(numregions):
             print(
                 f"component {i}: best match of {thecorrmat[i, thebestmatches[i]]} at component {thebestmatches[i]}"
             )
 
-    for i in numregions:
+    for i in range(numregions):
         outdata[np.where(indata2 == (thebestmatches[i] + 1))] = i + 1
 
     return outdata
@@ -85,6 +84,14 @@ def _get_parser():
         metavar="MASK",
         help="Only process voxels within the 3D mask MASK.",
         default=None,
+    )
+
+    parser.add_argument(
+        "--debug",
+        dest="debug",
+        action="store_true",
+        help=("Print extended debugging information."),
+        default=False,
     )
     return parser
 
@@ -145,19 +152,20 @@ def main():
         themaxes = np.max(rs_datafile, axis=1).reshape((numspatiallocs))
         proclocs = np.where(themaxes > 0)
     procdata = rs_datafile[proclocs, :][0]
-    print(f"unmasked shape: {rs_datafile.shape}, masked shape: {procdata.shape}")
+    if args.debug:
+        print(f"unmasked shape: {rs_datafile.shape}, masked shape: {procdata.shape}")
 
     outputarray = procdata * 0
     outputarray[:, 0] = procdata[:, 0]
-    numregions = np.max(rs_datafile)
+    numregions = int(np.max(rs_datafile))
 
     for thetimepoint in range(1, timepoints):
         # compare labels to the first timepoint
         outputarray[:, thetimepoint] = calccorrs(
-            rs_datafile[proclocs, 0],
-            rs_datafile[proclocs, thetimepoint],
+            procdata[:, 0],
+            procdata[:, thetimepoint],
             numregions,
-            debug=False,
+            debug=args.debug,
         )
 
     tempout = np.zeros((numspatiallocs, timepoints), dtype="int")
