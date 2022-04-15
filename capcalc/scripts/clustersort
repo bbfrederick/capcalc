@@ -68,7 +68,7 @@ def calccorrs(indata1, indata2, numregions, debug=False):
 def _get_parser():
     # get the command line parameters
     parser = argparse.ArgumentParser(
-        prog="clustercombine",
+        prog="clustersort",
         description="Renumber regions in a 4D cluster file to optimally match.",
         usage="%(prog)s  datafile outputroot",
     )
