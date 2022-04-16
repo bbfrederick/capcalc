@@ -205,7 +205,7 @@ def main():
     print("regionpercentileprob", regionpercentileprobinds)
     print("regionsizes", regionsizeinds)
     print("weightedregionsizes", weightedregionsizeinds)
-    rankindices = weightedregionsizeinds
+    rankindices = regionpercentileprobinds
 
     for i in range(numregions):
         print(
