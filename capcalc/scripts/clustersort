@@ -27,6 +27,9 @@ import rapidtide.workflows.parser_funcs as pf
 from pylab import *
 from scipy.stats import pearsonr
 
+# set default variable values
+DEFAULTPCT = 90.0
+
 
 def calccorrs(indata1, indata2, numregions, debug=False):
     # first calculate all correlations
@@ -38,7 +41,7 @@ def calccorrs(indata1, indata2, numregions, debug=False):
 
     thecorrmat = np.zeros((numregions, numregions), dtype=np.float64)
     outdata = indata2 * 0
-    print("matching components")
+
     for i in range(numregions):
         cluster1 = np.where(indata1 == (i + 1), 1.0, 0.0)
         if debug:
@@ -87,6 +90,15 @@ def _get_parser():
     )
 
     parser.add_argument(
+        "--percentile",
+        dest="percentile",
+        type=float,
+        metavar="PCT",
+        help=f"Percentile probability value to use for sorting regions.  Default is {DEFAULTPCT}.",
+        default=DEFAULTPCT,
+    )
+
+    parser.add_argument(
         "--debug",
         dest="debug",
         action="store_true",
@@ -97,8 +109,6 @@ def _get_parser():
 
 
 def main():
-    # set default variable values
-
     # get the command line parameters
     try:
         args = _get_parser().parse_args()
@@ -159,8 +169,10 @@ def main():
     outputarray[:, 0] = procdata[:, 0]
     numregions = int(np.max(rs_datafile))
 
+    # match labelling to that of the first segmentation
     for thetimepoint in range(1, timepoints):
         # compare labels to the first timepoint
+        print(f"matching components for run {thetimepoint + 1}")
         outputarray[:, thetimepoint] = calccorrs(
             procdata[:, 0],
             procdata[:, thetimepoint],
@@ -168,12 +180,94 @@ def main():
             debug=args.debug,
         )
 
-    tempout = np.zeros((numspatiallocs, timepoints), dtype="int")
+    # make a probability map
+    probmap = np.zeros((procdata.shape[0], numregions), dtype=np.float64)
+    regionpercentileprob = np.zeros((numregions), dtype=np.float64)
+    regionsize = np.zeros((numregions), dtype=int)
+    weightedregionsize = np.zeros((numregions), dtype=np.float64)
+    for theregion in range(numregions):
+        thisarray = np.where(outputarray == (theregion + 1), 1.0, 0.0)
+        probmap[:, theregion] = np.mean(thisarray, axis=1)
+        regvoxels = probmap[np.where(probmap[:, theregion] > 0.0), theregion]
+        regionpercentileprob[theregion] = np.percentile(regvoxels, args.percentile)
+        regionsize[theregion] = len(regvoxels[0])
+        weightedregionsize[theregion] = (
+            regionsize[theregion] * regionpercentileprob[theregion]
+        )
+    print(regionsize)
+    print(regionpercentileprob)
+    print(weightedregionsize)
+
+    # sort the probability map by rank
+    regionpercentileprobinds = np.flip(regionpercentileprob.argsort())
+    regionsizeinds = np.flip(regionsize.argsort())
+    weightedregionsizeinds = np.flip(weightedregionsize.argsort())
+    print("regionpercentileprob", regionpercentileprobinds)
+    print("regionsizes", regionsizeinds)
+    print("weightedregionsizes", weightedregionsizeinds)
+    rankindices = weightedregionsizeinds
+
+    for i in range(numregions):
+        print(
+            f"region: {rankindices[i]}, "
+            + f"size: {regionsize[rankindices[i]]}, "
+            + f"{DEFAULTPCT}th percentile:{regionpercentileprob[rankindices[i]]}"
+        )
+
+    # save the sorted cluster maps
+    tempout = np.zeros((numspatiallocs, timepoints), dtype=int)
+    remappedtempout = np.zeros((numspatiallocs, timepoints), dtype=int)
     tempout[proclocs, :] = outputarray[:, :]
-    tide_io.savetonifti(
+    for theregion in range(numregions):
+        remappedtempout[np.where(tempout == rankindices[theregion] + 1)] = theregion + 1
+    """tide_io.savetonifti(
         tempout.reshape((xsize, ysize, numslices, timepoints)),
         datafile_hdr,
         args.outputrootname,
+    )"""
+    tide_io.savetonifti(
+        remappedtempout.reshape((xsize, ysize, numslices, timepoints)),
+        datafile_hdr,
+        args.outputrootname,
+    )
+
+    # write out the individual probability maps
+    tempout = np.zeros((numspatiallocs, numregions), dtype=np.float64)
+    remappedtempout = np.zeros((numspatiallocs, numregions), dtype=np.float64)
+    for theregion in range(numregions):
+        tempout[proclocs, theregion] = probmap[:, theregion]
+    for theregion in range(numregions):
+        remappedtempout[:, theregion] = tempout[:, rankindices[theregion]]
+    output_hdr = datafile_hdr
+    output_hdr["dim"][4] = numregions
+    """tide_io.savetonifti(
+        tempout.reshape((xsize, ysize, numslices, numregions)),
+        output_hdr,
+        args.outputrootname + "_probseg",
+    )"""
+    tide_io.savetonifti(
+        remappedtempout.reshape((xsize, ysize, numslices, numregions)),
+        output_hdr,
+        args.outputrootname + "_probseg",
+    )
+
+    # write out the maxprob map
+    tempout = np.zeros((numspatiallocs), dtype=int)
+    remappedtempout = np.zeros((numspatiallocs), dtype=int)
+    tempout[proclocs] = np.argmax(probmap, axis=1) + 1
+    for theregion in range(numregions):
+        remappedtempout[np.where(tempout == rankindices[theregion] + 1)] = theregion + 1
+    output_hdr["dim"][0] = 3
+    output_hdr["dim"][4] = 1
+    """tide_io.savetonifti(
+        tempout.reshape((xsize, ysize, numslices)),
+        output_hdr,
+        args.outputrootname + "_maxprob",
+    )"""
+    tide_io.savetonifti(
+        remappedtempout.reshape((xsize, ysize, numslices)),
+        output_hdr,
+        args.outputrootname + "_maxprob",
     )
 
 
