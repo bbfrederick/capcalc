@@ -28,7 +28,7 @@ from pylab import *
 from scipy.stats import pearsonr
 
 # set default variable values
-DEFAULTPCT = 90.0
+DEFAULTPCT = 98.0
 DEFAULTPASSES = 1
 
 
@@ -213,9 +213,9 @@ def main():
             weightedregionsize[theregion] = (
                 regionsize[theregion] * regionpercentileprob[theregion]
             )
-        print(regionsize)
-        print(regionpercentileprob)
-        print(weightedregionsize)
+        # print(regionsize)
+        # print(regionpercentileprob)
+        # print(weightedregionsize)
 
         # sort the probability map by rank
         regionpercentileprobinds = np.flip(regionpercentileprob.argsort())
