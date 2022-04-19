@@ -184,7 +184,7 @@ def main():
             thetemplate = procdata[:, 0]
         if args.passes > 1:
             print(f"\nStarting pass {thepass + 1} of {args.passes}")
-            passlabel = f"_pass{thepass + 1}"
+            passlabel = f"_pass{str(thepass + 1).zfill(2)}"
         else:
             passlabel = ""
 
