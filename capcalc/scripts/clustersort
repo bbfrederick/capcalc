@@ -82,8 +82,8 @@ def _get_parser():
     parser.add_argument("outputrootname", help="The root of the output file names.")
 
     parser.add_argument(
-        "--dmask",
-        dest="datamaskname",
+        "--maskfile",
+        dest="maskfilename",
         type=lambda x: pf.is_valid_file(parser, x),
         metavar="MASK",
         help="Only process voxels within the 3D mask MASK.",
@@ -137,20 +137,20 @@ def main():
     ) = tide_io.readfromnifti(args.datafilename)
 
     print("reading in mask array")
-    if args.datamaskname is not None:
+    if args.maskfilename is not None:
         (
             datamask_img,
             datamask_data,
             datamask_hdr,
             datamaskdims,
             datamasksizes,
-        ) = tide_io.readfromnifti(args.datamaskname)
+        ) = tide_io.readfromnifti(args.maskfilename)
 
     xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
     xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
 
     # check dimensions
-    if args.datamaskname is not None:
+    if args.maskfilename is not None:
         print("checking mask dimensions")
         if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
             print("input mask spatial dimensions do not match image")
@@ -166,7 +166,7 @@ def main():
     rs_datafile = datafile_data.reshape((numspatiallocs, timepoints))
 
     print("masking arrays")
-    if args.datamaskname is not None:
+    if args.maskfilename is not None:
         proclocs = np.where(datamask_data.reshape((numspatiallocs)) > 0.5)
     else:
         themaxes = np.max(rs_datafile, axis=1).reshape((numspatiallocs))
