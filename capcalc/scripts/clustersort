@@ -51,19 +51,32 @@ def calccorrs(indata1, indata2, numregions, debug=False):
             cluster2 = np.where(indata2 == (j + 1), 1.0, 0.0)
             thecorrmat[i, j], dummy = pearsonr(cluster1, cluster2)
 
-    # now find the best match for each element of the first data array
-    thebestmatches = np.argmax(thecorrmat, axis=1)
+    # now find the best match for each element of the template array
+    # make sure that each row and each column only get 1 match
+    matches = []
+    for i in range(numregions):
+        thisloc = np.unravel_index(thecorrmat.argmax(), thecorrmat.shape)
+        thiscorrval = thecorrmat[thisloc]
+        matches.append([thisloc[0] + 0, thisloc[1] + 0, thiscorrval + 0.0])
+        thecorrmat[:, thisloc[1]] = -1.0
+        thecorrmat[thisloc[0], :] = -1.0
+
+    bestmatchlocs = np.zeros((numregions), dtype=int)
+    bestmatchvals = np.zeros((numregions), dtype=float)
+    for i in range(numregions):
+        bestmatchlocs[matches[i][0]] = matches[i][1]
+        bestmatchvals[i] = matches[i][2]
 
     if debug:
-        print(thecorrmat)
-        print(thebestmatches)
+        print("after matching")
+        print(matches)
         for i in range(numregions):
             print(
-                f"component {i}: best match of {thecorrmat[i, thebestmatches[i]]} at component {thebestmatches[i]}"
+                f"component {i}: best match of {bestmatchvals[i]} at component {bestmatchlocs[i]}"
             )
 
     for i in range(numregions):
-        outdata[np.where(indata2 == (thebestmatches[i] + 1))] = i + 1
+        outdata[np.where(indata2 == (bestmatchlocs[i] + 1))] = i + 1
 
     return outdata
 
@@ -231,13 +244,13 @@ def main():
             )
 
         # save the sorted cluster maps
-        tempout = np.zeros((numspatiallocs, timepoints), dtype=int)
-        remappedtempout = np.zeros((numspatiallocs, timepoints), dtype=int)
-        tempout[proclocs, :] = outputarray[:, :]
+        remappedoutputarray = np.zeros((procdata.shape[0], timepoints), dtype=int)
         for theregion in range(numregions):
-            remappedtempout[np.where(tempout == rankindices[theregion] + 1)] = (
+            remappedoutputarray[np.where(outputarray == rankindices[theregion] + 1)] = (
                 theregion + 1
             )
+        remappedtempout = np.zeros((numspatiallocs, timepoints), dtype=int)
+        remappedtempout[proclocs, :] = remappedoutputarray
         tide_io.savetonifti(
             remappedtempout.reshape((xsize, ysize, numslices, timepoints)),
             datafile_hdr,
