@@ -213,9 +213,6 @@ def main():
             weightedregionsize[theregion] = (
                 regionsize[theregion] * regionpercentileprob[theregion]
             )
-        # print(regionsize)
-        # print(regionpercentileprob)
-        # print(weightedregionsize)
 
         # sort the probability map by rank
         regionpercentileprobinds = np.flip(regionpercentileprob.argsort())
