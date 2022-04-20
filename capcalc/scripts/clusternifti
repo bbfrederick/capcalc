@@ -190,7 +190,7 @@ def _get_parser():
     parser.add_argument("outputrootname", help="The root of the output file names.")
 
     parser.add_argument(
-        "--mask",
+        "--maskfile",
         dest="maskfilename",
         type=lambda x: pf.is_valid_file(parser, x),
         metavar="MASK",
