@@ -20,6 +20,7 @@
 #       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
 #
 import argparse
+import sys
 
 import numpy as np
 import rapidtide.io as tide_io
@@ -32,26 +33,28 @@ DEFAULTPCT = 98.0
 DEFAULTPASSES = 1
 
 
-def calccorrs(indata1, indata2, numregions, debug=False):
+def calccorrs(intemplatedata, indata, numregionstemplate, numregions, debug=False):
     # first calculate all correlations
     if debug:
         print("calccorrs:")
-        print(f"\tlen(indata1): {len(indata1)}")
-        print(f"\tlen(indata2): {len(indata2)}")
+        print(f"\tlen(intemplatedata): {len(intemplatedata)}")
+        print(f"\tlen(indata): {len(indata)}")
+        print(f"\tnumregionstemplate: {numregionstemplate}")
         print(f"\tnumregions: {numregions}")
 
-    thecorrmat = np.zeros((numregions, numregions), dtype=np.float64)
-    outdata = indata2 * 0
+    maxdim = max(numregionstemplate, numregions)
+    thecorrmat = np.zeros((maxdim, maxdim), dtype=np.float64)
+    outdata = indata * 0
 
-    for i in range(numregions):
-        cluster1 = np.where(indata1 == (i + 1), 1.0, 0.0)
+    for i in range(numregionstemplate):
+        cluster1 = np.where(intemplatedata == (i + 1), 1.0, 0.0)
         if debug:
             print(f"index {i}")
         for j in range(numregions):
-            cluster2 = np.where(indata2 == (j + 1), 1.0, 0.0)
+            cluster2 = np.where(indata == (j + 1), 1.0, 0.0)
             thecorrmat[i, j], dummy = pearsonr(cluster1, cluster2)
 
-    # now find the best match for each element of the template array
+    # now find the best match of each region to a template region
     # make sure that each row and each column only get 1 match
     matches = []
     for i in range(numregions):
@@ -76,7 +79,7 @@ def calccorrs(indata1, indata2, numregions, debug=False):
             )
 
     for i in range(numregions):
-        outdata[np.where(indata2 == (bestmatchlocs[i] + 1))] = i + 1
+        outdata[np.where(indata == (bestmatchlocs[i] + 1))] = i + 1
 
     return outdata
 
@@ -100,6 +103,14 @@ def _get_parser():
         type=lambda x: pf.is_valid_file(parser, x),
         metavar="MASK",
         help="Only process voxels within the 3D mask MASK.",
+        default=None,
+    )
+    parser.add_argument(
+        "--regionfile",
+        dest="regionfilename",
+        type=lambda x: pf.is_valid_file(parser, x),
+        metavar="FILE",
+        help="Use the region labels in FILE as a starting template for sorting.",
         default=None,
     )
 
@@ -139,6 +150,13 @@ def main():
         _get_parser().print_help()
         raise
 
+    thecommandline = [" ".join(sys.argv)]
+    # save the command line
+    tide_io.writevec(
+        thecommandline,
+        args.outputrootname + "_commandline.txt",
+    )
+
     # read in data
     print("reading in data array")
     (
@@ -149,8 +167,8 @@ def main():
         datafilesizes,
     ) = tide_io.readfromnifti(args.datafilename)
 
-    print("reading in mask array")
     if args.maskfilename is not None:
+        print("reading in mask array")
         (
             datamask_img,
             datamask_data,
@@ -158,6 +176,16 @@ def main():
             datamaskdims,
             datamasksizes,
         ) = tide_io.readfromnifti(args.maskfilename)
+
+    if args.regionfilename is not None:
+        print("reading in region array")
+        (
+            dataregion_img,
+            dataregion_data,
+            dataregion_hdr,
+            dataregiondims,
+            dataregionsizes,
+        ) = tide_io.readfromnifti(args.regionfilename)
 
     xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
     xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
@@ -170,6 +198,14 @@ def main():
             exit()
         if not datamaskdims[4] == 1:
             print("input mask time must have time dimension of 1")
+            exit()
+    if args.regionfilename is not None:
+        print("checking region file dimensions")
+        if not tide_io.checkspacematch(datafile_hdr, dataregion_hdr):
+            print("input region file spatial dimensions do not match image")
+            exit()
+        if not dataregiondims[4] == 1:
+            print("input region file time must have time dimension of 1")
             exit()
 
     # allocating arrays
@@ -194,7 +230,11 @@ def main():
 
     for thepass in range(args.passes):
         if thepass == 0:
-            thetemplate = procdata[:, 0]
+            if args.regionfilename is None:
+                thetemplate = procdata[:, 0]
+            else:
+                thetemplate = dataregion_data.reshape((numspatiallocs))[proclocs]
+            numregionstemplate = int(np.max(thetemplate))
         if args.passes > 1:
             print(f"\nStarting pass {thepass + 1} of {args.passes}")
             passlabel = f"_pass{str(thepass + 1).zfill(2)}"
@@ -208,6 +248,7 @@ def main():
             outputarray[:, thetimepoint] = calccorrs(
                 thetemplate,
                 procdata[:, thetimepoint],
+                numregionstemplate,
                 numregions,
                 debug=args.debug,
             )
