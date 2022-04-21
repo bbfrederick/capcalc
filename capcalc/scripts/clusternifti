@@ -32,8 +32,8 @@ from scipy.cluster.hierarchy import dendrogram
 from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA, FastICA
 from sklearn.manifold import TSNE
+from sklearn.metrics import davies_bouldin_score, silhouette_score
 from sklearn.neighbors import kneighbors_graph
-from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.preprocessing import RobustScaler, StandardScaler
 
 clusteringmethods = ["kmeans", "agglomerative", "dbscan"]
@@ -805,8 +805,8 @@ def main():
             )
         methodname += f"_{str(args.n_clusters).zfill(2)}"
         tide_io.writevec(
-            [np.mean(dbscores)],
-            args.outputrootname + "_" + methodname + "_dbscore.txt",
+            dbscores,
+            args.outputrootname + "_" + methodname + "_dbscores.txt",
         )
 
         # print("Silhouette Coefficient: %0.3f"
