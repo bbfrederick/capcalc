@@ -234,7 +234,7 @@ def main():
                 thetemplate = procdata[:, 0]
             else:
                 thetemplate = dataregion_data.reshape((numspatiallocs))[proclocs]
-            numregionstemplate = int(np.max(thetemplate))
+        numregionstemplate = int(np.max(thetemplate))
         if args.passes > 1:
             print(f"\nStarting pass {thepass + 1} of {args.passes}")
             passlabel = f"_pass{str(thepass + 1).zfill(2)}"
