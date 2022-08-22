@@ -298,7 +298,7 @@ theprefilter = tide_filter.NoncausalFilter(transferfunc="butterworth")
 theprefilter.setbutterorder(filtorder)
 
 # set the default characteristics
-theprefilter.settype("none")
+theprefilter.settype("None")
 
 for o, a in opts:
     if o == "--infile" or o == "-i":
@@ -441,7 +441,7 @@ for o, a in opts:
         if verbose:
             print("prefiltering to respiratory band")
     elif o == "-C":
-        theprefilter.settype("cardiac")
+        theprefilter.settype("card")
         if verbose:
             print("prefiltering to cardiac band")
     elif o == "-F":
@@ -589,9 +589,12 @@ else:
     sys.exit()
 
 # band limit the regressors if that is needed
-if theprefilter.gettype() != "none":
+if theprefilter.gettype() != "None":
     if verbose:
         print("filtering to ", theprefilter.gettype(), " band")
+else:
+    if verbose:
+        print("no prefiltering applied")
 
 origdims = inputdata.shape
 thedims = trimmeddata.shape
