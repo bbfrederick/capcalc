@@ -1,7 +1,11 @@
 # Release history
 
+## Version 1.2.1 (8/22/22)
+* (Docker) Fixed Dockerfile error.
+* (package) Updated pypi authentication information.
+
 ## Version 1.2.0 (8/22/22)
-* (Docker) Added Docker compatibility
+* (Docker) Added Docker compatibility.
 * (package) Updated to match the current version of rapidtide.
 * (package) Added "refresh" script to simplify updates.
 * (package) Formatting changes.
