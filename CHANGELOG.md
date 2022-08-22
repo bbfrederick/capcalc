@@ -1,7 +1,8 @@
 # Release history
 
-## Version 1.2.0 (4/19/22)
+## Version 1.2.0 (8/22/22)
 * (Docker) Added Docker compatibility
+* (package) Updated to match the current version of rapidtide.
 * (package) Added "refresh" script to simplify updates.
 * (package) Formatting changes.
 * (capfromtcs) Fixed import of joblib, updated to new NonCausalFilter calling conventions.
