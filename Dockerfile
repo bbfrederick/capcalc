@@ -1,9 +1,6 @@
 # Use Ubuntu 20.04 LTS
 FROM ubuntu:20.04
 
-# Pre-cache neurodebian key
-COPY ./dockerbuild/neurodebian.gpg /usr/local/etc/neurodebian.gpg
-
 # Prepare environment
 RUN df -h
 RUN apt-get update
