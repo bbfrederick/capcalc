@@ -43,8 +43,8 @@ def get_config():
     cfg = VersioneerConfig()
     cfg.VCS = "git"
     cfg.style = "pep440"
-    cfg.tag_prefix = ""
-    cfg.parentdir_prefix = "capcalc-"
+    cfg.tag_prefix = "v"
+    cfg.parentdir_prefix = ""
     cfg.versionfile_source = "capcalc/_version.py"
     cfg.verbose = False
     return cfg
