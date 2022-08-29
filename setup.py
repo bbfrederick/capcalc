@@ -109,12 +109,30 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=["numpy", "scipy", "scikit-learn", "matplotlib", "statsmodels"],
+    install_requires=[
+        "numpy",
+        "scipy",
+        "scikit-learn",
+        "matplotlib",
+        "statsmodels",
+        "rapidtide"
+    ],
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
     # for example:
     # $ pip install -e .[dev,test]
-    extras_require={},
+    extras_require={
+        "doc": [
+            "sphinx>=1.8.0",
+            "sphinx_rtd_theme",
+            "sphinx-argparse",
+            "sphinx-gallery",
+            "m2r",
+            "numpydoc",
+            "recommonmark",
+            "mistune==0.8.4",
+        ],
+    },
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
