@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.2.2.1 (8/29/22)
+* (package) Fixed versioneer installation.
+
 ## Version 1.2.2 (8/29/22)
 * (package) Updated pyproject.toml and versioneer to try to fix pypi deployment.
 
