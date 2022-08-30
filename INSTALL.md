@@ -3,12 +3,12 @@ Prerequisites
 
 The processing programs in capcalc require the following to be installed first:
 
-* Python 2.x or 3.x
+* Python 3.x
 * numpy
 * scipy
 * scikit-learn
 * statsmodels
-* rapidtide (get it from github)
+* rapidtide (get it from github or pypi)
 
 Installation
 ------------

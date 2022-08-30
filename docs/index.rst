@@ -33,34 +33,12 @@ Citing capcalc
 Contents
 ========
 .. toctree::
-   :maxdepth: 3
-   :caption: Introduction:
+   :maxdepth: 2
 
    introduction.rst
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Usage:
-
    installation.rst
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Usage:
-
    usage.rst
-   api.rst
-   auto_examples/index
-   contributing.rst
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Digging deeper:
-
-   theoryofoperation.rst
+   introduction.rst
 
 
 .. toctree::
