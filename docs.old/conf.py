@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# picachooser documentation build configuration file, copied from rapidtide
+# capcalc documentation build configuration file, copied from rapidtide
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -22,11 +22,11 @@ from m2r import MdInclude
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath("sphinxext"))
-sys.path.insert(0, os.path.abspath("../picachooser"))
+sys.path.insert(0, os.path.abspath("../capcalc"))
 
 from github_link import make_linkcode_resolve
 
-import picachooser
+import rapidtide
 
 # -- General configuration ------------------------------------------------
 
@@ -82,7 +82,7 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "picachooser"
+project = "capcalc"
 copyright = "2020-" + datetime.today().strftime("%Y") + ", Blaise Frederick"
 author = "Blaise Frederick"
 
@@ -91,9 +91,9 @@ author = "Blaise Frederick"
 # built documents.
 #
 # The short X.Y version.
-import picachooser.util as pica_util
+import rapidtide.util as tide_util
 
-version = pica_util.version()[0].replace("v", "").split("+")[0]
+version = tide_util.version()[0].replace("v", "").split("+")[0]
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -162,7 +162,7 @@ html_theme = "sphinx_rtd_theme"
 
 # The name for this set of Sphinx documents.
 # "<project> v<release> documentation" by default.
-# html_title = 'picachooser v0.1.0'
+# html_title = 'capcalc v0.1.0'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 # html_short_title = None
@@ -258,7 +258,7 @@ def setup(app):
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "picachooserdoc"
+htmlhelp_basename = "capcalcdoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -279,8 +279,8 @@ latex_elements = {
 latex_documents = [
     (
         master_doc,
-        "picachooser.tex",
-        "picachooser Documentation",
+        "capcalc.tex",
+        "capcalc Documentation",
         "Blaise Frederick",
         "manual",
     ),
@@ -311,7 +311,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "picachooser", "picachooser Documentation", [author], 1)]
+man_pages = [(master_doc, "capcalc", "capcalc Documentation", [author], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -325,10 +325,10 @@ man_pages = [(master_doc, "picachooser", "picachooser Documentation", [author], 
 texinfo_documents = [
     (
         master_doc,
-        "picachooser",
-        "picachooser Documentation",
+        "capcalc",
+        "capcalc Documentation",
         author,
-        "picachooser",
+        "capcalc",
         "One line description of project.",
         "Miscellaneous",
     ),
@@ -348,8 +348,8 @@ texinfo_documents = [
 
 # The following is used by sphinx.ext.linkcode to provide links to github
 linkcode_resolve = make_linkcode_resolve(
-    "picachooser",
-    "https://github.com/bbfrederick/" "picachooser/blob/{revision}/" "{package}/{path}#L{lineno}",
+    "capcalc",
+    "https://github.com/bbfrederick/" "capcalc/blob/{revision}/" "{package}/{path}#L{lineno}",
 )
 
 # Example configuration for intersphinx: refer to the Python standard library.
@@ -371,5 +371,5 @@ sphinx_gallery_conf = {
     "backreferences_dir": "_build/gen_modules/backreferences",
     # Modules for which function level galleries are created.  In
     # this case sphinx_gallery and numpy in a tuple of strings.
-    "doc_module": ("picachooser"),
+    "doc_module": ("capcalc"),
 }

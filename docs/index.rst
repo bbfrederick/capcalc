@@ -1,34 +1,19 @@
-.. capcalc documentation master file
+.. PICAchooser documentation master file, created by
+   sphinx-quickstart on Thu Jun 16 15:27:19 2016.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
 
-Capcalc
-==========
-capcalc is a suite of python programs used to perform coactivation
-pattern analysis on time series data. It uses K-Means clustering to find
-a set of “activation states” that represent the covarying patterns in
-the data.
 
-HTML documentation is here: http://capcalc.readthedocs.io/en/latest/
 
-.. image:: https://img.shields.io/pypi/v/capcalc.svg
-   :target: https://pypi.python.org/pypi/capcalc/
-.. image:: https://img.shields.io/pypi/pyversions/capcalc.svg
-   :target: https://pypi.python.org/pypi/capcalc/
-.. image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
-   :target: https://opensource.org/licenses/Apache-2.0
-.. image:: https://readthedocs.org/projects/capcalc/badge/?version=dev
-   :target: http://capcalc.readthedocs.io/en/dev/?badge=dev
-.. image:: https://zenodo.org/badge/83364565.svg
-   :target: https://zenodo.org/badge/latestdoi/83364565
-#.. image:: https://img.shields.io/badge/NIH-R01--NS097512--01A1-yellowgreen.svg
-#   :target: http://grantome.com/grant/NIH/R01-NS097512-01A1
+The PICAchooser package
+=======================
 
-Citing capcalc
--------------------
+PICAchooser is a suite of simple gui tools for scanning through MELODIC probabalistic ICA
+runs and quickly making decisions about which components are worth keeping, and
+what relates to what. These tools each only do one thing, but they do them
+quickly and easily using only keyboard input. Current programs are
+PICAchooser, melodicomp, and grader.
 
-  Frederick, B, capcalc [Computer Software] (2016-2022). Available from
-  https://github.com/bbfrederick/capcalc. doi:`10.5281/zenodo.7035806`_
-
-.. _10.5281/zenodo.7035806: https://doi.org/10.5281/zenodo.7035806
 
 Contents
 ========
@@ -36,15 +21,14 @@ Contents
    :maxdepth: 2
 
    introduction.rst
+   whats_new.rst
    installation.rst
    usage.rst
+   contributing.rst
 
 
-.. toctree::
-   :maxdepth: 2
-   :caption: History:
-
-   whats_new.rst
+.. image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
+   :target: https://opensource.org/licenses/Apache-2.0
 
 
 Indices and tables
