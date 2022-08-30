@@ -128,7 +128,7 @@ setup(
             "sphinx_rtd_theme",
             "sphinx-argparse",
             "sphinx-gallery",
-            "m2r",
+            "m2r2",
             "numpydoc",
             "recommonmark",
             "mistune==0.8.4",
