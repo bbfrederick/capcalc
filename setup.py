@@ -88,9 +88,6 @@ setup(
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.3",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
@@ -100,8 +97,7 @@ setup(
     keywords=["fMRI", "correlation", "clustering", "states"],
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=find_packages(exclude=["contrib", "docs", "tests"]),
-    # packages=['capcalc'],
+    packages=find_packages(exclude=["contrib", "docs"]),
     # Alternatively, if you want to distribute just a my_module.py, uncomment
     # this:
     #   py_modules=["my_module"],
@@ -128,7 +124,7 @@ setup(
             "sphinx_rtd_theme",
             "sphinx-argparse",
             "sphinx-gallery",
-            "m2r2",
+            "m2r",
             "numpydoc",
             "recommonmark",
             "mistune==0.8.4",
