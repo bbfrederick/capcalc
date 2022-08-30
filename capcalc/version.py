@@ -27,32 +27,31 @@ CLASSIFIERS = [
 ]
 
 # Description should be a one-liner:
-description = "rapidtide: a suite of programs for doing RIPTiDe analysis"
+description = "capcalc: a a suite of python programs used to perform coactivation pattern analysis on time series data"
 # Long description will go up on the pypi page
 long_description = """
-Rapidtide
+Capcalc
 ========
-Rapidtide is a suite of python programs used to perform time delay analysis 
-on functional imaging data to find time lagged correlations between the 
-voxelwise time series and other time series.
+Capcalc is a suite of python programs used to perform coactivation pattern
+analysis on time series data (typically extracted from functional imaging).
 To get started using these components in your own software, please go to the
 repository README_.
-.. _README: https://github.com/bbfrederick/rapidtide/blob/master/README.rst
+.. _README: https://github.com/bbfrederick/capcalc/blob/master/README.rst
 License
 =======
-``rapidtide`` is licensed under the terms of the Apache 2 license. See the file
+``capcalc`` is licensed under the terms of the Apache 2 license. See the file
 "LICENSE" for information on the history of this software, terms & conditions
 for usage, and a DISCLAIMER OF ALL WARRANTIES.
 All trademarks referenced herein are property of their respective holders.
-Copyright (c) 2016--, Blaise Frederick, McLean Hospital Brain Imaging Center
+Copyright (c) 2020--, Blaise Frederick, McLean Hospital Brain Imaging Center
 """
 
-NAME = "rapidtide"
+NAME = "capcalc"
 MAINTAINER = "Blaise Frederick"
 MAINTAINER_EMAIL = "blaise.frederick@gmail.com"
 DESCRIPTION = description
 LONG_DESCRIPTION = long_description
-URL = "http://github.com/bbfrederick/rapidtide"
+URL = "http://github.com/bbfrederick/capcalc"
 DOWNLOAD_URL = ""
 LICENSE = "Apache"
 AUTHOR = "Blaise Frederick"
@@ -62,7 +61,7 @@ MAJOR = _version_major
 MINOR = _version_minor
 MICRO = _version_micro
 VERSION = __version__
-PACKAGE_DATA = {"rapidtide": [pjoin("data", "*")]}
+PACKAGE_DATA = {"capcalc": [pjoin("data", "*")]}
 REQUIRES = [
     "numpy",
     "scipy",
