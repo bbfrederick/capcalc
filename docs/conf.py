@@ -91,7 +91,7 @@ author = "Blaise Frederick"
 # built documents.
 #
 # The short X.Y version.
-import capcalc.util as pica_util
+import rapidtide.util as pica_util
 
 version = pica_util.version()[0].replace("v", "").split("+")[0]
 # The full version, including alpha/beta/rc tags.
