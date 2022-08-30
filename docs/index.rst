@@ -38,7 +38,6 @@ Contents
    introduction.rst
    installation.rst
    usage.rst
-   introduction.rst
 
 
 .. toctree::
