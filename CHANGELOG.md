@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.2.2.5 (8/30/22)
+* (package) Bump to trigger github deployment.
+
 ## Version 1.2.2.4 (8/30/22)
 * (package) Convert README.md to README.rst
 
