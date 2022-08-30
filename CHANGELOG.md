@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.2.2.3 (8/30/22)
+* (package) Fixed Development status in setup.py
+
 ## Version 1.2.2.2 (8/30/22)
 * (package) Syncing with rapidtide to try to get pypi deployment to work
 
