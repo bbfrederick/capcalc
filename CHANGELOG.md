@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.2.2.2 (8/30/22)
+* (package) Syncing with rapidtide to try to get pypi deployment to work
+
 ## Version 1.2.2.1 (8/29/22)
 * (package) Fixed versioneer installation.
 
