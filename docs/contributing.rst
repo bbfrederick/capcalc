@@ -6,8 +6,8 @@ to PICAchooser and code style conventions we follow within the project.
 For a more general guide to PICAchooser development, please see our
 `contributing guide`_. Please also remember to follow our `code of conduct`_.
 
-.. _contributing guide: https://github.com/bbfrederick/picachooser/blob/master/CONTRIBUTING.md
-.. _code of conduct: https://github.com/bbfrederick/picachooser/blob/master/CODE_OF_CONDUCT.md
+.. _contributing guide: https://github.com/bbfrederick/capcalc/blob/master/CONTRIBUTING.md
+.. _code of conduct: https://github.com/bbfrederick/capcalc/blob/master/CODE_OF_CONDUCT.md
 
 Style Guide
 -----------

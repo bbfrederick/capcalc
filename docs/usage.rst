@@ -144,7 +144,7 @@ Run PICAchooser to look at a series of independent components and assign them a 
 
 You'll then get a window that looks like this:
 
-.. figure:: https://raw.githubusercontent.com/bbfrederick/picachooser/master/images/picachooser_screenshot.png
+.. figure:: https://raw.githubusercontent.com/bbfrederick/capcalc/master/images/capcalc_screenshot.png
    :alt: PICAchooser screenshot
 
    PICAchooser screenshot
@@ -206,7 +206,7 @@ being the first element of each dimension.
 You can use ``--keepcolor``, ``--discardcolor``, ``--transmotlimits``
 and ``--rotmotlimits`` to alter display behavior for the current run
 (useful if you're using the docker container). To change things
-semi-permanently, edit the file ${HOME}/.picachooser.json. This file is
+semi-permanently, edit the file ${HOME}/.capcalc.json. This file is
 created with default values if it is not present. You can use any valid
 python color specification string for color values, e.g. "r", "ff0000",
 or "FF0000" could all be used for red.
