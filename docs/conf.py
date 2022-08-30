@@ -94,6 +94,7 @@ author = "Blaise Frederick"
 import rapidtide.util as tide_util
 
 version = tide_util.version()[0].replace("v", "").split("+")[0]
+version = "1.2.3"
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -102,7 +103,7 @@ release = version
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = en
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
