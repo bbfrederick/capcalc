@@ -1,1 +1,1 @@
-.. include:: ../INSTALL.rst
+.. mdinclude:: ../INSTALL.md

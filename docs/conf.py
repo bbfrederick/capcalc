@@ -91,9 +91,9 @@ author = "Blaise Frederick"
 # built documents.
 #
 # The short X.Y version.
-import rapidtide.util as pica_util
+import rapidtide.util as tide_util
 
-version = pica_util.version()[0].replace("v", "").split("+")[0]
+version = tide_util.version()[0].replace("v", "").split("+")[0]
 # The full version, including alpha/beta/rc tags.
 release = version
 
