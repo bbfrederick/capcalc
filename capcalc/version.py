@@ -37,7 +37,7 @@ on functional imaging data to find time lagged correlations between the
 voxelwise time series and other time series.
 To get started using these components in your own software, please go to the
 repository README_.
-.. _README: https://github.com/bbfrederick/rapidtide/blob/master/README.md
+.. _README: https://github.com/bbfrederick/rapidtide/blob/master/README.rst
 License
 =======
 ``rapidtide`` is licensed under the terms of the Apache 2 license. See the file

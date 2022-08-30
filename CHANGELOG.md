@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.2.2.4 (8/30/22)
+* (package) Convert README.md to README.rst
+
 ## Version 1.2.2.3 (8/30/22)
 * (package) Fixed Development status in setup.py
 
