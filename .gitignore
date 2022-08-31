@@ -17,7 +17,7 @@ capcalc.egg-info/*
 capcalc/_gittag.py
 
 # big data
-capcalc/data/output/*
+capcalc/data/output/*.nii.gz
 
 # cache
 .cache
