@@ -39,9 +39,7 @@ def usage():
     print(
         "     -m              - run MiniBatch Kmeans rather than conventional - use with very large datasets"
     )
-    print(
-        "     -n NUMCLUSTER   - set the number of clusters to NUMCLUSTER (default is 8)"
-    )
+    print("     -n NUMCLUSTER   - set the number of clusters to NUMCLUSTER (default is 8)")
     print(
         "     -b BATCHSIZE    - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 100"
     )
@@ -53,9 +51,7 @@ def progressbar(thisval, end_val, label="Percent", barsize=60):
     percent = float(thisval) / end_val
     hashes = "#" * int(round(percent * barsize))
     spaces = " " * (barsize - len(hashes))
-    sys.stdout.write(
-        "\r{0}: [{1}] {2:.3f}%".format(label, hashes + spaces, 100.0 * percent)
-    )
+    sys.stdout.write("\r{0}: [{1}] {2:.3f}%".format(label, hashes + spaces, 100.0 * percent))
     sys.stdout.flush()
 
 
@@ -98,9 +94,7 @@ for o, a in opts:
         assert False, "unhandled option"
 
 print("loading data")
-input_img, input_data, input_hdr, thedims, thesizes = tide_io.readfromnifti(
-    inputfilename
-)
+input_img, input_data, input_hdr, thedims, thesizes = tide_io.readfromnifti(inputfilename)
 tr = thesizes[4]
 Fs = 1.0 / tr
 print("tr from header =", tr, ", sample frequency is ", Fs)

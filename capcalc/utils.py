@@ -161,9 +161,7 @@ def statestats(thestates, numlabels, minlabel, minout=1, minhold=1, debug=False)
     return transmat, np.asarray(thestats, dtype="float"), lenlist
 
 
-def silhouette_test(
-    X, kmeans, n_clusters, numsegs, segsize, summaryonly, display=False
-):
+def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly, display=False):
     print("generating cluster labels")
     cluster_labels = kmeans.predict(X)
     thesilavgs = np.zeros(numsegs, dtype="float")
@@ -187,9 +185,7 @@ def silhouette_test(
 
             if not summaryonly:
                 print("doing silhouette samples")
-                sample_silhouette_values = metrics.silhouette_samples(
-                    seg_X, seg_cluster_labels
-                )
+                sample_silhouette_values = metrics.silhouette_samples(seg_X, seg_cluster_labels)
                 if display:
                     # Create a subplot with 1 row and 2 columns
                     fig, (ax1) = plt.subplots(1, 1)
@@ -212,16 +208,10 @@ def silhouette_test(
                     ]
 
                     ith_cluster_silhouette_values.sort()
-                    thesilclusterstats[segment, 0, i] = np.mean(
-                        ith_cluster_silhouette_values
-                    )
-                    thesilclusterstats[segment, 1, i] = np.median(
-                        ith_cluster_silhouette_values
-                    )
+                    thesilclusterstats[segment, 0, i] = np.mean(ith_cluster_silhouette_values)
+                    thesilclusterstats[segment, 1, i] = np.median(ith_cluster_silhouette_values)
                     thesilclusterstats[segment, 2, i] = ith_cluster_silhouette_values[0]
-                    thesilclusterstats[segment, 3, i] = ith_cluster_silhouette_values[
-                        -1
-                    ]
+                    thesilclusterstats[segment, 3, i] = ith_cluster_silhouette_values[-1]
 
                     size_cluster_i = ith_cluster_silhouette_values.shape[0]
 

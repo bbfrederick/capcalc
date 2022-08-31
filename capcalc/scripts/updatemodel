@@ -25,9 +25,7 @@ def convert(joblib_name):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Convert a save file from joblib to json"
-    )
+    parser = argparse.ArgumentParser(description="Convert a save file from joblib to json")
 
     parser.add_argument("infile", help="joblib file name")
 

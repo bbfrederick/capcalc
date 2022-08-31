@@ -111,16 +111,12 @@ def main():
     # first save the things with a single timepoint
     tide_io.writenpvecs(meandata, outputroot + "_mean.txt")
     for j in range(0, numregressors):
-        tide_io.writenpvecs(
-            coefficient[:, j], outputroot + "_coefficient_" + str(j).zfill(2)
-        )
+        tide_io.writenpvecs(coefficient[:, j], outputroot + "_coefficient_" + str(j).zfill(2))
     tide_io.writenpvecs(Rdata, outputroot + "_R")
 
     # now save the things with full timecourses
     for j in range(0, numregressors):
-        tide_io.writenpvecs(
-            component[:, :, j], outputroot + "_component_" + str(j).zfill(2)
-        )
+        tide_io.writenpvecs(component[:, :, j], outputroot + "_component_" + str(j).zfill(2))
     tide_io.writenpvecs(thefit, outputroot + "_fit")
     tide_io.writenpvecs(residuals, outputroot + "_residuals")
 

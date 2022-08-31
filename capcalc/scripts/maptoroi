@@ -50,9 +50,7 @@ outputfile = sys.argv[3]
 
 print("loading data")
 theclustercenters = tide_io.readvecs(inputfilename)
-template_img, template_data, template_hdr, thedims, thesizes = tide_io.readfromnifti(
-    templatefile
-)
+template_img, template_data, template_hdr, thedims, thesizes = tide_io.readfromnifti(templatefile)
 
 print(theclustercenters.shape)
 numregions = theclustercenters.shape[0]
@@ -84,9 +82,7 @@ for thecluster in range(numclusters):
                 i - 1, thecluster
             ]
     else:
-        output_data[:, thecluster] += (
-            theclustercenters[i - 1, thecluster] * templatevoxels[:, i]
-        )
+        output_data[:, thecluster] += theclustercenters[i - 1, thecluster] * templatevoxels[:, i]
 
 theheader = template_hdr
 theheader["dim"][4] = numclusters

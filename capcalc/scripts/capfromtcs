@@ -60,17 +60,11 @@ import capcalc.utils as capcalc_utils
 
 def usage():
     print("")
-    print(
-        "capfromtcs - calculate and cluster coactivation patterns for a set of timecourses"
-    )
+    print("capfromtcs - calculate and cluster coactivation patterns for a set of timecourses")
     print("")
-    print(
-        "usage: capfromtcs -i timecoursefile -o outputfile --samplefreq=FREQ --sampletime=TSTEP"
-    )
+    print("usage: capfromtcs -i timecoursefile -o outputfile --samplefreq=FREQ --sampletime=TSTEP")
     print("                  [--nodetrend] [-s STARTTIME] [-D DURATION]")
-    print(
-        "                  [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C]"
-    )
+    print("                  [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C]")
     print(
         "                  [-m] [-n NUMCLUSTER] [-b BATCHSIZE] [-S SEGMENTSIZE] [-E SEGMENTTYPE] [-I INITIALIZATIONS]"
     )
@@ -83,9 +77,7 @@ def usage():
     print("    -i, --infile=TIMECOURSEFILE  - text file multiple timeseries")
     print("    -o, --outfile=OUTNAME        - the root name of the output files")
     print("")
-    print(
-        "    --samplefreq=FREQ            - sample frequency of all timecourses is FREQ "
-    )
+    print("    --samplefreq=FREQ            - sample frequency of all timecourses is FREQ ")
     print("           or")
     print("    --sampletime=TSTEP           - time step of all timecourses is TSTEP ")
     print(
@@ -112,9 +104,7 @@ def usage():
         "                                   If there are multiple, comma separated numbers, treat these as subsegment lengths."
     )
     print("                                   Default segmentsize is the entire length")
-    print(
-        "  --skippts=NUMPTS               - drop first NUMPTS points from each segment"
-    )
+    print("  --skippts=NUMPTS               - drop first NUMPTS points from each segment")
     print("  Clustering:")
     print(
         "    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets"
@@ -140,20 +130,12 @@ def usage():
     )
     print("    -V                           - filter data and regressors to VLF band")
     print("    -L                           - filter data and regressors to LFO band")
-    print(
-        "    -R                           - filter data and regressors to respiratory band"
-    )
-    print(
-        "    -C                           - filter data and regressors to cardiac band"
-    )
-    print(
-        "    --nodetrend                  - do not detrend the data before correlation"
-    )
+    print("    -R                           - filter data and regressors to respiratory band")
+    print("    -C                           - filter data and regressors to cardiac band")
+    print("    --nodetrend                  - do not detrend the data before correlation")
     print("    --noscale                    - don't perform vector magnitude scaling")
     print("    --nonorm                     - don't normalize timecourses")
-    print(
-        "    --pctnorm                    - scale each timecourse to its percentage of the mean"
-    )
+    print("    --pctnorm                    - scale each timecourse to its percentage of the mean")
     print(
         "    --varnorm                    - scale each timecourse to have a variance of 1.0 (default)"
     )
@@ -172,9 +154,7 @@ def usage():
     print(
         "    -p NUMCOMPONENTS             - set the number of p/ica components to NUMCOMPONENTS (default is 8).  Set to -1 to estimate"
     )
-    print(
-        "    --noscale                    - do not apply standard scaler before cluster fitting"
-    )
+    print("    --noscale                    - do not apply standard scaler before cluster fitting")
     print("    --preproconly                - do preprocessing then quit")
     print(
         "    --minout=MINOUT              - transitions out of a state shorter than MINOUT will be patched.  Default is 1"
@@ -188,9 +168,7 @@ def usage():
         "    --GBR                        - apply gradient boosting regressor testing on clusters"
     )
     print("    -d                           - display some quality metrics")
-    print(
-        "    --quality                    - perform a silhouette test to evaluate fit quality"
-    )
+    print("    --quality                    - perform a silhouette test to evaluate fit quality")
     print("    -v                           - turn on verbose mode")
     print(
         "    --modelroot=MODELROOT        - reread trained models from a previous run - MODELROOT should "
@@ -486,9 +464,7 @@ for o, a in opts:
     elif o == "-p":
         n_pca = float(a)
         if n_pca <= 0.0:
-            print(
-                "will estimate the number of pca components for dimensionality reduction"
-            )
+            print("will estimate the number of pca components for dimensionality reduction")
         elif n_pca < 1.0:
             print(
                 "will use enough pca components to explain at least",
@@ -528,9 +504,7 @@ if subsegs is not None:
             groups[subseggroupIDs[segnum]]["segstart"] = []
             groups[subseggroupIDs[segnum]]["segnum"] = [int(segnum)]
         groups[subseggroupIDs[segnum]]["seglen"].append(subsegs[segnum])
-        groups[subseggroupIDs[segnum]]["segstart"].append(
-            int(np.sum(subsegs[0:segnum]))
-        )
+        groups[subseggroupIDs[segnum]]["segstart"].append(int(np.sum(subsegs[0:segnum])))
     for key in groups:
         groupsegs = groups[key]["seglen"]
         if not all(x == groupsegs[0] for x in groupsegs):
@@ -574,9 +548,7 @@ elif len(infilename) == 2:
     inputdata1 = tide_io.readvec(infilename[0])
     numpoints = len(inputdata1)
     inputdata2 = tide_io.readvec(infilename[1])
-    endpoint1 = min(
-        [startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))]
-    )
+    endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     trimmeddata = np.zeros((2, numpoints), dtype="float")
     trimmeddata[0, :] = inputdata1[startpoint:endpoint1]
@@ -654,9 +626,9 @@ for feature in range(n_features):
             else:
                 segnorm = segdata
 
-            reformdata[
-                feature, subsegstart : subsegstart + subseglen
-            ] = theprefilter.apply(Fs, segnorm)
+            reformdata[feature, subsegstart : subsegstart + subseglen] = theprefilter.apply(
+                Fs, segnorm
+            )
             subsegstart += subseglen
 X = np.nan_to_num(np.transpose(reformdata))
 
@@ -681,7 +653,9 @@ if preprocessingtype == "pca":
         try:
             thepca = joblib.load(modelfilename)
         except Exception as ex:
-            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            template = (
+                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            )
             message = template.format(type(ex).__name__, modelfilename, ex.args)
             print(message)
             sys.exit()
@@ -717,7 +691,9 @@ elif preprocessingtype == "ica":
         try:
             theica = joblib.load(modelfilename)
         except Exception as ex:
-            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            template = (
+                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            )
             message = template.format(type(ex).__name__, modelfilename, ex.args)
             print(message)
             sys.exit()
@@ -743,9 +719,7 @@ if clustertype == "kmeans":
                 n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter
             ).fit(X)
         else:
-            kmeans = KMeans(
-                n_clusters=n_clusters, max_iter=max_iter, n_init=n_init
-            ).fit(X)
+            kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(X)
 
         # save the model
         joblib.dump(kmeans, outfilename + "_kmeans.joblib")
@@ -755,7 +729,9 @@ if clustertype == "kmeans":
         try:
             kmeans = joblib.load(modelfilename)
         except Exception as ex:
-            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            template = (
+                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            )
             message = template.format(type(ex).__name__, modelfilename, ex.args)
             print(message)
             sys.exit()
@@ -834,23 +810,15 @@ if clustertype == "kmeans":
         groups[key]["meaninstate"] = np.zeros(
             (n_clusters, groups[key]["seglen"][0]), dtype="float"
         )
-        groups[key]["stdinstate"] = np.zeros(
-            (n_clusters, groups[key]["seglen"][0]), dtype="float"
-        )
+        groups[key]["stdinstate"] = np.zeros((n_clusters, groups[key]["seglen"][0]), dtype="float")
         for state in range(n_clusters):
             tcbyseg = []
             for seginstance in range(len(groups[key]["segnum"])):
                 startpos = groups[key]["segstart"][seginstance]
                 endpos = startpos + groups[key]["seglen"][seginstance]
-                tcbyseg.append(
-                    np.where(statelabelsbysegment[:, startpos:endpos] == state, 1, 0)
-                )
-            groups[key]["meaninstate"][state, :] = np.mean(
-                np.concatenate(tcbyseg, axis=0), axis=0
-            )
-            groups[key]["stdinstate"][state, :] = np.std(
-                np.concatenate(tcbyseg, axis=0), axis=0
-            )
+                tcbyseg.append(np.where(statelabelsbysegment[:, startpos:endpos] == state, 1, 0))
+            groups[key]["meaninstate"][state, :] = np.mean(np.concatenate(tcbyseg, axis=0), axis=0)
+            groups[key]["stdinstate"][state, :] = np.std(np.concatenate(tcbyseg, axis=0), axis=0)
         tide_io.writenpvecs(
             groups[key]["meaninstate"],
             outfilename + "_" + str(key) + "_meaninstate.txt",
@@ -966,10 +934,7 @@ if clustertype == "kmeans":
             thesestatelabels,
             outfilename + "_seg_" + str(segment).zfill(4) + "_statelabels.txt",
         )
-        print(
-            "Segment %d average silhouette Coefficient: %0.3f"
-            % (segment, thesilavgs[segment])
-        )
+        print("Segment %d average silhouette Coefficient: %0.3f" % (segment, thesilavgs[segment]))
         for state in range(n_clusters):
             tc = np.where(thesestatelabels == state, 1, 0)
             tide_io.writenpvecs(
@@ -983,14 +948,9 @@ if clustertype == "kmeans":
             )
         if not summaryonly:
             cols = ["Mean", "Median", "Min", "Max"]
-            df = pd.DataFrame(
-                data=np.transpose(thesilclusterstats[segment, :, :]), columns=cols
-            )
+            df = pd.DataFrame(data=np.transpose(thesilclusterstats[segment, :, :]), columns=cols)
             df.to_csv(
-                outfilename
-                + "_seg_"
-                + str(segment).zfill(4)
-                + "_silhouetteclusterstats.csv",
+                outfilename + "_seg_" + str(segment).zfill(4) + "_silhouetteclusterstats.csv",
                 index=False,
             )
             # tide_io.writenpvecs(thesilclusterstats[segment, :, :],
@@ -1058,7 +1018,9 @@ elif clustertype == "dbscan":
         try:
             db = joblib.load(modelfilename)
         except Exception as ex:
-            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            template = (
+                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            )
             message = template.format(type(ex).__name__, modelfilename, ex.args)
             print(message)
             sys.exit()
@@ -1101,7 +1063,9 @@ elif clustertype == "hdbscan":
         try:
             hdb = joblib.load(modelfilename)
         except Exception as ex:
-            template = "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            template = (
+                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            )
             message = template.format(type(ex).__name__, modelfilename, ex.args)
             print(message)
             sys.exit()

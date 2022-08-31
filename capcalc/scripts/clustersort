@@ -264,9 +264,7 @@ def main():
             regvoxels = probmap[np.where(probmap[:, theregion] > 0.0), theregion]
             regionpercentileprob[theregion] = np.percentile(regvoxels, args.percentile)
             regionsize[theregion] = len(regvoxels[0])
-            weightedregionsize[theregion] = (
-                regionsize[theregion] * regionpercentileprob[theregion]
-            )
+            weightedregionsize[theregion] = regionsize[theregion] * regionpercentileprob[theregion]
 
         # sort the probability map by rank
         regionpercentileprobinds = np.flip(regionpercentileprob.argsort())
@@ -318,9 +316,7 @@ def main():
         remappedtempout = np.zeros((numspatiallocs), dtype=int)
         tempout[proclocs] = np.argmax(probmap, axis=1) + 1
         for theregion in range(numregions):
-            remappedtempout[np.where(tempout == rankindices[theregion] + 1)] = (
-                theregion + 1
-            )
+            remappedtempout[np.where(tempout == rankindices[theregion] + 1)] = theregion + 1
         output_hdr["dim"][0] = 3
         output_hdr["dim"][4] = 1
         tide_io.savetonifti(

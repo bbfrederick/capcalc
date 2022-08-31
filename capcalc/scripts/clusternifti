@@ -59,9 +59,7 @@ def plot_dendrogram(model, **kwargs):
     no_of_observations = np.arange(2, children.shape[0] + 2)
 
     # Create linkage matrix and then plot the dendrogram
-    linkage_matrix = np.column_stack([children, distance, no_of_observations]).astype(
-        float
-    )
+    linkage_matrix = np.column_stack([children, distance, no_of_observations]).astype(float)
 
     # Plot the corresponding dendrogram
     dendrogram(linkage_matrix, **kwargs)
@@ -399,13 +397,9 @@ def usage():
     print("    --linkage=LINKAGE           - set linkage to LINKAGE")
     print("    --radius=RADIUS             - set connectivity radius to RADIUS")
     print("    --noconn                    - do not use a connectivity matrix")
-    print(
-        "    --display                   - display a 2d representation of the input data"
-    )
+    print("    --display                   - display a 2d representation of the input data")
     print("    --prescale                  - prescale input data prior to clustering")
-    print(
-        "    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently"
-    )
+    print("    --scaleintervals=R1,R2,...  - apply scaling to ranges R1, R2,... independently")
     print("                                  NOTE: turns on prescaling")
     print("")
     return ()
@@ -681,9 +675,7 @@ def main():
         methodname += "_ica"
         if args.n_pca <= 1.0:
             args.n_pca = int(0)
-        theica = FastICA(n_components=int(args.n_pca), algorithm="deflation").fit(
-            coefficients
-        )
+        theica = FastICA(n_components=int(args.n_pca), algorithm="deflation").fit(coefficients)
 
         thetransform = theica.transform(coefficients)
         coefficients = theica.inverse_transform(thetransform)
@@ -719,9 +711,7 @@ def main():
     if args.clustertype == "agglomerative":
         theshape = (xsize, ysize, numslices)
         print("computing connectivity matrix")
-        themask = np.zeros((xsize, ysize, numslices), dtype=bool).reshape(
-            (numspatiallocs)
-        )
+        themask = np.zeros((xsize, ysize, numslices), dtype=bool).reshape((numspatiallocs))
         themask[proclocs] = True
         thecartmask = themask.reshape((xsize, ysize, numslices))
         # connectivity = grid_to_graph(n_x=np.uint32(xsize), n_y=np.uint32(ysize), n_z=np.uint32(numslices), mask=thecartmask)
@@ -744,9 +734,7 @@ def main():
         # [{'node_id': next(ii), 'left': x[0], 'right':x[1]} for x in agg.children_]
 
     elif args.clustertype == "dbscan":
-        db = DBSCAN(eps=args.eps, min_samples=args.min_samples, n_jobs=-1).fit(
-            coefficients
-        )
+        db = DBSCAN(eps=args.eps, min_samples=args.min_samples, n_jobs=-1).fit(coefficients)
         core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
         core_samples_mask[db.core_sample_indices_] = True
         theregionlabels = db.labels_
@@ -773,8 +761,7 @@ def main():
 
         print("Estimated number of clusters: %d" % n_clusters_)
         methodname += (
-            f"_minsamples_{args.min_samples}_"
-            + f"minclustersize_{args.min_cluster_size}"
+            f"_minsamples_{args.min_samples}_" + f"minclustersize_{args.min_cluster_size}"
         )
         methodname += f"_{str(n_clusters_).zfill(2)}"
 
@@ -800,9 +787,7 @@ def main():
             print("cluster_centers shape", theclusters.shape)
             theregionlabels[:, therepeat] = kmeans.labels_ + 0
             dbscores[therepeat] = davies_bouldin_score(coefficients, kmeans.labels_)
-            print(
-                f"Davies Bouldin score for repeat {therepeat} = {dbscores[therepeat]}"
-            )
+            print(f"Davies Bouldin score for repeat {therepeat} = {dbscores[therepeat]}")
         methodname += f"_{str(args.n_clusters).zfill(2)}"
         tide_io.writevec(
             dbscores,

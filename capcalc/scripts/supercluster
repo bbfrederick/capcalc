@@ -92,9 +92,7 @@ def _get_parser():
         action="store",
         type=str,
         choices=["standard", "robust", "None"],
-        help=(
-            "What sort of prescaler to apply to data prior to classification.  Default is None"
-        ),
+        help=("What sort of prescaler to apply to data prior to classification.  Default is None"),
         default="None",
     )
     parser.add_argument(
@@ -130,9 +128,7 @@ def _get_parser():
         metavar="NUM",
         action="store",
         type=int,
-        help=(
-            "Set number of features to NUM (default is -1 - set equal to sqrt(n_estimators)"
-        ),
+        help=("Set number of features to NUM (default is -1 - set equal to sqrt(n_estimators)"),
         default=-1,
     )
 
@@ -208,9 +204,7 @@ def _get_parser():
         metavar="NUM",
         action="store",
         type=float,
-        help=(
-            "Regularization parameter.  Default is 1.0.  Reduce for more regularization."
-        ),
+        help=("Regularization parameter.  Default is 1.0.  Reduce for more regularization."),
         default=1,
     )
     svcopts.add_argument(
@@ -237,9 +231,7 @@ def _get_parser():
         action="store",
         type=str,
         choices=["scale", "auto"],
-        help=(
-            "Kernel coefficient for rbf, poly, and sigmoid kernels.  Default is scale"
-        ),
+        help=("Kernel coefficient for rbf, poly, and sigmoid kernels.  Default is scale"),
         default="scale",
     )
     svcopts.add_argument(
@@ -368,23 +360,17 @@ def main():
         thepos = 0
         for interval in intlist:
             if args.prescaler == "standard":
-                X_known[
-                    :, thepos : (thepos + interval)
-                ] = StandardScaler().fit_transform(
+                X_known[:, thepos : (thepos + interval)] = StandardScaler().fit_transform(
                     X_known[:, thepos : (thepos + interval)]
                 )
-                X_predict[
-                    :, thepos : (thepos + interval)
-                ] = StandardScaler().fit_transform(
+                X_predict[:, thepos : (thepos + interval)] = StandardScaler().fit_transform(
                     X_predict[:, thepos : (thepos + interval)]
                 )
             else:
                 X_known[:, thepos : (thepos + interval)] = RobustScaler().fit_transform(
                     X_known[:, thepos : (thepos + interval)]
                 )
-                X_predict[
-                    :, thepos : (thepos + interval)
-                ] = RobustScaler().fit_transform(
+                X_predict[:, thepos : (thepos + interval)] = RobustScaler().fit_transform(
                     X_predict[:, thepos : (thepos + interval)]
                 )
             thepos += interval
@@ -483,9 +469,7 @@ def main():
             gamma=args.svc_gamma,
             probability=args.svc_probability,
         )
-        methodname = (
-            f"svc_{prescalename}{args.svc_kernel}_{args.svc_polydegree}_{args.svc_C}"
-        )
+        methodname = f"svc_{prescalename}{args.svc_kernel}_{args.svc_polydegree}_{args.svc_C}"
 
     elif args.classifiertype == "lsvc":
         theclassifier = LinearSVC(
@@ -515,7 +499,9 @@ def main():
                 max_samples=0.5,
                 max_features=0.5,
             )
-            methodname = f"knn_bagging_{prescalename}{args.weights}_{str(args.n_neighbors).zfill(2)}"
+            methodname = (
+                f"knn_bagging_{prescalename}{args.weights}_{str(args.n_neighbors).zfill(2)}"
+            )
         else:
             theclassifier = KNeighborsClassifier(
                 n_neighbors=args.n_neighbors,
@@ -523,9 +509,7 @@ def main():
                 n_jobs=args.n_jobs,
                 algorithm=args.k_algorithm,
             )
-            methodname = (
-                f"knn_{prescalename}{args.weights}_{str(args.n_neighbors).zfill(2)}"
-            )
+            methodname = f"knn_{prescalename}{args.weights}_{str(args.n_neighbors).zfill(2)}"
 
     else:
         print("illegal classifier type")
@@ -578,9 +562,7 @@ def main():
             print("\tcalculating feature importances")
             if args.usepermutation:
                 feature_importances.append(
-                    permutation_importance(theclassifier, X_train, Y_train)[
-                        "importances_mean"
-                    ]
+                    permutation_importance(theclassifier, X_train, Y_train)["importances_mean"]
                 )
             else:
                 feature_importances.append(theclassifier.feature_importances_)
@@ -615,9 +597,7 @@ def main():
                 np.min(theaccuracies),
                 np.max(theaccuracies),
             )
-            with open(
-                args.outputrootname + "_" + methodname + "_accuracy.csv", "w"
-            ) as text_file:
+            with open(args.outputrootname + "_" + methodname + "_accuracy.csv", "w") as text_file:
                 dpath, dfile = os.path.split(args.datafilename)
                 cpath, cfile = os.path.split(args.classfilename)
                 fieldlist = [
