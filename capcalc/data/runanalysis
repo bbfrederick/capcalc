@@ -1,26 +1,21 @@
-#!/bin/csh -f
+#!/bin/bash
+
+sourcefmrifile=/data2/HCP1200/101309/preproc/101309/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR.nii.gz
 
 echo 'extracting timecourses'
-#roidecompose \
-    #HCPdatafile.nii.gz \
-    #Hutch17CortStriatAmyg_MNI_corrected.nii.gz \
-    #output/orig_hcptcs.txt \
-    #--pctnorm
+roidecompose \
+    ${sourcefmrifile} \
+    Hutch17CortStriatAmyg_MNI_corrected.nii.gz \
+    output/orig_hcptcs_corr.txt \
+    --pctnorm
 
 echo 'calculating kmeans'
-#capfromtcs -i output/orig_hcptcs_corr.txt -o output/orig_hcp --sampletime=0.72 --quality --GBR --varnorm
-capfromtcs -i output/rapidtide_hcptcs_corr.txt -o output/rapidtide_hcp --sampletime=0.72 --quality --GBR --varnorm
-#capfromtcs -i output/orig_hcptcs_corr.txt -o output/orig_hcp_lfo --sampletime=0.72 -L --quality --GBR --varnorm
-#capfromtcs -i output/rapidtide_hcptcs_corr.txt -o output/rapidtide_hcp_lfo --sampletime=0.72 -L --quality --GBR --varnorm
+capfromtcs -i output/orig_hcptcs_corr.txt -o output/orig_hcp_lfo --sampletime=0.72 -L --quality --GBR --varnorm
 
 echo 'remapping onto rosi states'
-statematch rosi_orig.txt output/orig_hcp_statelabels.txt output/orig
-#statematch rosi_rapidtide.txt output/rapidtide_hcp_statelabels.txt output/rapidtide
-#statematch rosi_orig.txt output/orig_hcp_lfo_statelabels.txt output/orig_lfo
-#statematch rosi_rapidtide.txt output/rapidtide_hcp_lfo_statelabels.txt output/rapidtide_lfo
+statematch rosi_orig.txt output/orig_hcp_lfo_statelabels.txt output/orig_lfo
 
 echo 'projecting clusters back onto the brain'
-#roirecompose output/orig_hcp_clustercenters.txt Hutch17CortStriatAmyg_MNI_corrected.nii.gz output/orig_states
-#roirecompose output/rapidtide_hcp_clustercenters.txt Hutch17CortStriatAmyg_MNI_corrected.nii.gz output/rapidtide_states
+maptoroi output/orig_hcp_lfo_clustercenters.txt Hutch17CortStriatAmyg_MNI_corrected.nii.gz output/orig_states
 
-#fslview output/orig_states -l Hot -b 0.1,2 output/rapidtide_states -l Hot -b 0.1,2
+fsleyes output/orig_states
