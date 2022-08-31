@@ -1,5 +1,11 @@
 # Release history
 
+## Version 1.2.3 (8/31/22)
+* (capfromtcs, clustercomp) Used newer, non-deprecated method to access nifti files with nibabel.
+* (package) Added docker and singularity test scripts.
+* (package) Reformatted several files with black.
+* (package) Made many (unsuccesful) attempts to get the documentation to build.
+
 ## Version 1.2.2.5 (8/30/22)
 * (package) Bump to trigger github deployment.
 
