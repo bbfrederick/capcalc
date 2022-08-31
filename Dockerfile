@@ -1,5 +1,6 @@
 # Start from the fredericklab base container
 FROM fredericklab/basecontainer:latest
+
 # Installing precomputed python packages
 RUN mamba install -y python \
                      pip \
@@ -15,7 +16,7 @@ RUN mamba install -y python \
                      nilearn \
                      keras \
                      h5py \
-                     "tensorflow>=2.4.0" \
+                     tensorflow \
                      pyqtgraph \
                      pyfftw \
                      pandas \
@@ -32,11 +33,6 @@ RUN df -h
 RUN useradd -m -s /bin/bash -G users capcalc
 WORKDIR /home/capcalc
 ENV HOME="/home/capcalc"
-
-
-# Precaching fonts, set 'Agg' as default backend for matplotlib
-#RUN python -c "from matplotlib import font_manager" && \
-#    sed -i 's/\(backend *: \).*$/\1Agg/g' $( python -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
 
 
 # Installing capcalc
