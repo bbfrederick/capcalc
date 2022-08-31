@@ -10,12 +10,26 @@ roidecompose \
     --pctnorm
 
 echo 'calculating kmeans'
-capfromtcs -i output/orig_hcptcs_corr.txt -o output/orig_hcp_lfo --sampletime=0.72 -L --quality --GBR --varnorm
+capfromtcs \
+    -i output/orig_hcptcs_corr.txt \
+    -o output/orig_hcp_lfo \
+    --sampletime=0.72 \
+    -L \
+    --quality \
+    --GBR \
+    --varnorm
 
 echo 'remapping onto rosi states'
-statematch rosi_orig.txt output/orig_hcp_lfo_statelabels.txt output/orig_lfo
+statematch \
+    rosi_orig.txt \
+    output/orig_hcp_lfo_statelabels.txt \
+    output/orig_lfo
 
 echo 'projecting clusters back onto the brain'
-maptoroi output/orig_hcp_lfo_clustercenters.txt Hutch17CortStriatAmyg_MNI_corrected.nii.gz output/orig_states
+maptoroi \
+    output/orig_hcp_lfo_clustercenters.txt \
+    Hutch17CortStriatAmyg_MNI_corrected.nii.gz \
+    output/orig_states
 
-fsleyes output/orig_states
+fsleyes  \
+    utput/orig_states
