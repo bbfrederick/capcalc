@@ -1,14 +1,11 @@
 #!/bin/csh -f
 
 echo 'extracting timecourses'
-roidecompose Resting_101309/REST1_LR/origional/101309_Hutch17CortStriatAmyg_MNI_REST1_LR.txt \
-    Hutch17CortStriatAmyg_MNI_corrected.nii.gz \
-    output/orig_hcptcs.txt \
-    --pctnorm
-#roidecompose Resting_101309/REST1_LR/rapidtide/101309_rapidtide_Hutch17CortStriatAmyg_MNI_REST1_LR.txt \
-#    Hutch17CortStriatAmyg_MNI_corrected.nii.gz \
-#    rapidtide_hcptcs.txt \
-#    --nonorm
+#roidecompose \
+    #HCPdatafile.nii.gz \
+    #Hutch17CortStriatAmyg_MNI_corrected.nii.gz \
+    #output/orig_hcptcs.txt \
+    #--pctnorm
 
 echo 'calculating kmeans'
 #capfromtcs -i output/orig_hcptcs_corr.txt -o output/orig_hcp --sampletime=0.72 --quality --GBR --varnorm
@@ -17,7 +14,7 @@ capfromtcs -i output/rapidtide_hcptcs_corr.txt -o output/rapidtide_hcp --samplet
 #capfromtcs -i output/rapidtide_hcptcs_corr.txt -o output/rapidtide_hcp_lfo --sampletime=0.72 -L --quality --GBR --varnorm
 
 echo 'remapping onto rosi states'
-#statematch rosi_orig.txt output/orig_hcp_statelabels.txt output/orig
+statematch rosi_orig.txt output/orig_hcp_statelabels.txt output/orig
 #statematch rosi_rapidtide.txt output/rapidtide_hcp_statelabels.txt output/rapidtide
 #statematch rosi_orig.txt output/orig_hcp_lfo_statelabels.txt output/orig_lfo
 #statematch rosi_rapidtide.txt output/rapidtide_hcp_lfo_statelabels.txt output/rapidtide_lfo
