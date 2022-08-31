@@ -59,7 +59,7 @@ clc;
 
 % ------------ INPUTS -------------------
 
-all_mats  = load('mid_all_VP.mat');  % 268 x 268 x N subjects 
+all_mats  = load('mid_all_VP.mat');  % 268 x 268 x N subjects
 all_mats=all_mats.mid_all_vP;'''
 allmats_img, all_mats, allmats_hdr, allmatsdims, allmatssizes = tide_io.readfromnifti('mid_all_VP.nii.gz')
 all_behav = tide_io.readvec('any_drug_free_urine.txt')
