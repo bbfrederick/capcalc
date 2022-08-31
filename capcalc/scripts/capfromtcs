@@ -850,7 +850,7 @@ if clustertype == "kmeans":
             if np.sum(offdiagtransmat[i, :]) > 0.0:
                 offdiagtransmat[i, :] /= np.sum(offdiagtransmat[i, :])
         init_img = nib.Nifti1Image(normtransmat, outputaffine)
-        init_hdr = init_img.get_header()
+        init_hdr = init_img.header
         init_sizes = init_hdr["pixdim"]
         tide_io.savetonifti(
             np.transpose(rawtransmat),
