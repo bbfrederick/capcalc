@@ -2,12 +2,12 @@
 
 sourcefmrifile=/data2/HCP1200/101309/preproc/101309/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR.nii.gz
 
-echo 'extracting timecourses'
-roidecompose \
-    ${sourcefmrifile} \
-    Hutch17CortStriatAmyg_MNI_corrected.nii.gz \
-    output/orig_hcptcs_corr.txt \
-    --pctnorm
+#echo 'extracting timecourses'
+#roidecompose \
+#    ${sourcefmrifile} \
+#    Hutch17CortStriatAmyg_MNI_corrected.nii.gz \
+#    output/orig_hcptcs_corr.txt \
+#    --pctnorm
 
 echo 'calculating kmeans'
 capfromtcs \
