@@ -30,12 +30,16 @@ import subprocess
 def main():
     # get the command line parameters
     thecapcalccmd = sys.argv[1:]
-    thewrappercmd = ['docker', 'run',
-                        '-m', '8g',
-                        '--volume=/Users/frederic:/data',
-                        'capcalc:latest']
+    thewrappercmd = [
+        "docker",
+        "run",
+        "-m",
+        "8g",
+        "--volume=/Users/frederic:/data",
+        "capcalc:latest",
+    ]
     subprocess.call(thewrappercmd + thecapcalccmd)
-    
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

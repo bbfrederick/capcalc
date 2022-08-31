@@ -30,14 +30,16 @@ import subprocess
 def main():
     # get the command line parameters
     thecapcalccmd = sys.argv[1:]
-    thewrappercmd = ['singularity',
-                        'run',
-                        '--cleanenv', 
-                        '-B',
-                        '/Users/frederic:/data', 
-                        'capcalc-latest.sif']
+    thewrappercmd = [
+        "singularity",
+        "run",
+        "--cleanenv",
+        "-B",
+        "/Users/frederic:/data",
+        "capcalc_latest.sif",
+    ]
     subprocess.call(thewrappercmd + thecapcalccmd)
-    
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
