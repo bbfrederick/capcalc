@@ -8,8 +8,7 @@ RUN mamba install -y python \
                      scipy \
                      numpy \
                      matplotlib \
-                     mkl \
-                     mkl-service \
+                     pandas \
                      statsmodels \
                      scikit-image \
                      scikit-learn \
@@ -20,13 +19,12 @@ RUN mamba install -y python \
                      tensorflow \
                      pyqtgraph \
                      pyfftw \
-                     pandas \
                      versioneer \
                      numba; sync && \
     chmod -R a+rX /usr/local/miniconda; sync && \
     chmod +x /usr/local/miniconda/bin/*; sync && \
     conda-build purge-all; sync && \
-    conda clean -tipsy && sync
+    mamba clean -tipsy && sync
 
 
 RUN df -h
