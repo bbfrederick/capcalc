@@ -1,0 +1,20 @@
+showtc \
+    manyfiles_00_lenhist.txt:1 \
+    manyfiles_01_lenhist.txt:1 \
+    manyfiles_02_lenhist.txt:1 \
+    manyfiles_03_lenhist.txt:1 \
+    manyfiles_04_lenhist.txt:1 \
+    manyfiles_05_lenhist.txt:1 \
+    manyfiles_06_lenhist.txt:1 \
+    manyfiles_07_lenhist.txt:1 \
+    --legend=state0,state1,state2,state3,state4,state5,state6,state7
+
+showxy \
+    manyfiles_00_lenhist.txt,state0 \
+    manyfiles_01_lenhist.txt,state1 \
+    manyfiles_02_lenhist.txt,state2 \
+    manyfiles_03_lenhist.txt,state3 \
+    manyfiles_04_lenhist.txt,state4 \
+    manyfiles_05_lenhist.txt,state5 \
+    manyfiles_06_lenhist.txt,state6 \
+    manyfiles_07_lenhist.txt,state7
