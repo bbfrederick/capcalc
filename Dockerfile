@@ -4,6 +4,7 @@ FROM fredericklab/basecontainer:latest
 # Installing precomputed python packages
 RUN mamba install -y python \
                      pip \
+                     requests \
                      scipy \
                      numpy \
                      matplotlib \
@@ -26,8 +27,9 @@ RUN mamba install -y python \
     chmod +x /usr/local/miniconda/bin/*; sync && \
     conda-build purge-all; sync && \
     conda clean -tipsy && sync
-RUN df -h
 
+
+RUN df -h
 
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users capcalc
