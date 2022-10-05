@@ -6,16 +6,16 @@ RUN mamba install -y statsmodels \
                      pandas \
                      scikit-image \
                      scikit-learn \
-                     nilearn; sync && \
-    mamba install -y nibabel \
+                     nilearn; sync
+RUN mamba install -y nibabel \
                      h5py \
                      pyqtgraph \
-                     pyfftw; sync && \
-    mamba install -y keras \
-                     tensorflow \
-                     versioneer \
-                     numba; sync && \
-    chmod -R a+rX /usr/local/miniconda; sync && \
+                     pyfftw; sync
+RUN mamba install -y versioneer \
+                     numba; sync
+RUN mamba install -y keras \
+                     tensorflow; sync
+RUN chmod -R a+rX /usr/local/miniconda; sync && \
     chmod +x /usr/local/miniconda/bin/*; sync && \
     conda-build purge-all; sync && \
     mamba clean -tipsy && sync
