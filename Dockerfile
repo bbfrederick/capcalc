@@ -2,13 +2,8 @@
 FROM fredericklab/basecontainer:latest
 
 # Installing precomputed python packages
-RUN mamba install -y pip \
-                     requests; sync && \
-    mamba install -y scipy \
-                     numpy \
-                     matplotlib \
-                     pandas; sync && \
-    mamba install -y statsmodels \
+RUN mamba install -y statsmodels \
+                     pandas \
                      scikit-image \
                      scikit-learn \
                      nibabel \
