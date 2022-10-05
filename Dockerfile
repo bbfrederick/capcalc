@@ -3,12 +3,12 @@ FROM fredericklab/basecontainer:latest
 
 # Installing precomputed python packages
 RUN mamba install -y pip \
-                     requests \
-                     scipy \
+                     requests; sync && \
+    mamba install -y scipy \
                      numpy \
                      matplotlib \
-                     pandas \
-                     statsmodels \
+                     pandas; sync && \
+    mamba install -y statsmodels \
                      scikit-image \
                      scikit-learn \
                      nibabel \
