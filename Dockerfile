@@ -2,8 +2,7 @@
 FROM fredericklab/basecontainer:latest
 
 # Installing precomputed python packages
-RUN mamba install -y python \
-                     pip \
+RUN mamba install -y pip \
                      requests \
                      scipy \
                      numpy \
