@@ -1,5 +1,5 @@
 # Use Ubuntu 20.04 LTS
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 # Prepare environment
 RUN df -h
