@@ -26,7 +26,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: fredericklab/rapidtide
+          images: fredericklab/capcalc
 
       - name: Build and push
         id: docker_build
