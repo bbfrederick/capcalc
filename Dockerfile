@@ -1,5 +1,5 @@
 # Start from the fredericklab base container
-FROM fredericklab/basecontainer:latest
+FROM fredericklab/basecontainer:v0.0.7
 
 # Installing precomputed python packages
 RUN mamba install -y statsmodels \
