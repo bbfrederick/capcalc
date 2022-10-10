@@ -212,7 +212,7 @@ duration = 100000000.0
 starttime = 0.0
 usebutterworthfilter = False
 filtorder = 3
-verbose = False
+verbose = True
 
 doGBR = False
 display = False
