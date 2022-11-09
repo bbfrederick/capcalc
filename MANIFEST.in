@@ -1,6 +1,3 @@
-recursive-include rapidtide *.py
-recursive-include rapidtide/data/examples/src fmri.nii.gz timecourse1.txt timecourse2.txt nirs.txt
-recursive-include rapidtide/scripts *
-recursive-include rapidtide/data/reference *.nii.gz
+recursive-include capcalc/scripts *
 include versioneer.py
-include rapidtide/_version.py
+include capcalc/_version.py
