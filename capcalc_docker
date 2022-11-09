@@ -36,7 +36,7 @@ def main():
         "-m",
         "8g",
         "--volume=/Users/frederic:/data",
-        "capcalc:latest",
+        "fredericklab/capcalc:latest",
     ]
     subprocess.call(thewrappercmd + thecapcalccmd)
 
