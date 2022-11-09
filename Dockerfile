@@ -1,11 +1,11 @@
 # Start from the fredericklab base container
-FROM fredericklab/basecontainer:v0.0.7
+FROM fredericklab/basecontainer:latest
 
 # Installing precomputed python packages
 RUN mamba install -y statsmodels \
                      pandas \
                      scikit-image \
-                     scikit-learn \
+                     scikit-learn=0.23.2 \
                      nilearn
 RUN mamba install -y nibabel \
                      h5py \
