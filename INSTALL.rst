@@ -9,8 +9,11 @@ capcalc requires some external libraries to be installed first:
 -  Python 3.x
 -  numpy
 -  scipy
+-  matplotlib
 -  scikit-learn
 -  statsmodels
+-  nibabel
+-  numba
 
 
 Installing from pypi
