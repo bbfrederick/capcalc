@@ -26,8 +26,6 @@ sys.path.insert(0, os.path.abspath("../capcalc"))
 
 from github_link import make_linkcode_resolve
 
-import rapidtide
-
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -91,10 +89,9 @@ author = "Blaise Frederick"
 # built documents.
 #
 # The short X.Y version.
-import rapidtide.util as tide_util
+import capcalc.util as ccalc_util
 
-version = tide_util.version()[0].replace("v", "").split("+")[0]
-version = "1.2.3"
+version = ccalc_util.version()[0].replace("v", "").split("+")[0]
 # The full version, including alpha/beta/rc tags.
 release = version
 
