@@ -23,9 +23,9 @@ import argparse
 import os.path as op
 import sys
 
-import rapidtide.filter as tide_filt
-import rapidtide.io as tide_io
-import rapidtide.util as tide_util
+import capcalc.filter as tide_filt
+import capcalc.io as tide_io
+import capcalc.util as tide_util
 
 
 class IndicateSpecifiedAction(argparse.Action):
@@ -703,7 +703,7 @@ def addsimilarityopts(parser):
 
 def setargs(thegetparserfunc, inputargs=None):
     """
-    Compile arguments for rapidtide workflow.
+    Compile arguments for capcalc workflow.
     """
     if inputargs is None:
         # get arguments from the command line
