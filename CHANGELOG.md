@@ -1,5 +1,10 @@
 # Release history
 
+## Version 1.3.0 (11/10/22)
+* (package) Removed rapidtide as a dependency by copying over the necessary support routines.
+* (Docker) Updated basecontainer to latest, switched over to using pip rather than mamba for env.
+* (docs) Corrected a problem that was causing readthedocs build to fail.
+
 ## Version 1.2.3 (8/31/22)
 * (capfromtcs, clustercomp) Used newer, non-deprecated method to access nifti files with nibabel.
 * (package) Added docker and singularity test scripts.
