@@ -23,7 +23,6 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 import pyfftw
 import scipy as sp
 import scipy.special as sps
