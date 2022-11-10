@@ -18,8 +18,8 @@ FROM fredericklab/basecontainer:latest
 RUN pip install \
             statsmodels \
             pandas \
-            scikit-learn=0.22.1 \
             nilearn \
+            scikit-learn \
             nibabel \
             h5py \
             versioneer \
