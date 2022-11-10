@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.3.1 (11/10/22)
+* (capfromtcs) Added new option "--initialcenters" to allow specification of k-means cluster centers.  This lets you reuse the CAPS as previous runs, but gets around the difficulty of reading back old models run under a different version of python or scikit-learn.
+
 ## Version 1.3.0 (11/10/22)
 * (package) Removed rapidtide as a dependency by copying over the necessary support routines.
 * (Docker) Updated basecontainer to latest, switched over to using pip rather than mamba for env.
