@@ -23,7 +23,6 @@ RUN pip install \
             nibabel \
             h5py \
             versioneer \
-            pyfftw \
             numba
 RUN pip install --upgrade --force-reinstall  requests
 
