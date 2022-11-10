@@ -24,8 +24,9 @@ from __future__ import print_function
 import sys
 
 import numpy as np
-import rapidtide.fit as tide_fit
-import rapidtide.io as tide_io
+
+import capcalc.fit as tide_fit
+import capcalc.io as tide_io
 
 
 def main():
@@ -123,5 +124,5 @@ def main():
 
 if __name__ == "__main__":
     # import cProfile as profile
-    # profile.run('main()', 'rapidtide_profile')
+    # profile.run('main()', 'capcalc_profile')
     main()

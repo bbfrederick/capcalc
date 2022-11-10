@@ -23,9 +23,10 @@ from __future__ import print_function
 
 import getopt
 
-import rapidtide.io as tide_io
 from pylab import *
 from sklearn.cluster import KMeans, MiniBatchKMeans
+
+import capcalc.io as tide_io
 
 
 def usage():

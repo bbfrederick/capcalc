@@ -23,10 +23,11 @@ import argparse
 import sys
 
 import numpy as np
-import rapidtide.io as tide_io
-import rapidtide.workflows.parser_funcs as pf
 from pylab import *
 from scipy.stats import pearsonr
+
+import capcalc.io as tide_io
+import capcalc.parser_funcs as pf
 
 # set default variable values
 DEFAULTPCT = 98.0

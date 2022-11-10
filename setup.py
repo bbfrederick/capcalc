@@ -31,6 +31,13 @@ except PermissionError:
 
 
 modules_list = [
+    "capcalc/fit",
+    "capcalc/filter",
+    "capcalc/io",
+    "capcalc/miscmath",
+    "capcalc/parser_funcs",
+    "capcalc/stats",
+    "capcalc/util",
     "capcalc/utils",
     "capcalc/_version",
 ]
@@ -106,7 +113,15 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=["numpy", "scipy", "scikit-learn", "matplotlib", "statsmodels", "rapidtide"],
+    install_requires=[
+        "numpy",
+        "scipy",
+        "scikit-learn==0.23.2",
+        "matplotlib",
+        "statsmodels",
+        "numba",
+        "nibabel",
+    ],
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
     # for example:

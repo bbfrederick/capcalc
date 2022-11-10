@@ -27,8 +27,9 @@ import sys
 import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
-import rapidtide.io as tide_io
 from pylab import *
+
+import capcalc.io as tide_io
 
 
 def bland_altman_plot(data1, data2, *args, **kwargs):

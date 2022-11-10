@@ -23,9 +23,6 @@ import argparse
 import os
 
 import numpy as np
-import rapidtide.io as tide_io
-import rapidtide.miscmath as tide_math
-import rapidtide.workflows.parser_funcs as pf
 import scipy.sparse as ss
 from pylab import *
 from scipy.cluster.hierarchy import dendrogram
@@ -35,6 +32,10 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import davies_bouldin_score, silhouette_score
 from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import RobustScaler, StandardScaler
+
+import capcalc.io as tide_io
+import capcalc.miscmath as tide_math
+import capcalc.parser_funcs as pf
 
 clusteringmethods = ["kmeans", "agglomerative", "dbscan"]
 

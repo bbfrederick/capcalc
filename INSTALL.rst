@@ -11,7 +11,6 @@ capcalc requires some external libraries to be installed first:
 -  scipy
 -  scikit-learn
 -  statsmodels
--  rapidtide (get it from github or pypi)
 
 
 Installing from pypi

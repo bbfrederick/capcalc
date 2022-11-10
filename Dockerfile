@@ -4,17 +4,12 @@ FROM fredericklab/basecontainer:latest
 # Installing precomputed python packages
 RUN mamba install -y statsmodels \
                      pandas \
-                     scikit-image \
                      scikit-learn=0.23.2 \
-                     nilearn
+                     nilearn 
 RUN mamba install -y nibabel \
-                     h5py \
-                     pyqtgraph \
-                     pyfftw
+                     h5py 
 RUN mamba install -y versioneer \
                      numba
-RUN mamba install -y keras \
-                     tensorflow
 RUN chmod -R a+rX /usr/local/miniconda
 RUN chmod +x /usr/local/miniconda/bin/*
 RUN conda-build purge-all
@@ -31,7 +26,6 @@ ENV HOME="/home/capcalc"
 
 # Installing capcalc
 COPY . /src/capcalc
-RUN pip install rapidtide
 RUN cd /src/capcalc && \
     python setup.py install && \
     rm -rf /src/capcalc/build /src/capcalc/dist

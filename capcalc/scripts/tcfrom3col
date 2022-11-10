@@ -25,8 +25,9 @@ import bisect
 import sys
 
 import numpy as np
-import rapidtide.io as tide_io
 from pylab import figure, plot, show
+
+import capcalc.io as tide_io
 
 
 def maketcfrom3col(inputdata, timeaxis, outputvector, debug=False):

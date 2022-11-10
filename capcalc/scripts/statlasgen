@@ -22,9 +22,10 @@ import subprocess
 import sys
 
 import numpy as np
-import rapidtide.filter as tide_filt
-import rapidtide.io as tide_io
-import rapidtide.workflows.parser_funcs as pf
+
+import capcalc.filter as tide_filt
+import capcalc.io as tide_io
+import capcalc.parser_funcs as pf
 
 
 def _get_parser():

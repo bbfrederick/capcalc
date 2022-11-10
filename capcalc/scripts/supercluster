@@ -35,8 +35,6 @@ except ImportError:
 
 import matplotlib.pyplot as plt
 import numpy as np
-import rapidtide.io as tide_io
-import rapidtide.workflows.parser_funcs as pf
 from sklearn.ensemble import (
     AdaBoostClassifier,
     BaggingClassifier,
@@ -51,6 +49,9 @@ from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import RobustScaler, StandardScaler
 from sklearn.svm import SVC, LinearSVC
+
+import capcalc.io as tide_io
+import capcalc.parser_funcs as pf
 
 
 def _get_parser():

@@ -46,7 +46,7 @@ def main():
         "supercluster",
         "tcfrom3col",
         "updatemodel",
-        "rapidtide_dispatcher",
+        "capcalc_dispatcher",
         "xyzzy",
         "info",
     ]
@@ -63,16 +63,16 @@ def main():
             print(f"isdocker: {isdocker}")
             print(f"execdir: {execdir}")
             print(f"cwd: {os.getcwd()}")
-            with open("/src/rapidtide/VERSION", "r") as f:
+            with open("/src/capcalc/VERSION", "r") as f:
                 theversion = f.read().replace("\n", "")
             print(f"version: {theversion}")
             print("valid commands:")
             for thecommand in validcommands:
                 print(f"\t{thecommand}")
         else:
-            print(thecommand[0], "is a rapidtide script, but is not installed")
+            print(thecommand[0], "is a capcalc script, but is not installed")
     else:
-        print(thecommand[0], "is not a script in the rapidtide package")
+        print(thecommand[0], "is not a script in the capcalc package")
 
 
 if __name__ == "__main__":
