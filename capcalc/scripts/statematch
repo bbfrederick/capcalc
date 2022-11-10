@@ -25,7 +25,7 @@ import sys
 
 import numpy as np
 
-import capcalc.io as tide_io
+import capcalc.io as ccalc_io
 
 
 def usage():
@@ -52,8 +52,8 @@ infile1 = sys.argv[1]
 infile2 = sys.argv[2]
 outfile = sys.argv[3]
 
-inputdata1 = tide_io.readvec(infile1).astype(int)
-inputdata2 = tide_io.readvec(infile2).astype(int)
+inputdata1 = ccalc_io.readvec(infile1).astype(int)
+inputdata2 = ccalc_io.readvec(infile2).astype(int)
 if len(inputdata1) != len(inputdata2):
     print("input file lengths do not match")
     sys.exit()
@@ -93,5 +93,5 @@ remapped2 = inputdata2 * 0
 for i in range(len(inputdata1)):
     remapped2[i] = maparray[inputdata2[i] - min2] + min1
 
-tide_io.writenpvecs(remapped2, outfile + "_remapped.txt")
-tide_io.writenpvecs(matcharray, outfile + "_matcharray.txt")
+ccalc_io.writenpvecs(remapped2, outfile + "_remapped.txt")
+ccalc_io.writenpvecs(matcharray, outfile + "_matcharray.txt")

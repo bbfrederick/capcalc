@@ -23,9 +23,9 @@ import argparse
 import os.path as op
 import sys
 
-import capcalc.filter as tide_filt
-import capcalc.io as tide_io
-import capcalc.util as tide_util
+import capcalc.filter as ccalc_filt
+import capcalc.io as ccalc_io
+import capcalc.util as ccalc_util
 
 
 class IndicateSpecifiedAction(argparse.Action):
@@ -40,7 +40,7 @@ def detailedversion():
         git_longtag,
         git_date,
         git_isdirty,
-    ) = tide_util.version()
+    ) = ccalc_util.version()
     python_version = str(sys.version_info)
     print(f"release version: {release_version}")
     print(f"git_longtag: {git_longtag}")
@@ -61,7 +61,7 @@ def is_valid_file(parser, arg):
     Check if argument is existing file.
     """
     if arg is not None:
-        thefilename, colspec = tide_io.parsefilespec(arg)
+        thefilename, colspec = ccalc_io.parsefilespec(arg)
     else:
         thefilename = None
 
@@ -346,13 +346,13 @@ def postprocessfilteropts(args, debug=False):
     if args.arbvec is not None:
         # NOTE - this vector is LOWERPASS, UPPERPASS, LOWERSTOP, UPPERSTOP
         # setfreqs expects LOWERSTOP, LOWERPASS, UPPERPASS, UPPERSTOP
-        theprefilter = tide_filt.NoncausalFilter(
+        theprefilter = ccalc_filt.NoncausalFilter(
             "arb",
             transferfunc=args.filtertype,
         )
         theprefilter.setfreqs(args.arbvec[2], args.arbvec[0], args.arbvec[1], args.arbvec[3])
     else:
-        theprefilter = tide_filt.NoncausalFilter(
+        theprefilter = ccalc_filt.NoncausalFilter(
             args.filterband,
             transferfunc=args.filtertype,
             padtime=args.padseconds,

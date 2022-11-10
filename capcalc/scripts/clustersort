@@ -26,7 +26,7 @@ import numpy as np
 from pylab import *
 from scipy.stats import pearsonr
 
-import capcalc.io as tide_io
+import capcalc.io as ccalc_io
 import capcalc.parser_funcs as pf
 
 # set default variable values
@@ -153,7 +153,7 @@ def main():
 
     thecommandline = [" ".join(sys.argv)]
     # save the command line
-    tide_io.writevec(
+    ccalc_io.writevec(
         thecommandline,
         args.outputrootname + "_commandline.txt",
     )
@@ -166,7 +166,7 @@ def main():
         datafile_hdr,
         datafiledims,
         datafilesizes,
-    ) = tide_io.readfromnifti(args.datafilename)
+    ) = ccalc_io.readfromnifti(args.datafilename)
 
     if args.maskfilename is not None:
         print("reading in mask array")
@@ -176,7 +176,7 @@ def main():
             datamask_hdr,
             datamaskdims,
             datamasksizes,
-        ) = tide_io.readfromnifti(args.maskfilename)
+        ) = ccalc_io.readfromnifti(args.maskfilename)
 
     if args.regionfilename is not None:
         print("reading in region array")
@@ -186,15 +186,15 @@ def main():
             dataregion_hdr,
             dataregiondims,
             dataregionsizes,
-        ) = tide_io.readfromnifti(args.regionfilename)
+        ) = ccalc_io.readfromnifti(args.regionfilename)
 
-    xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
-    xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
+    xsize, ysize, numslices, timepoints = ccalc_io.parseniftidims(datafiledims)
+    xdim, ydim, slicethickness, tr = ccalc_io.parseniftisizes(datafilesizes)
 
     # check dimensions
     if args.maskfilename is not None:
         print("checking mask dimensions")
-        if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
+        if not ccalc_io.checkspacematch(datafile_hdr, datamask_hdr):
             print("input mask spatial dimensions do not match image")
             exit()
         if not datamaskdims[4] == 1:
@@ -202,7 +202,7 @@ def main():
             exit()
     if args.regionfilename is not None:
         print("checking region file dimensions")
-        if not tide_io.checkspacematch(datafile_hdr, dataregion_hdr):
+        if not ccalc_io.checkspacematch(datafile_hdr, dataregion_hdr):
             print("input region file spatial dimensions do not match image")
             exit()
         if not dataregiondims[4] == 1:
@@ -291,7 +291,7 @@ def main():
             )
         remappedtempout = np.zeros((numspatiallocs, timepoints), dtype=int)
         remappedtempout[proclocs, :] = remappedoutputarray
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             remappedtempout.reshape((xsize, ysize, numslices, timepoints)),
             datafile_hdr,
             args.outputrootname + passlabel,
@@ -306,7 +306,7 @@ def main():
             remappedtempout[:, theregion] = tempout[:, rankindices[theregion]]
         output_hdr = datafile_hdr
         output_hdr["dim"][4] = numregions
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             remappedtempout.reshape((xsize, ysize, numslices, numregions)),
             output_hdr,
             args.outputrootname + "_probseg" + passlabel,
@@ -320,7 +320,7 @@ def main():
             remappedtempout[np.where(tempout == rankindices[theregion] + 1)] = theregion + 1
         output_hdr["dim"][0] = 3
         output_hdr["dim"][4] = 1
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             remappedtempout.reshape((xsize, ysize, numslices)),
             output_hdr,
             args.outputrootname + "_maxprob" + passlabel,

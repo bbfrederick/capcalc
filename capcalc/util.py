@@ -17,7 +17,7 @@
 #
 # $Author: frederic $
 # $Date: 2016/07/12 13:50:29 $
-# $Id: tide_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
+# $Id: ccalc_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
 #
 import bisect
 import logging
@@ -32,8 +32,8 @@ import numpy as np
 import pandas as pd
 from numba import jit
 
-import capcalc._version as tide_versioneer
-import capcalc.io as tide_io
+import capcalc._version as ccalc_versioneer
+import capcalc.io as ccalc_io
 
 LGR = logging.getLogger(__name__)
 TimingLGR = logging.getLogger("TIMING")
@@ -226,7 +226,7 @@ def savecommandline(theargs, thename):
     -------
 
     """
-    tide_io.writevec([" ".join(theargs)], thename + "_commandline.txt")
+    ccalc_io.writevec([" ".join(theargs)], thename + "_commandline.txt")
 
 
 def startendcheck(timepoints, startpoint, endpoint):
@@ -384,7 +384,7 @@ def version():
 
     """
     try:
-        versioninfo = tide_versioneer.get_versions()
+        versioninfo = ccalc_versioneer.get_versions()
 
     except:
         return "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN"
@@ -493,7 +493,7 @@ def proctiminginfo(thetimings, outputfile="", extraheader=None):
         theinfolist.append(outstring)
         lasteventtime = float(theevent[1])
     if outputfile != "":
-        tide_io.writevec(theinfolist, outputfile)
+        ccalc_io.writevec(theinfolist, outputfile)
 
 
 # timecourse functions
@@ -691,21 +691,23 @@ def comparerapidtideruns(root1, root2):
             maskhdr1,
             themaskdims1,
             themasksizes1,
-        ) = tide_io.readfromnifti(maskname1)
+        ) = ccalc_io.readfromnifti(maskname1)
         (
             masknim2,
             maskdata2,
             maskhdr2,
             themaskdims2,
             themasksizes2,
-        ) = tide_io.readfromnifti(maskname2)
-        if tide_io.checkspacematch(maskhdr1, maskhdr2):
+        ) = ccalc_io.readfromnifti(maskname2)
+        if ccalc_io.checkspacematch(maskhdr1, maskhdr2):
             mask = maskdata1 * maskdata2
             if os.path.isfile(filename1) and os.path.isfile(filename2):
                 # files exist - read them in and process them
-                nim1, data1, hdr1, thedims1, thesizes1 = tide_io.readfromnifti(filename1)
-                nim2, data2, hdr2, thedims2, thesizes2 = tide_io.readfromnifti(filename2)
-                if tide_io.checkspacematch(hdr1, hdr2) and tide_io.checkspacematch(hdr1, maskhdr1):
+                nim1, data1, hdr1, thedims1, thesizes1 = ccalc_io.readfromnifti(filename1)
+                nim2, data2, hdr2, thedims2, thesizes2 = ccalc_io.readfromnifti(filename2)
+                if ccalc_io.checkspacematch(hdr1, hdr2) and ccalc_io.checkspacematch(
+                    hdr1, maskhdr1
+                ):
                     # files match in size
                     results[map] = {}
                     (
@@ -744,15 +746,15 @@ def comparehappyruns(root1, root2, debug=False):
             maskhdr1,
             themaskdims1,
             themasksizes1,
-        ) = tide_io.readfromnifti(maskname1)
+        ) = ccalc_io.readfromnifti(maskname1)
         (
             masknim2,
             maskdata2,
             maskhdr2,
             themaskdims2,
             themasksizes2,
-        ) = tide_io.readfromnifti(maskname2)
-        if tide_io.checkspacematch(maskhdr1, maskhdr2):
+        ) = ccalc_io.readfromnifti(maskname2)
+        if ccalc_io.checkspacematch(maskhdr1, maskhdr2):
             mask = maskdata1 * maskdata2
             if os.path.isfile(filename1) and os.path.isfile(filename2):
                 # files exist - read them in and process them
@@ -760,9 +762,11 @@ def comparehappyruns(root1, root2, debug=False):
                     print("comparing maps:")
                     print("\t", filename1)
                     print("\t", filename2)
-                nim1, data1, hdr1, thedims1, thesizes1 = tide_io.readfromnifti(filename1)
-                nim2, data2, hdr2, thedims2, thesizes2 = tide_io.readfromnifti(filename2)
-                if tide_io.checkspacematch(hdr1, hdr2) and tide_io.checkspacematch(hdr1, maskhdr1):
+                nim1, data1, hdr1, thedims1, thesizes1 = ccalc_io.readfromnifti(filename1)
+                nim2, data2, hdr2, thedims2, thesizes2 = ccalc_io.readfromnifti(filename2)
+                if ccalc_io.checkspacematch(hdr1, hdr2) and ccalc_io.checkspacematch(
+                    hdr1, maskhdr1
+                ):
                     # files match in size
                     results[map] = {}
                     (
@@ -797,8 +801,8 @@ def comparehappyruns(root1, root2, debug=False):
                 print("comparing timecourses:")
                 print("\t", filename1)
                 print("\t", filename2)
-            data1 = np.transpose(tide_io.readvecs(filename1))
-            data2 = np.transpose(tide_io.readvecs(filename2))
+            data1 = np.transpose(ccalc_io.readvecs(filename1))
+            data2 = np.transpose(ccalc_io.readvecs(filename2))
             if len(data1) == len(data2):
                 # files match in size
                 results[timecourse] = {}

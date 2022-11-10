@@ -42,11 +42,11 @@ from sklearn.feature_selection import (
 )
 from sklearn.preprocessing import StandardScaler
 
-import capcalc.filter as tide_filter
-import capcalc.fit as tide_fit
-import capcalc.io as tide_io
-import capcalc.miscmath as tide_math
-import capcalc.stats as tide_stats
+import capcalc.filter as ccalc_filt
+import capcalc.fit as ccalc_fit
+import capcalc.io as ccalc_io
+import capcalc.miscmath as ccalc_math
+import capcalc.stats as ccalc_stats
 
 try:
     import hdbscan as hdbs
@@ -273,7 +273,7 @@ sampletime = None
 Fs = None
 outfilename = None
 
-theprefilter = tide_filter.NoncausalFilter(transferfunc="butterworth")
+theprefilter = ccalc_filt.NoncausalFilter(transferfunc="butterworth")
 theprefilter.setbutterorder(filtorder)
 
 # set the default characteristics
@@ -530,7 +530,7 @@ elif timenormmethod == "ppnorm":
     print("will normalize timecourses to p-p deviation of 1.0")
 
 # save the command line
-tide_io.writevec([" ".join(sys.argv)], outfilename + "_commandline.txt")
+ccalc_io.writevec([" ".join(sys.argv)], outfilename + "_commandline.txt")
 
 # read in the files and get everything trimmed to the right length
 startpoint = max([int(starttime * Fs), 0]) + skippts
@@ -538,7 +538,7 @@ if len(infilename) == 1:
     # each column is a timecourse, each row is a timepoint
     print("processing single input file")
     matrixoutput = True
-    inputdata = tide_io.readvecs(infilename[0])[skippts:]
+    inputdata = ccalc_io.readvecs(infilename[0])[skippts:]
     if verbose:
         print("input data shape is ", inputdata.shape)
     numpoints = inputdata.shape[1]
@@ -546,9 +546,9 @@ if len(infilename) == 1:
     trimmeddata = inputdata[:, startpoint:endpoint]
 elif len(infilename) == 2:
     print("processing two input files")
-    inputdata1 = tide_io.readvec(infilename[0])
+    inputdata1 = ccalc_io.readvec(infilename[0])
     numpoints = len(inputdata1)
-    inputdata2 = tide_io.readvec(infilename[1])
+    inputdata2 = ccalc_io.readvec(infilename[1])
     endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
     trimmeddata = np.zeros((2, numpoints), dtype="float")
@@ -608,7 +608,7 @@ for feature in range(n_features):
         subsegstart = segment * segsize
         for subseglen in subsegs:
             if detrendorder > 0:
-                segdata = tide_fit.detrend(
+                segdata = ccalc_fit.detrend(
                     reformdata[feature, subsegstart : subsegstart + subseglen]
                 )
             else:
@@ -617,13 +617,13 @@ for feature in range(n_features):
             if timenormmethod == "none":
                 segnorm = segdata - np.mean(segdata)
             elif timenormmethod == "pctnorm":
-                segnorm = tide_math.pcnormalize(segdata)
+                segnorm = ccalc_math.pcnormalize(segdata)
             elif timenormmethod == "varnorm":
-                segnorm = tide_math.varnormalize(segdata)
+                segnorm = ccalc_math.varnormalize(segdata)
             elif timenormmethod == "stdnorm":
-                segnorm = tide_math.stdnormalize(segdata)
+                segnorm = ccalc_math.stdnormalize(segdata)
             elif timenormmethod == "ppnorm":
-                segnorm = tide_math.ppnormalize(segdata)
+                segnorm = ccalc_math.ppnormalize(segdata)
             else:
                 segnorm = segdata
 
@@ -673,8 +673,8 @@ if preprocessingtype == "pca":
             "explained variance %:",
             100.0 * thepca.explained_variance_ratio_[i],
         )
-    tide_io.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
-    tide_io.writenpvecs(
+    ccalc_io.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
+    ccalc_io.writenpvecs(
         np.transpose(thepca.components_), outfilename + "_pcacomponents_transpose.txt"
     )
 elif preprocessingtype == "ica":
@@ -701,12 +701,12 @@ elif preprocessingtype == "ica":
 
     thetransform = theica.transform(X)
     X = theica.inverse_transform(thetransform)
-    tide_io.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
-    tide_io.writenpvecs(
+    ccalc_io.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
+    ccalc_io.writenpvecs(
         np.transpose(theica.components_), outfilename + "_icacomponents_transpose.txt"
     )
 
-tide_io.writenpvecs(reformdata, outfilename + "_preprocessed.txt")
+ccalc_io.writenpvecs(reformdata, outfilename + "_preprocessed.txt")
 if preproconly:
     print("preprocessing done - quitting")
     sys.exit()
@@ -742,7 +742,7 @@ if clustertype == "kmeans":
     # thestatelabels = kmeans.labels_
     print("thestatelabels shape", thestatelabels.shape)
     print("kmeans done")
-    tide_io.writenpvecs(theclusters, outfilename + "_clustercenters.txt")
+    ccalc_io.writenpvecs(theclusters, outfilename + "_clustercenters.txt")
 
     # make normalized clusters
     thenormclusters = theclusters * 0.0
@@ -753,10 +753,10 @@ if clustertype == "kmeans":
     print("shape:", theclusters.shape)
     for i in range(theclusters.shape[1]):
         thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
-    tide_io.writenpvecs(thenormclusters, outfilename + "_norm_clustercenters.txt")
+    ccalc_io.writenpvecs(thenormclusters, outfilename + "_norm_clustercenters.txt")
 
     # save the states
-    tide_io.writenpvecs(thestatelabels, outfilename + "_statelabels.txt")
+    ccalc_io.writenpvecs(thestatelabels, outfilename + "_statelabels.txt")
 
     # find most important features
     print("finding most important features")
@@ -795,7 +795,7 @@ if clustertype == "kmeans":
     thesilavgs, thesilclusterstats = capcalc_utils.silhouette_test(
         X, kmeans, n_clusters, numsegs, segsize, summaryonly
     )
-    tide_io.writenpvecs(thesilavgs, outfilename + "_silhouettesegmentstats.txt")
+    ccalc_io.writenpvecs(thesilavgs, outfilename + "_silhouettesegmentstats.txt")
 
     silinfo = []
     for state in range(n_clusters):
@@ -820,11 +820,11 @@ if clustertype == "kmeans":
                 tcbyseg.append(np.where(statelabelsbysegment[:, startpos:endpos] == state, 1, 0))
             groups[key]["meaninstate"][state, :] = np.mean(np.concatenate(tcbyseg, axis=0), axis=0)
             groups[key]["stdinstate"][state, :] = np.std(np.concatenate(tcbyseg, axis=0), axis=0)
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             groups[key]["meaninstate"],
             outfilename + "_" + str(key) + "_meaninstate.txt",
         )
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             groups[key]["stdinstate"], outfilename + "_" + str(key) + "_stdinstate.txt"
         )
     allstatestats = []
@@ -853,17 +853,17 @@ if clustertype == "kmeans":
         init_img = nib.Nifti1Image(normtransmat, outputaffine)
         init_hdr = init_img.header
         init_sizes = init_hdr["pixdim"]
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             np.transpose(rawtransmat),
             init_hdr,
             outfilename + "_seg_" + str(segment).zfill(4) + "_rawtransmat",
         )
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             np.transpose(normtransmat),
             init_hdr,
             outfilename + "_seg_" + str(segment).zfill(4) + "_normtransmat",
         )
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             np.transpose(offdiagtransmat),
             init_hdr,
             outfilename + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat",
@@ -911,7 +911,7 @@ if clustertype == "kmeans":
             outfilename + "_seg_" + str(segment).zfill(4) + "_statestats.csv",
             index=False,
         )
-        # tide_io.writenpvecs(np.transpose(thestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
+        # ccalc_io.writenpvecs(np.transpose(thestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
         thetimestats = 1.0 * thestats
         thetimestats[:, 2:] *= sampletime
         cols = [
@@ -929,16 +929,16 @@ if clustertype == "kmeans":
             outfilename + "_seg_" + str(segment).zfill(4) + "_statetimestats.csv",
             index=False,
         )
-        # tide_io.writenpvecs(np.transpose(thetimestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
+        # ccalc_io.writenpvecs(np.transpose(thetimestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
 
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             thesestatelabels,
             outfilename + "_seg_" + str(segment).zfill(4) + "_statelabels.txt",
         )
         print("Segment %d average silhouette Coefficient: %0.3f" % (segment, thesilavgs[segment]))
         for state in range(n_clusters):
             tc = np.where(thesestatelabels == state, 1, 0)
-            tide_io.writenpvecs(
+            ccalc_io.writenpvecs(
                 tc,
                 outfilename
                 + "_seg_"
@@ -954,7 +954,7 @@ if clustertype == "kmeans":
                 outfilename + "_seg_" + str(segment).zfill(4) + "_silhouetteclusterstats.csv",
                 index=False,
             )
-            # tide_io.writenpvecs(thesilclusterstats[segment, :, :],
+            # ccalc_io.writenpvecs(thesilclusterstats[segment, :, :],
             #             outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
 
         for state in range(n_clusters):
@@ -966,7 +966,7 @@ if clustertype == "kmeans":
     for i in range(n_clusters):
         themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))
     for i in range(n_clusters):
-        thishist = tide_stats.makeandsavehistogram(
+        thishist = ccalc_stats.makeandsavehistogram(
             np.array(alllenlists[i]),
             themaxlen,
             0,
@@ -977,7 +977,7 @@ if clustertype == "kmeans":
     if not summaryonly:
         for state in range(n_clusters):
             silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             np.asarray(silavgs, dtype="float"),
             outfilename + "_overallsilhouettemean.txt",
         )
@@ -997,12 +997,12 @@ if clustertype == "kmeans":
         outfilename + "_seg_" + str(segment).zfill(4) + "_overallmeanstats.csv",
         index=False,
     )
-    # tide_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), outfilename + '_overallmeanstats.txt')
+    # ccalc_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), outfilename + '_overallmeanstats.txt')
 
     if doGBR:
         clf = GradientBoostingRegressor().fit(X, thestatelabels)
         print("GBR fitting score is:", clf.score(X, thestatelabels))
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             np.reshape(clf.feature_importances_, (n_features, 1)),
             outfilename + "_featureimportances.txt",
         )
@@ -1036,11 +1036,11 @@ elif clustertype == "dbscan":
     thestatelabels = db.labels_
     print(thestatelabels)
     print("thestatelabels shape", thestatelabels.shape)
-    tide_io.writenpvecs(thestatelabels, outfilename + "_statelabels.txt")
+    ccalc_io.writenpvecs(thestatelabels, outfilename + "_statelabels.txt")
 
     print("core_sample_indices:", db.core_sample_indices_)
     core_centers = np.transpose(X[db.core_sample_indices_, :])
-    tide_io.writenpvecs(core_centers, outfilename + "_core_centers.txt")
+    ccalc_io.writenpvecs(core_centers, outfilename + "_core_centers.txt")
 
     # Number of clusters in labels, ignoring noise if present.
     n_clusters_ = len(set(thestatelabels)) - (1 if -1 in thestatelabels else 0)

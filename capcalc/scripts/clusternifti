@@ -33,8 +33,8 @@ from sklearn.metrics import davies_bouldin_score, silhouette_score
 from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import RobustScaler, StandardScaler
 
-import capcalc.io as tide_io
-import capcalc.miscmath as tide_math
+import capcalc.io as ccalc_io
+import capcalc.miscmath as ccalc_math
 import capcalc.parser_funcs as pf
 
 clusteringmethods = ["kmeans", "agglomerative", "dbscan"]
@@ -543,7 +543,7 @@ def main():
         datafile_hdr,
         datafiledims,
         datafilesizes,
-    ) = tide_io.readfromnifti(args.datafilename)
+    ) = ccalc_io.readfromnifti(args.datafilename)
 
     print("reading in mask array")
     if args.maskfilename is not None:
@@ -553,15 +553,15 @@ def main():
             datamask_hdr,
             datamaskdims,
             datamasksizes,
-        ) = tide_io.readfromnifti(args.maskfilename)
+        ) = ccalc_io.readfromnifti(args.maskfilename)
 
-    xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
-    xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
+    xsize, ysize, numslices, timepoints = ccalc_io.parseniftidims(datafiledims)
+    xdim, ydim, slicethickness, tr = ccalc_io.parseniftisizes(datafilesizes)
 
     # check dimensions
     if args.maskfilename is not None:
         print("checking mask dimensions")
-        if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
+        if not ccalc_io.checkspacematch(datafile_hdr, datamask_hdr):
             print("input mask spatial dimensions do not match image")
             exit()
         if not datamaskdims[4] == 1:
@@ -604,11 +604,11 @@ def main():
             if args.scaler == "standard":
                 for coff in range(timepoints):
                     print(f"normalizing {coff}")
-                    coefficients[:, coff] = tide_math.stdnormalize(procdata[:, coff])
+                    coefficients[:, coff] = ccalc_math.stdnormalize(procdata[:, coff])
             else:
                 for coff in range(timepoints):
                     print(f"normalizing {coff}")
-                    coefficients[:, coff] = tide_math.madnormalize(procdata[:, coff])
+                    coefficients[:, coff] = ccalc_math.madnormalize(procdata[:, coff])
         print("After prescaling...")
         print()
         methodname += f"_{args.scaler}"
@@ -652,11 +652,11 @@ def main():
                 "explained variance %:",
                 100.0 * thepca.explained_variance_ratio_[i],
             )
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             thepca.components_,
             args.outputrootname + "_" + methodname + "_pcacomponents.txt",
         )
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             np.transpose(thepca.components_),
             args.outputrootname + "_" + methodname + "_pcacomponents_transpose.txt",
         )
@@ -665,7 +665,7 @@ def main():
         theheader["dim"][4] = thepca.n_components_
         tempout = np.zeros((numspatiallocs, thepca.n_components_), dtype="float")
         tempout[proclocs, :] = coefficients[:, :]
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             tempout.reshape((xsize, ysize, numslices, thepca.n_components_)),
             datafile_hdr,
             args.outputrootname + "_" + methodname + "_pcareduced",
@@ -680,11 +680,11 @@ def main():
 
         thetransform = theica.transform(coefficients)
         coefficients = theica.inverse_transform(thetransform)
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             theica.components_,
             args.outputrootname + "_" + methodname + "_icacomponents.txt",
         )
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             np.transpose(theica.components_),
             args.outputrootname + methodname + "_" + "_icacomponents_transpose.txt",
         )
@@ -693,7 +693,7 @@ def main():
         theheader["dim"][4] = theica.n_components_
         tempout = np.zeros((numspatiallocs, theica.n_components_), dtype="float")
         tempout[proclocs, :] = coefficients[:, :]
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             tempout.reshape((xsize, ysize, numslices, theica.n_components_)),
             datafile_hdr,
             args.outputrootname + "_" + methodname + "_icareduced",
@@ -790,7 +790,7 @@ def main():
             dbscores[therepeat] = davies_bouldin_score(coefficients, kmeans.labels_)
             print(f"Davies Bouldin score for repeat {therepeat} = {dbscores[therepeat]}")
         methodname += f"_{str(args.n_clusters).zfill(2)}"
-        tide_io.writevec(
+        ccalc_io.writevec(
             dbscores,
             args.outputrootname + "_" + methodname + "_dbscores.txt",
         )
@@ -803,7 +803,7 @@ def main():
         sys.exit()
 
     # save the command line
-    tide_io.writevec(
+    ccalc_io.writevec(
         [" ".join(sys.argv)],
         args.outputrootname + "_" + methodname + "_commandline.txt",
     )
@@ -814,7 +814,7 @@ def main():
     theheader["dim"][4] = args.repeats
     tempout = np.zeros((numspatiallocs, args.repeats), dtype="int")
     tempout[proclocs] = theregionlabels[:, :] + 1
-    tide_io.savetonifti(
+    ccalc_io.savetonifti(
         tempout.reshape((xsize, ysize, numslices, args.repeats)),
         datafile_hdr,
         args.outputrootname + "_" + methodname + "_regions",

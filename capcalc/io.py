@@ -17,7 +17,7 @@
 #
 # $Author: frederic $
 # $Date: 2016/07/12 13:50:29 $
-# $Id: tide_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
+# $Id: ccalc_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
 #
 import copy
 import json

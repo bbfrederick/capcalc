@@ -26,8 +26,8 @@ import sys
 
 import numpy as np
 
-import capcalc.fit as tide_fit
-import capcalc.io as tide_io
+import capcalc.fit as ccalc_fit
+import capcalc.io as ccalc_io
 
 
 def usage():
@@ -76,13 +76,13 @@ for o, a in opts:
     else:
         assert False, "unhandled option"
 
-inputdata = tide_io.readvecs(infilename)
+inputdata = ccalc_io.readvecs(infilename)
 outputdata = inputdata * 0.0
 for i in range(inputdata.shape[0]):
     print("processing column", i)
     if detrendorder > 0:
-        outputdata[i, :] = tide_fit.detrend(inputdata[i, :], order=detrendorder)
+        outputdata[i, :] = ccalc_fit.detrend(inputdata[i, :], order=detrendorder)
     else:
         outputdata[i, :] = inputdata[i, :] - np.mean(inputdata[i, :])
 
-tide_io.writenpvecs(outputdata, outfilename)
+ccalc_io.writenpvecs(outputdata, outfilename)

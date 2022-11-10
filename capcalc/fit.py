@@ -17,7 +17,7 @@
 #
 # $Author: frederic $
 # $Date: 2016/07/12 13:50:29 $
-# $Id: tide_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
+# $Id: ccalc_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
 #
 import warnings
 
@@ -30,7 +30,7 @@ import scipy.special as sps
 from numba import jit
 from scipy.signal import find_peaks, hilbert
 
-import capcalc.util as tide_util
+import capcalc.util as ccalc_util
 
 # fftpack = pyfftw.interfaces.scipy_fftpack
 # pyfftw.interfaces.cache.enable()
@@ -756,7 +756,7 @@ def findmaxlag_gauss(
     # make an initial guess at the fit parameters for the gaussian
     # start with finding the maximum value
     if useguess:
-        maxindex = tide_util.valtoindex(thexcorr_x, maxguess)
+        maxindex = ccalc_util.valtoindex(thexcorr_x, maxguess)
         nlowerlim = int(maxindex - widthlimit / 2.0)
         nupperlim = int(maxindex + widthlimit / 2.0)
         if nlowerlim < lowerlim:
@@ -1070,7 +1070,7 @@ def findmaxlag_gauss_rev(
     # start with finding the maximum value and its location
     flipfac = 1.0
     if useguess:
-        maxindex = tide_util.valtoindex(thexcorr_x, maxguess)
+        maxindex = ccalc_util.valtoindex(thexcorr_x, maxguess)
     else:
         maxindex, flipfac = maxindex_noedge(thexcorr_x, thexcorr_y, bipolar=bipolar)
         thexcorr_y *= flipfac
@@ -1585,7 +1585,7 @@ def getpeaks(xvals, yvals, xrange=None, bipolar=False, display=False):
     else:
         lagmin = xrange[0]
         lagmax = xrange[1]
-    originloc = tide_util.valtoindex(xvals, 0.0, discrete=False)
+    originloc = ccalc_util.valtoindex(xvals, 0.0, discrete=False)
     for thepeak in peaks:
         if lagmin <= xvals[thepeak] <= lagmax:
             if bipolar:
@@ -1593,7 +1593,7 @@ def getpeaks(xvals, yvals, xrange=None, bipolar=False, display=False):
                     [
                         xvals[thepeak],
                         yvals[thepeak],
-                        tide_util.valtoindex(xvals, xvals[thepeak], discrete=False) - originloc,
+                        ccalc_util.valtoindex(xvals, xvals[thepeak], discrete=False) - originloc,
                     ]
                 )
             else:
@@ -1602,7 +1602,7 @@ def getpeaks(xvals, yvals, xrange=None, bipolar=False, display=False):
                         [
                             xvals[thepeak],
                             yvals[thepeak],
-                            tide_util.valtoindex(xvals, xvals[thepeak], discrete=False)
+                            ccalc_util.valtoindex(xvals, xvals[thepeak], discrete=False)
                             - originloc,
                         ]
                     )

@@ -23,8 +23,8 @@ import sys
 
 import numpy as np
 
-import capcalc.filter as tide_filt
-import capcalc.io as tide_io
+import capcalc.filter as ccalc_filt
+import capcalc.io as ccalc_io
 import capcalc.parser_funcs as pf
 
 
@@ -109,11 +109,11 @@ def main():
         input_hdr,
         inputdims,
         inputsizes,
-    ) = tide_io.readfromnifti(args.inputname)
+    ) = ccalc_io.readfromnifti(args.inputname)
 
     print("reshaping")
-    xsize, ysize, numslices, numtimepoints = tide_io.parseniftidims(inputdims)
-    xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(inputsizes)
+    xsize, ysize, numslices, numtimepoints = ccalc_io.parseniftidims(inputdims)
+    xdim, ydim, slicethickness, tr = ccalc_io.parseniftisizes(inputsizes)
     numvoxels = int(xsize) * int(ysize) * int(numslices)
 
     # make a 4d array
@@ -150,7 +150,7 @@ def main():
         print(f"applying gaussian spatial filter with sigma={args.gausssigma}")
         rs_outputhistogram = outputhistogram.reshape((xsize, ysize, numslices, numregions))
         for i in range(0, numregions):
-            rs_outputhistogram[:, :, :, i] = tide_filt.ssmooth(
+            rs_outputhistogram[:, :, :, i] = ccalc_filt.ssmooth(
                 xdim,
                 ydim,
                 slicethickness,
@@ -166,7 +166,7 @@ def main():
             # first write out a temp file with the data
             outputvoxels = inputvoxels
             input_hdr["dim"][4] = numregions
-            tide_io.savetonifti(
+            ccalc_io.savetonifti(
                 outputvoxels.reshape((xsize, ysize, numslices, numregions)),
                 input_hdr,
                 "temppre",
@@ -190,7 +190,7 @@ def main():
                 input_hdr,
                 inputdims,
                 inputsizes,
-            ) = tide_io.readfromnifti("temppost")
+            ) = ccalc_io.readfromnifti("temppost")
             xsize = inputdims[1]
             ysize = inputdims[2]
             numslices = inputdims[3]
@@ -204,7 +204,7 @@ def main():
     if args.volumeperregion:
         outputvoxels = outputhistogram
         input_hdr["dim"][4] = numregions
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             outputvoxels.reshape((xsize, ysize, numslices, numregions)),
             input_hdr,
             args.outputtemplatename,
@@ -216,7 +216,7 @@ def main():
             if histmask[i] > 0:
                 outputvoxels[i] = np.argmax(outputhistogram[i, :]) + 1
         input_hdr["dim"][4] = 1
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             outputvoxels.reshape((xsize, ysize, numslices)),
             input_hdr,
             args.outputtemplatename,

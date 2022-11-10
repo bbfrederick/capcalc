@@ -23,7 +23,7 @@ from __future__ import print_function
 
 from pylab import *
 
-import capcalc.io as tide_io
+import capcalc.io as ccalc_io
 
 
 def usage():
@@ -50,8 +50,8 @@ templatefile = sys.argv[2]
 outputfile = sys.argv[3]
 
 print("loading data")
-theclustercenters = tide_io.readvecs(inputfilename)
-template_img, template_data, template_hdr, thedims, thesizes = tide_io.readfromnifti(templatefile)
+theclustercenters = ccalc_io.readvecs(inputfilename)
+template_img, template_data, template_hdr, thedims, thesizes = ccalc_io.readfromnifti(templatefile)
 
 print(theclustercenters.shape)
 numregions = theclustercenters.shape[0]
@@ -87,6 +87,6 @@ for thecluster in range(numclusters):
 
 theheader = template_hdr
 theheader["dim"][4] = numclusters
-tide_io.savetonifti(
+ccalc_io.savetonifti(
     output_data.reshape((xsize, ysize, numslices, numclusters)), theheader, outputfile
 )

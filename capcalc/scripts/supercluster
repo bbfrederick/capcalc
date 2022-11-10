@@ -50,7 +50,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import RobustScaler, StandardScaler
 from sklearn.svm import SVC, LinearSVC
 
-import capcalc.io as tide_io
+import capcalc.io as ccalc_io
 import capcalc.parser_funcs as pf
 
 
@@ -281,14 +281,14 @@ def main():
         datafile_hdr,
         datafiledims,
         datafilesizes,
-    ) = tide_io.readfromnifti(args.datafilename)
+    ) = ccalc_io.readfromnifti(args.datafilename)
     (
         classfile_img,
         classfile_data,
         classfile_hdr,
         classfiledims,
         classfilesizes,
-    ) = tide_io.readfromnifti(args.classfilename)
+    ) = ccalc_io.readfromnifti(args.classfilename)
     if args.maskfilename is not None:
         (
             datamask_img,
@@ -296,14 +296,14 @@ def main():
             datamask_hdr,
             datamaskdims,
             datamasksizes,
-        ) = tide_io.readfromnifti(args.maskfilename)
+        ) = ccalc_io.readfromnifti(args.maskfilename)
 
-    xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
-    xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
+    xsize, ysize, numslices, timepoints = ccalc_io.parseniftidims(datafiledims)
+    xdim, ydim, slicethickness, tr = ccalc_io.parseniftisizes(datafilesizes)
 
     # check dimensions
     print("checking class dimensions")
-    if not tide_io.checkspacematch(datafile_hdr, classfile_hdr):
+    if not ccalc_io.checkspacematch(datafile_hdr, classfile_hdr):
         print("target map spatial dimensions do not match image")
         exit()
     if not classfiledims[4] == 1:
@@ -312,7 +312,7 @@ def main():
 
     if args.maskfilename is not None:
         print("checking mask dimensions")
-        if not tide_io.checkspacematch(datafile_hdr, datamask_hdr):
+        if not ccalc_io.checkspacematch(datafile_hdr, datamask_hdr):
             print("input mask spatial dimensions do not match image")
             exit()
         if not datamaskdims[4] == 1:
@@ -582,7 +582,7 @@ def main():
             Y_predict_all[:, testrun] = theclassifier.predict(X_predict)
 
         # save a status value
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             np.asarray([testrun], dtype=int),
             args.outputrootname + "_" + methodname + "_currentiteration.txt",
         )
@@ -617,7 +617,7 @@ def main():
     print("prediction of known locations complete")
     confusion = confusion_matrix(Y_known, Y_predict_known)
     classreport = classification_report(Y_known, Y_predict_known)
-    tide_io.writenpvecs(
+    ccalc_io.writenpvecs(
         confusion,
         args.outputrootname + "_" + methodname + "_predict_all_confusion_matrix.txt",
     )
@@ -635,14 +635,14 @@ def main():
     # output classification of all known data
     tempout = np.zeros((numspatiallocs), dtype=np.double)
     tempout[knownlocs] = Y_predict_known[:]
-    tide_io.savetonifti(
+    ccalc_io.savetonifti(
         tempout.reshape((xsize, ysize, numslices, 1)),
         datafile_hdr,
         args.outputrootname + "_" + methodname + "_predict_known",
     )
 
     # save the command line
-    tide_io.writevec(
+    ccalc_io.writevec(
         [" ".join(sys.argv)],
         args.outputrootname + "_" + methodname + "_commandline.txt",
     )
@@ -656,7 +656,7 @@ def main():
         tempout[proclocs, :] = Y_predict_all[:, :]
         theheader = datafile_hdr
         theheader["dim"][4] = args.numtests
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             tempout.reshape((xsize, ysize, numslices, args.numtests)),
             theheader,
             args.outputrootname + "_" + methodname + "_predict_all",
@@ -664,7 +664,7 @@ def main():
     else:
         tempout = np.zeros((numspatiallocs), dtype=np.double)
         tempout[proclocs] = Y_predict_all[:]
-        tide_io.savetonifti(
+        ccalc_io.savetonifti(
             tempout.reshape((xsize, ysize, numslices, 1)),
             datafile_hdr,
             args.outputrootname + "_" + methodname + "_predict_all",
@@ -679,15 +679,15 @@ def main():
     ) and not args.bagging:
         importancemeans = np.mean(np.array(feature_importances), axis=0)
         importancestds = np.std(np.array(feature_importances), axis=0)
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             np.array(feature_importances),
             args.outputrootname + "_" + methodname + "_featureimportances.txt",
         )
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             importancemeans,
             args.outputrootname + "_" + methodname + "_featureimportances_mean.txt",
         )
-        tide_io.writenpvecs(
+        ccalc_io.writenpvecs(
             importancestds,
             args.outputrootname + "_" + methodname + "_featureimportances_std.txt",
         )

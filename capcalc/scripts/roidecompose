@@ -25,8 +25,8 @@ import getopt
 
 from pylab import *
 
-import capcalc.io as tide_io
-import capcalc.miscmath as tide_math
+import capcalc.io as ccalc_io
+import capcalc.miscmath as ccalc_math
 
 
 def usage():
@@ -101,7 +101,7 @@ elif normmethod == "ppnorm":
     print("will normalize timecourses to p-p deviation of 1.0")
 
 print("loading fmri data")
-input_img, input_data, input_hdr, thedims, thesizes = tide_io.readfromnifti(inputfilename)
+input_img, input_data, input_hdr, thedims, thesizes = ccalc_io.readfromnifti(inputfilename)
 print("loading template data")
 (
     template_img,
@@ -109,10 +109,10 @@ print("loading template data")
     template_hdr,
     templatedims,
     templatesizes,
-) = tide_io.readfromnifti(templatefile)
+) = ccalc_io.readfromnifti(templatefile)
 
 print("checking dimensions")
-if not tide_io.checkspacematch(input_hdr, template_hdr):
+if not ccalc_io.checkspacematch(input_hdr, template_hdr):
     print("template file does not match spatial coverage of input fmri file")
     sys.exit()
 
@@ -138,25 +138,25 @@ if numtimepoints > 1:
         if normmethod == "none":
             timecourses[theregion - 1, :] = regiontimecourse - np.mean(regiontimecourse)
         elif normmethod == "pctnorm":
-            timecourses[theregion - 1, :] = tide_math.pcnormalize(regiontimecourse)
+            timecourses[theregion - 1, :] = ccalc_math.pcnormalize(regiontimecourse)
         elif normmethod == "varnorm":
-            timecourses[theregion - 1, :] = tide_math.varnormalize(regiontimecourse)
+            timecourses[theregion - 1, :] = ccalc_math.varnormalize(regiontimecourse)
         elif normmethod == "stdnorm":
-            timecourses[theregion - 1, :] = tide_math.stdnormalize(regiontimecourse)
+            timecourses[theregion - 1, :] = ccalc_math.stdnormalize(regiontimecourse)
         elif normmethod == "ppnorm":
-            timecourses[theregion - 1, :] = tide_math.ppnormalize(regiontimecourse)
+            timecourses[theregion - 1, :] = ccalc_math.ppnormalize(regiontimecourse)
         else:
             print("illegal normalization method")
             usage()
             sys.exit()
-    tide_io.writenpvecs(timecourses, outputfile)
+    ccalc_io.writenpvecs(timecourses, outputfile)
 else:
     outputvoxels = np.reshape(input_data, (numvoxels, numtimepoints))
     for theregion in range(1, numregions + 1):
         regionval = np.nan_to_num(np.mean(inputvoxels[np.where(templatevoxels == theregion)]))
         outputvoxels[np.where(templatevoxels == theregion)] = regionval
     template_hdr["dim"][4] = numregions
-    tide_io.savetonifti(
+    ccalc_io.savetonifti(
         outputvoxels.reshape((xsize, ysize, numslices, numregions)),
         template_hdr,
         outputfile,

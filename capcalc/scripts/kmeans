@@ -26,7 +26,7 @@ import getopt
 from pylab import *
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
-import capcalc.io as tide_io
+import capcalc.io as ccalc_io
 
 
 def usage():
@@ -95,7 +95,7 @@ for o, a in opts:
         assert False, "unhandled option"
 
 print("loading data")
-input_img, input_data, input_hdr, thedims, thesizes = tide_io.readfromnifti(inputfilename)
+input_img, input_data, input_hdr, thedims, thesizes = ccalc_io.readfromnifti(inputfilename)
 tr = thesizes[4]
 Fs = 1.0 / tr
 print("tr from header =", tr, ", sample frequency is ", Fs)
@@ -121,10 +121,10 @@ theheader = input_hdr
 theheader["dim"][4] = n_clusters
 theclusters = np.transpose(kmeans.cluster_centers_)
 print("clusters shape:", theclusters.shape)
-tide_io.savetonifti(
+ccalc_io.savetonifti(
     theclusters.reshape((xsize, ysize, numslices, n_clusters)),
     theheader,
     outputroot + "_states",
 )
 
-tide_io.writenpvecs(kmeans.labels_, outputroot + "_statelabels.txt")
+ccalc_io.writenpvecs(kmeans.labels_, outputroot + "_statelabels.txt")

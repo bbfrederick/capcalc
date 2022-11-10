@@ -17,7 +17,7 @@
 #
 # $Author: frederic $
 # $Date: 2016/07/12 13:50:29 $
-# $Id: tide_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
+# $Id: ccalc_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
 #
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,8 +27,8 @@ import scipy as sp
 from numba import jit
 from scipy.stats import johnsonsb, kurtosis, kurtosistest
 
-import capcalc.fit as tide_fit
-import capcalc.io as tide_io
+import capcalc.fit as ccalc_fit
+import capcalc.io as ccalc_io
 
 # fftpack = pyfftw.interfaces.scipy_fftpack
 # pyfftw.interfaces.cache.enable()
@@ -224,7 +224,7 @@ def rfromp(fitfile, thepercentiles):
     -------
 
     """
-    thefit = np.array(tide_io.readvecs(fitfile)[0]).astype("float64")
+    thefit = np.array(ccalc_io.readvecs(fitfile)[0]).astype("float64")
     print("thefit = ", thefit)
     return getfracvalsfromfit(thefit, thepercentiles)
 
@@ -448,7 +448,7 @@ def gethistprops(indata, histlen, refine=False, therange=None, pickleft=False, p
         numbins += 1
     peakwidth = (thestore[0, peakindex + numbins] - thestore[0, peakindex]) * 2.0
     if refine:
-        peakheight, peaklag, peakwidth = tide_fit.gaussfit(
+        peakheight, peaklag, peakwidth = ccalc_fit.gaussfit(
             peakheight, peaklag, peakwidth, thestore[0, :], thestore[1, :]
         )
     return peaklag, peakheight, peakwidth
@@ -500,7 +500,7 @@ def makehistogram(indata, histlen, binsize=None, therange=None, refine=False, no
         numbins += 1
     peakwidth = (thestore[0, peakindex + numbins] - thestore[0, peakindex]) * 2.0
     if refine:
-        peakheight, peakloc, peakwidth = tide_fit.gaussfit(
+        peakheight, peakloc, peakwidth = ccalc_fit.gaussfit(
             peakheight, peakloc, peakwidth, thestore[0, :], thestore[1, :]
         )
     centerofmass = np.sum(thestore[0, :] * thestore[1, :]) / np.sum(thestore[1, :])
@@ -530,7 +530,7 @@ def echoloc(indata, histlen, startoffset=5.0):
     ):
         numbins += 1
     echopeakwidth = (thestore[0, echopeakindex + numbins] - thestore[0, echopeakindex]) * 2.0
-    echopeakheight, echopeakloc, echopeakwidth = tide_fit.gaussfit(
+    echopeakheight, echopeakloc, echopeakwidth = ccalc_fit.gaussfit(
         echopeakheight, echopeakloc, echopeakwidth, thestore[0, :], thestore[1, :]
     )
     return echopeakloc - peakloc, (echopeakheight * echopeakwidth) / (peakheight * peakwidth)
@@ -592,13 +592,13 @@ def makeandsavehistogram(
     else:
         varroot = dictvarname
     if thedict is None:
-        tide_io.writenpvecs(np.array([centerofmass]), outname + "_centerofmass.txt")
-        tide_io.writenpvecs(np.array([peakloc]), outname + "_peak.txt")
+        ccalc_io.writenpvecs(np.array([centerofmass]), outname + "_centerofmass.txt")
+        ccalc_io.writenpvecs(np.array([peakloc]), outname + "_peak.txt")
     else:
         thedict[varroot + "_centerofmass.txt"] = centerofmass
         thedict[varroot + "_peak.txt"] = peakloc
     if saveasbids:
-        tide_io.writebidstsv(
+        ccalc_io.writebidstsv(
             outname,
             np.transpose(thestore[1, :]),
             1.0 / (thestore[0, 1] - thestore[0, 0]),
@@ -608,7 +608,7 @@ def makeandsavehistogram(
             debug=debug,
         )
     else:
-        tide_io.writenpvecs(thestore, outname + ".txt")
+        ccalc_io.writenpvecs(thestore, outname + ".txt")
     if displayplots:
         fig = plt.figure()
         ax = fig.add_subplot(111)

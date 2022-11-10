@@ -17,7 +17,7 @@
 #
 # $Author: frederic $
 # $Date: 2016/07/12 13:50:29 $
-# $Id: tide_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
+# $Id: ccalc_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
 #
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,8 +27,8 @@ from numba import jit
 from scipy import fftpack
 from statsmodels.robust import mad
 
-import capcalc.filter as tide_filt
-import capcalc.fit as tide_fit
+import capcalc.filter as ccalc_filt
+import capcalc.fit as ccalc_fit
 
 # fftpack = pyfftw.interfaces.scipy_fftpack
 # pyfftw.interfaces.cache.enable()
@@ -106,7 +106,7 @@ def polarfft(invec, samplerate):
         thevec = invec[:-1]
     else:
         thevec = invec
-    spec = fftpack.fft(tide_filt.hamming(np.shape(thevec)[0]) * thevec)[
+    spec = fftpack.fft(ccalc_filt.hamming(np.shape(thevec)[0]) * thevec)[
         0 : np.shape(thevec)[0] // 2
     ]
     magspec = abs(spec)
@@ -388,14 +388,14 @@ def corrnormalize(thedata, detrendorder=1, windowfunc="hamming"):
     """
     # detrend first
     if detrendorder > 0:
-        intervec = stdnormalize(tide_fit.detrend(thedata, order=detrendorder, demean=True))
+        intervec = stdnormalize(ccalc_fit.detrend(thedata, order=detrendorder, demean=True))
     else:
         intervec = stdnormalize(thedata)
 
     # then window
     if windowfunc != "None":
         return stdnormalize(
-            tide_filt.windowfunction(np.shape(thedata)[0], type=windowfunc) * intervec
+            ccalc_filt.windowfunction(np.shape(thedata)[0], type=windowfunc) * intervec
         ) / np.sqrt(np.shape(thedata)[0])
     else:
         return stdnormalize(intervec) / np.sqrt(np.shape(thedata)[0])
@@ -435,7 +435,7 @@ def envdetect(Fs, inputdata, cutoff=0.25):
     """
     demeaned = inputdata - np.mean(inputdata)
     sigabs = abs(demeaned)
-    theenvbpf = tide_filt.NoncausalFilter(filtertype="arb")
+    theenvbpf = ccalc_filt.NoncausalFilter(filtertype="arb")
     theenvbpf.setfreqs(0.0, 0.0, cutoff, 1.1 * cutoff)
     return theenvbpf.apply(Fs, sigabs)
 
@@ -479,7 +479,7 @@ def trendfilt(inputdata, order=3, ndevs=3.0, debug=False):
         thecoffs = np.polyfit(thetimepoints, inputdata, order)
     except np.lib.RankWarning:
         thecoffs = [0.0, 0.0]
-    thefittc = tide_fit.trendgen(thetimepoints, thecoffs, True)
+    thefittc = ccalc_fit.trendgen(thetimepoints, thecoffs, True)
     detrended = inputdata - thefittc
     if debug:
         plt.figure()
