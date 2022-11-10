@@ -116,7 +116,7 @@ setup(
     install_requires=[
         "numpy",
         "scipy",
-        "scikit-learn==0.23.2",
+        "scikit-learn==0.22.1",
         "matplotlib",
         "statsmodels",
         "numba",
