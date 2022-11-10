@@ -21,7 +21,6 @@ RUN pip install \
             nilearn \
             scikit-learn \
             nibabel \
-            h5py \
             versioneer \
             pyfftw \
             numba
