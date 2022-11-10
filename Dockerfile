@@ -1,20 +1,6 @@
 # Start from the fredericklab base container
 FROM fredericklab/basecontainer:latest
 
-# Installing precomputed python packages
-#RUN mamba install -y statsmodels \
-#                     pandas \
-#                     scikit-learn=0.23.2 \
-#                     nilearn 
-#RUN mamba install -y nibabel \
-#                     h5py 
-#RUN mamba install -y versioneer \
-#                     numba
-#RUN chmod -R a+rX /usr/local/miniconda
-#RUN chmod +x /usr/local/miniconda/bin/*
-#RUN conda-build purge-all
-#RUN mamba clean -y --all
-
 RUN pip install \
             statsmodels \
             pandas \

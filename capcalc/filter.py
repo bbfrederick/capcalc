@@ -28,13 +28,13 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-# import pyfftw
+import pyfftw
 from numba import jit
 from scipy import fftpack, ndimage, signal
 from scipy.signal import savgol_filter
 
-# fftpack = pyfftw.interfaces.scipy_fftpack
-# pyfftw.interfaces.cache.enable()
+fftpack = pyfftw.interfaces.scipy_fftpack
+pyfftw.interfaces.cache.enable()
 
 # ---------------------------------------- Global constants -------------------------------------------
 donotusenumba = True

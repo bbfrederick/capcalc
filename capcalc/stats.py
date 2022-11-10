@@ -22,7 +22,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-# import pyfftw
+import pyfftw
 import scipy as sp
 from numba import jit
 from scipy.stats import johnsonsb, kurtosis, kurtosistest
@@ -30,8 +30,8 @@ from scipy.stats import johnsonsb, kurtosis, kurtosistest
 import capcalc.fit as ccalc_fit
 import capcalc.io as ccalc_io
 
-# fftpack = pyfftw.interfaces.scipy_fftpack
-# pyfftw.interfaces.cache.enable()
+fftpack = pyfftw.interfaces.scipy_fftpack
+pyfftw.interfaces.cache.enable()
 
 # ---------------------------------------- Global constants -------------------------------------------
 defaultbutterorder = 6
