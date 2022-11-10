@@ -172,10 +172,14 @@ def usage():
     print("    --quality                    - perform a silhouette test to evaluate fit quality")
     print("    -v                           - turn on verbose mode")
     print(
-        "    --modelroot=MODELROOT        - reread trained models from a previous run - MODELROOT should "
+        "    --modelroot=MODELROOT        - reread trained models from a previous run - MODELROOT should\n"
+        "                                   be the outputfile from the previous run (i.e. what followed -o)"
     )
     print(
-        "                                   be the outputfile from the previous run (i.e. what followed -o)"
+        "    --initialcenters=CENTERSFILE - reread cluster centers from a previous run - CENTERSFILE should\n"
+        "                                   be the XXX_clustercenters.txt file from a previous run (i.e. what\n"
+        "                                   followed -o).  This overrides the number of clusters given, and must\n"
+        "                                   match the number of PCA or ICA components given (if used) or the number of features."
     )
     print("")
     return ()
@@ -220,6 +224,7 @@ display = False
 preproconly = False
 
 trainedmodelroot = None
+initialcenters = None
 
 
 # scan the command line arguments
@@ -247,6 +252,7 @@ try:
             "minout=",
             "minhold=",
             "modelroot=",
+            "initialcenters=",
             "quality",
             "samplefreq=",
             "sampletime=",
@@ -348,6 +354,10 @@ for o, a in opts:
         trainedmodelroot = a
         if verbose:
             print("will read trained models from", trainedmodelroot, "_*.joblib")
+    elif o == "--initialcenters":
+        initialcenters = a
+        if verbose:
+            print("will read in the initial cluster centers from", initialcenters)
     elif o == "--minhold":
         minholdlength = int(a)
         if verbose:
@@ -517,6 +527,15 @@ if sampletime is None:
     print("sampletime must be set")
     usage()
     sys.exit()
+
+# read in cluster centers if specified
+if initialcenters is not None:
+    theclustercenters = np.transpose(ccalc_io.readvecs(initialcenters))
+    ccentershape = theclustercenters.shape
+    print("clustercenter shape:", ccentershape)
+    n_clusters = ccentershape[0]
+    targetfeatures = ccentershape[1]
+    print("will use", n_clusters, "clusters and", targetfeatures, "features")
 
 if timenormmethod == "none":
     print("will not normalize timecourses")
@@ -714,13 +733,21 @@ if preproconly:
 if clustertype == "kmeans":
     print("setting up kmeans")
     if trainedmodelroot is None:
+        if initialcenters is None:
+            theinit = "kmeans++"
+        else:
+            theinit = theclustercenters
+            max_iter = 1
+
         print("training model")
         if minibatch:
             kmeans = MiniBatchKMeans(
-                n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter
+                n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter, init=theinit
             ).fit(X)
         else:
-            kmeans = KMeans(n_clusters=n_clusters, max_iter=max_iter, n_init=n_init).fit(X)
+            kmeans = KMeans(
+                n_clusters=n_clusters, max_iter=max_iter, n_init=n_init, init=theinit
+            ).fit(X)
 
         # save the model
         joblib.dump(kmeans, outfilename + "_kmeans.joblib")
