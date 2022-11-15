@@ -1962,7 +1962,7 @@ def writevectorstotextfile(
             colsintsv=False,
             debug=False,
         )
-    elif filetype == "plaintsv":
+    elif (filetype == "plaintsv") or (filetype == "csv"):
         writebidstsv(
             outputfile.split(".")[0],
             thevecs,
