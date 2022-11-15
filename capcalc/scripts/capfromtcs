@@ -734,7 +734,7 @@ if clustertype == "kmeans":
     print("setting up kmeans")
     if trainedmodelroot is None:
         if initialcenters is None:
-            theinit = "kmeans++"
+            theinit = "k-means++"
         else:
             theinit = theclustercenters
             max_iter = 1
