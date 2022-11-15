@@ -1,5 +1,9 @@
 # Release history
 
+## Version 1.3.2 (11/15/22)
+* (capfromtcs) Fixed a typo in specifying the initial k-means++ method.
+* (io) Updated libraries to match some changes in rapidtide.
+
 ## Version 1.3.1 (11/10/22)
 * (capfromtcs) Added new option "--initialcenters" to allow specification of k-means cluster centers.  This lets you reuse the CAPS as previous runs, but gets around the difficulty of reading back old models run under a different version of python or scikit-learn.
 
