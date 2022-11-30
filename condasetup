@@ -1,0 +1,13 @@
+#!/bin/bash
+
+conda create --name capcalc
+conda activate capcalc
+conda install \
+        numpy \
+        scipy \
+        scikit-learn \
+        matplotlib \
+        statsmodels \
+        numba \
+        nibabel \
+        versioneer
