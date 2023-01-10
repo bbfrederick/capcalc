@@ -870,7 +870,7 @@ if clustertype == "kmeans":
         allstatestats.append(thestats)
         for i in range(n_clusters):
             alllenlists[i] += lenlist[i]
-        normtransmat, offdiagtransmat = calcmats(rawtransmat, n_clusters)
+        normtransmat, offdiagtransmat = capcalc_utils.calcmats(rawtransmat, n_clusters)
         init_img = nib.Nifti1Image(normtransmat, outputaffine)
         init_hdr = init_img.header
         init_sizes = init_hdr["pixdim"]
@@ -1087,7 +1087,9 @@ if clustertype == "kmeans":
     overallrawtransmat = rawtransmat[0] * 0.0
     for segment in range(numsegs):
         overallrawtransmat += rawtransmat[segment]
-    overallnormtransmat, overalloffdiagtransmat = calcmats(overallrawtransmat, n_clusters)
+    overallnormtransmat, overalloffdiagtransmat = capcalc_utils.calcmats(
+        overallrawtransmat, n_clusters
+    )
     init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
     init_hdr = init_img.header
     init_sizes = init_hdr["pixdim"]
