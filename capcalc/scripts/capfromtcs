@@ -737,7 +737,7 @@ if clustertype == "kmeans":
             theinit = "k-means++"
         else:
             theinit = theclustercenters
-            max_iter = 1
+            max_iter = 0
 
         print("training model")
         if minibatch:
@@ -855,6 +855,7 @@ if clustertype == "kmeans":
             groups[key]["stdinstate"], outfilename + "_" + str(key) + "_stdinstate.txt"
         )
     allstatestats = []
+    allrawtransmats = []
     alllenlists = []
     for i in range(n_clusters):
         alllenlists.append([])
@@ -865,18 +866,11 @@ if clustertype == "kmeans":
         rawtransmat, thestats, lenlist = capcalc_utils.statestats(
             thesestatelabels, n_clusters, 0, minout=minoutlength, minhold=minholdlength
         )
+        allrawtransmats.append(rawtransmat)
         allstatestats.append(thestats)
         for i in range(n_clusters):
             alllenlists[i] += lenlist[i]
-        normtransmat = 1.0 * rawtransmat
-        for i in range(n_clusters):
-            if np.sum(rawtransmat[i, :]) > 0.0:
-                normtransmat[i, :] /= np.sum(rawtransmat[i, :])
-        offdiagtransmat = 1.0 * rawtransmat
-        for i in range(n_clusters):
-            offdiagtransmat[i, i] = 0.0
-            if np.sum(offdiagtransmat[i, :]) > 0.0:
-                offdiagtransmat[i, :] /= np.sum(offdiagtransmat[i, :])
+        normtransmat, offdiagtransmat = calcmats(rawtransmat, n_clusters)
         init_img = nib.Nifti1Image(normtransmat, outputaffine)
         init_hdr = init_img.header
         init_sizes = init_hdr["pixdim"]
@@ -988,7 +982,130 @@ if clustertype == "kmeans":
             if thestats[state, 2] > 0:
                 silinfo[state].append(thesilclusterstats[segment, 0, state])
 
+    #
+    # There should be a parallel system here to construct subsegment specific statistics
+    #
+    """
+    for key in groups:
+        groups[key]["meaninstate"] = np.zeros(
+            (n_clusters, groups[key]["seglen"][0]), dtype="float"
+            allstatestats = []
+        groups[key]["alllenlists"] = []
+        for i in range(n_clusters):
+            groups[key]["alllenlists"].append([])
+        )
+        groups[key]["stdinstate"] = np.zeros((n_clusters, groups[key]["seglen"][0]), dtype="float")
+
+        for segment in range(numsegs):
+            thesestatelabels = thestatelabels[segment * segsize : (segment + 1) * segsize]
+    
+            outputaffine = np.eye(4)
+            rawtransmat, thestats, lenlist = capcalc_utils.statestats(
+                thesestatelabels, n_clusters, 0, minout=minoutlength, minhold=minholdlength
+            )
+            allstatestats.append(thestats)
+            for i in range(n_clusters):
+                alllenlists[i] += lenlist[i]
+            normtransmat = 1.0 * rawtransmat
+            for i in range(n_clusters):
+                if np.sum(rawtransmat[i, :]) > 0.0:
+                    normtransmat[i, :] /= np.sum(rawtransmat[i, :])
+            offdiagtransmat = 1.0 * rawtransmat
+            for i in range(n_clusters):
+                offdiagtransmat[i, i] = 0.0
+                if np.sum(offdiagtransmat[i, :]) > 0.0:
+                    offdiagtransmat[i, :] /= np.sum(offdiagtransmat[i, :])
+            init_img = nib.Nifti1Image(normtransmat, outputaffine)
+            init_hdr = init_img.header
+            init_sizes = init_hdr["pixdim"]
+            ccalc_io.savetonifti(
+                np.transpose(rawtransmat),
+                init_hdr,
+                outfilename + "_seg_" + str(segment).zfill(4) + "_rawtransmat",
+            )
+            ccalc_io.savetonifti(
+                np.transpose(normtransmat),
+                init_hdr,
+                outfilename + "_seg_" + str(segment).zfill(4) + "_normtransmat",
+            )
+            ccalc_io.savetonifti(
+                np.transpose(offdiagtransmat),
+                init_hdr,
+                outfilename + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat",
+            )
+        """
+
     # now generate some summary information
+    overallstatestats = []
+    for i in range(n_clusters):
+        lenarray = np.asarray(alllenlists[i], dtype="float")
+        if len(lenarray) > 2:
+            overallstatestats.append(
+                [
+                    100.0 * np.sum(lenarray) / len(thestates),
+                    len(lenarray),
+                    np.sum(lenarray),
+                    np.min(lenarray),
+                    np.max(lenarray),
+                    np.mean(lenarray),
+                    np.median(lenarray),
+                    np.std(lenarray),
+                ]
+            )
+    cols = [
+        "% TRs in state",
+        "Number of runs in state",
+        "Total TRs in state",
+        "Min run (TRs)",
+        "Max run (TRs)",
+        "Mean run (TRs)",
+        "Median run (TRs)",
+        "StdDev run (TRs)",
+    ]
+    df = pd.DataFrame(data=overallstatestats, columns=cols)
+    df.to_csv(
+        outfilename + "_overall_statestats.csv",
+        index=False,
+    )
+    thetimestats = 1.0 * overallstatestats
+    thetimestats[:, 2:] *= sampletime
+    cols = [
+        "% Seconds in state",
+        "Number of runs in state",
+        "Total seconds in state",
+        "Min run (sec)",
+        "Max run (sec)",
+        "Mean run (sec)",
+        "Median run (sec)",
+        "StdDev run (sec)",
+    ]
+    df = pd.DataFrame(data=thetimestats, columns=cols)
+    df.to_csv(
+        outfilename + "_overall_statetimestats.csv",
+        index=False,
+    )
+    overallrawtransmat = rawtransmat[0] * 0.0
+    for segment in range(numsegs):
+        overallrawtransmat += rawtransmat[segment]
+    overallnormtransmat, overalloffdiagtransmat = calcmats(overallrawtransmat, n_clusters)
+    init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
+    init_hdr = init_img.header
+    init_sizes = init_hdr["pixdim"]
+    ccalc_io.savetonifti(
+        np.transpose(overallrawtransmat),
+        init_hdr,
+        outfilename + "_overall_rawtransmat",
+    )
+    ccalc_io.savetonifti(
+        np.transpose(overallnormtransmat),
+        init_hdr,
+        outfilename + "_overall_normtransmat",
+    )
+    ccalc_io.savetonifti(
+        np.transpose(overalloffdiagtransmat),
+        init_hdr,
+        outfilename + "_overall_offdiagtransmat",
+    )
     themaxlen = 0
     for i in range(n_clusters):
         themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))

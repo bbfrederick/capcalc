@@ -161,6 +161,19 @@ def statestats(thestates, numlabels, minlabel, minout=1, minhold=1, debug=False)
     return transmat, np.asarray(thestats, dtype="float"), lenlist
 
 
+def calcmats(rawtransmat, n_clusters):
+    normtransmat = 1.0 * rawtransmat
+    for i in range(n_clusters):
+        if np.sum(rawtransmat[i, :]) > 0.0:
+            normtransmat[i, :] /= np.sum(rawtransmat[i, :])
+    offdiagtransmat = 1.0 * rawtransmat
+    for i in range(n_clusters):
+        offdiagtransmat[i, i] = 0.0
+        if np.sum(offdiagtransmat[i, :]) > 0.0:
+            offdiagtransmat[i, :] /= np.sum(offdiagtransmat[i, :])
+    return normtransmat, offdiagtransmat
+
+
 def silhouette_test(X, kmeans, n_clusters, numsegs, segsize, summaryonly, display=False):
     print("generating cluster labels")
     cluster_labels = kmeans.predict(X)
