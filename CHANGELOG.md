@@ -1,5 +1,9 @@
 # Release history
 
+## Version 1.3.3 (1/10/23)
+* (capfromtcs) Changed intialization of kmeans from initialcenters, save more intermediate results.
+* (utils.py) Factored out some transition array calculations.
+
 ## Version 1.3.2 (11/15/22)
 * (capfromtcs) Fixed a typo in specifying the initial k-means++ method.
 * (io) Updated libraries to match some changes in rapidtide.
