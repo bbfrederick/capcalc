@@ -866,7 +866,7 @@ if clustertype == "kmeans":
         rawtransmat, thestats, lenlist = capcalc_utils.statestats(
             thesestatelabels, n_clusters, 0, minout=minoutlength, minhold=minholdlength
         )
-        allrawtransmats.append(rawtransmat)
+        allrawtransmats.append(rawtransmat * 1.0)
         allstatestats.append(thestats)
         for i in range(n_clusters):
             alllenlists[i] += lenlist[i]
@@ -1038,12 +1038,16 @@ if clustertype == "kmeans":
     # now generate some summary information
     overallstatestats = []
     thetimestats = []
+    alllens = 0
+    for i in range(n_clusters):
+        alllens += np.sum(np.asarray(alllenlists[i], dtype="float"))
+
     for i in range(n_clusters):
         lenarray = np.asarray(alllenlists[i], dtype="float")
         if len(lenarray) > 2:
             overallstatestats.append(
                 [
-                    100.0 * np.sum(lenarray) / (numsegs * len(thestats)),
+                    100.0 * np.sum(lenarray) / (alllens * len(thestats)),
                     len(lenarray),
                     np.sum(lenarray),
                     np.min(lenarray),
@@ -1055,7 +1059,7 @@ if clustertype == "kmeans":
             )
             thetimestats.append(
                 [
-                    100.0 * np.sum(lenarray) / (numsegs * len(thestats)),
+                    100.0 * np.sum(lenarray) / (alllens * len(thestats)),
                     sampletime * len(lenarray),
                     sampletime * np.sum(lenarray),
                     sampletime * np.min(lenarray),
@@ -1097,9 +1101,9 @@ if clustertype == "kmeans":
         outfilename + "_overall_statetimestats.csv",
         index=False,
     )
-    overallrawtransmat = rawtransmat[0] * 0.0
+    overallrawtransmat = allrawtransmats[0] * 0.0
     for segment in range(numsegs):
-        overallrawtransmat += rawtransmat[segment]
+        overallrawtransmat += allrawtransmats[segment]
     overallnormtransmat, overalloffdiagtransmat = capcalc_utils.calcmats(
         overallrawtransmat, n_clusters
     )
