@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.3.5 (1/11/23)
+* (capfromtcs) Fixed summary statistics outputs.
+
 ## Version 1.3.4 (1/10/23)
 * (capfromtcs) Revert change to max_iter when specifying initialcenters.
 
