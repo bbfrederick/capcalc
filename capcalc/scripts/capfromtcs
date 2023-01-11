@@ -353,7 +353,7 @@ for o, a in opts:
     elif o == "--modelroot":
         trainedmodelroot = a
         if verbose:
-            print("will read trained models from", trainedmodelroot, "_*.joblib")
+            print("will read trained models from " + trainedmodelroot + "_*.joblib")
     elif o == "--initialcenters":
         initialcenters = a
         if verbose:
