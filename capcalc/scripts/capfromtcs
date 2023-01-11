@@ -1067,7 +1067,7 @@ if clustertype == "kmeans":
         outfilename + "_overall_statestats.csv",
         index=False,
     )
-    thetimestats = 1.0 * overallstatestats
+    thetimestats = overallstatestats.copy()
     thetimestats[:, 2:] *= sampletime
     cols = [
         "% Seconds in state",
