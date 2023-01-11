@@ -1037,12 +1037,13 @@ if clustertype == "kmeans":
 
     # now generate some summary information
     overallstatestats = []
+    thetimestats = []
     for i in range(n_clusters):
         lenarray = np.asarray(alllenlists[i], dtype="float")
         if len(lenarray) > 2:
             overallstatestats.append(
                 [
-                    100.0 * np.sum(lenarray) / len(thestats),
+                    100.0 * np.sum(lenarray) / (numsegs * len(thestats)),
                     len(lenarray),
                     np.sum(lenarray),
                     np.min(lenarray),
@@ -1052,6 +1053,19 @@ if clustertype == "kmeans":
                     np.std(lenarray),
                 ]
             )
+            thetimestats.append(
+                [
+                    100.0 * np.sum(lenarray) / (numsegs * len(thestats)),
+                    sampletime * len(lenarray),
+                    sampletime * np.sum(lenarray),
+                    sampletime * np.min(lenarray),
+                    sampletime * np.max(lenarray),
+                    sampletime * np.mean(lenarray),
+                    sampletime * np.median(lenarray),
+                    sampletime * np.std(lenarray),
+                ]
+            )
+
     cols = [
         "% TRs in state",
         "Number of runs in state",
@@ -1067,8 +1081,7 @@ if clustertype == "kmeans":
         outfilename + "_overall_statestats.csv",
         index=False,
     )
-    thetimestats = overallstatestats.copy()
-    thetimestats[:, 2:] *= sampletime
+
     cols = [
         "% Seconds in state",
         "Number of runs in state",
