@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.3.4 (1/10/23)
+* (capfromtcs) Revert change to max_iter when specifying initialcenters.
+
 ## Version 1.3.3 (1/10/23)
 * (capfromtcs) Changed intialization of kmeans from initialcenters, save more intermediate results.
 * (utils.py) Factored out some transition array calculations.

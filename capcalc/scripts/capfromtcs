@@ -737,7 +737,7 @@ if clustertype == "kmeans":
             theinit = "k-means++"
         else:
             theinit = theclustercenters
-            max_iter = 0
+            max_iter = 1
 
         print("training model")
         if minibatch:
