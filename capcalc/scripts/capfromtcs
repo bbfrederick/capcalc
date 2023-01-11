@@ -1042,7 +1042,7 @@ if clustertype == "kmeans":
         if len(lenarray) > 2:
             overallstatestats.append(
                 [
-                    100.0 * np.sum(lenarray) / len(thestates),
+                    100.0 * np.sum(lenarray) / len(thestats),
                     len(lenarray),
                     np.sum(lenarray),
                     np.min(lenarray),
