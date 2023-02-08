@@ -3,7 +3,6 @@ FROM fredericklab/basecontainer:latest
 
 RUN pip install \
             statsmodels \
-            pandas \
             nilearn \
             scikit-learn \
             nibabel \
