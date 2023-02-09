@@ -1,20 +1,6 @@
 # Start from the fredericklab base container
 FROM fredericklab/basecontainer:latest
 
-RUN mamba install \
-            statsmodels \
-            nibabel
-RUN mamba install \
-            versioneer \
-            pyfftw 
-
-# hack to get around the super annoying "urllib3 doesn't match" warning
-#RUN pip install --upgrade --force-reinstall  requests
-RUN mamba install -y requests --force-reinstall
-
-
-RUN df -h
-
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users capcalc
 WORKDIR /home/capcalc
