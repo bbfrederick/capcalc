@@ -2,10 +2,12 @@
 FROM fredericklab/basecontainer:latest
 
 RUN pip install \
-            statsmodels \
             nilearn \
-            scikit-learn \
-            nibabel \
+            scikit-learn
+RUN pip install \
+            statsmodels \
+            nibabel
+RUN pip install \
             versioneer \
             pyfftw 
 RUN pip install --upgrade --force-reinstall  requests
