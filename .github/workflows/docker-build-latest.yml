@@ -3,7 +3,7 @@ name: Upload latest to DockerHub
 on:
   push:
     branches:
-      - 'master'
+      - 'main'
 
 jobs:
   docker:
