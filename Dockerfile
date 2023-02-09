@@ -1,16 +1,17 @@
 # Start from the fredericklab base container
 FROM fredericklab/basecontainer:latest
 
-RUN pip install \
-            nilearn \
-            scikit-learn
-RUN pip install \
+RUN mamba install \
             statsmodels \
             nibabel
-RUN pip install \
+RUN mamba install \
             versioneer \
             pyfftw 
-RUN pip install --upgrade --force-reinstall  requests
+
+# hack to get around the super annoying "urllib3 doesn't match" warning
+#RUN pip install --upgrade --force-reinstall  requests
+RUN mamba install -y requests --force-reinstall
+
 
 RUN df -h
 
