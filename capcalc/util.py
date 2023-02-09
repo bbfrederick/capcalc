@@ -30,7 +30,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from numba import jit
+#from numba import jit
 
 import capcalc._version as ccalc_versioneer
 import capcalc.io as ccalc_io
@@ -43,7 +43,7 @@ MemoryLGR = logging.getLogger("MEMORY")
 # ---------------------------------------- Global constants -------------------------------------------
 defaultbutterorder = 6
 MAXLINES = 10000000
-donotusenumba = False
+donotusenumba = True
 donotbeaggressive = True
 
 # ----------------------------------------- Conditional imports ---------------------------------------

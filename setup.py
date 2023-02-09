@@ -119,7 +119,6 @@ setup(
         "scikit-learn",
         "matplotlib",
         "statsmodels",
-        "numba",
         "nibabel",
         "versioneer",
     ],

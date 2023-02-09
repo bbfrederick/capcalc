@@ -13,7 +13,6 @@ capcalc requires some external libraries to be installed first:
 -  scikit-learn
 -  statsmodels
 -  nibabel
--  numba
 
 
 Installing from pypi

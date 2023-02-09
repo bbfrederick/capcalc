@@ -9,6 +9,5 @@ conda install \
         matplotlib \
         statsmodels \
         pyfftw \
-        numba \
         nibabel \
         versioneer

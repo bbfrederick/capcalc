@@ -28,7 +28,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pyfftw
-from numba import jit
+#from numba import jit
 from scipy import fftpack, ndimage, signal
 from scipy.signal import savgol_filter
 

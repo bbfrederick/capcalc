@@ -7,8 +7,7 @@ RUN pip install \
             scikit-learn \
             nibabel \
             versioneer \
-            pyfftw \
-            numba
+            pyfftw 
 RUN pip install --upgrade --force-reinstall  requests
 
 RUN df -h
