@@ -2,8 +2,12 @@
 *.swp
 */*.swp
 */*/*.swp
-.DS_Store
 .thumbnails
+
+# mac desktop files
+.DS_Store
+*/.DS_Store
+*/*/.DS_Store
 
 # editor things
 .idea
