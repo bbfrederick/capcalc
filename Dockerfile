@@ -13,10 +13,7 @@ RUN cd /src/capcalc && \
     python setup.py install && \
     rm -rf /src/capcalc/build /src/capcalc/dist
 
-
 ENV IS_DOCKER_8395080871=1
-RUN apt-get install -y --reinstall libxcb-xinerama0
-
 
 RUN ldconfig
 WORKDIR /tmp/
