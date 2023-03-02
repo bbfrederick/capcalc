@@ -1,5 +1,5 @@
 # Start from the fredericklab base container
-FROM fredericklab/basecontainer:latest
+FROM fredericklab/basecontainer:v0.1.6
 
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users capcalc
