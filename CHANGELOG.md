@@ -1,5 +1,9 @@
 # Release history
 
+## Version 1.3.6 (5/11/23)
+* (Docker) Updated to python 3.11 basecontainer
+* (Docker) Fixed testdocker.sh
+
 ## Version 1.3.5 (1/11/23)
 * (capfromtcs) Fixed summary statistics outputs.
 

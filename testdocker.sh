@@ -5,13 +5,18 @@ MYIPADDRESS=`ifconfig en0 | grep 'inet ' | awk '{print $2}'`
 docker run \
     --rm \
     --ipc host \
-    --mount type=bind,source=/Users/frederic/code/capcalc/capcalc/data/examples,destination=/data \
+    --mount type=bind,source=/Users/frederic/code/capcalc/capcalc/data/,destination=/data \
     -it \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -u capcalc fredericklab/capcalc:latest \
-    rapidtide \
-        /data/src/sub-RAPIDTIDETEST.nii.gz \
-        /data/dst/sub-RAPIDTIDETEST \
-        --passes 3 \
-        --nprocs 4 \
-        --noglm
+    capfromtcs \
+        -i /data/manyfiles.txt \
+        -o /data/output/manyfiles \
+        --sampletime=0.72 \
+        --varnorm \
+        -m \
+        -b 4800 \
+        -S 1200 \
+        --quality \
+        -E default \
+        --minout=2
