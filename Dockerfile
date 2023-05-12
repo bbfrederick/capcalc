@@ -10,7 +10,7 @@ ENV HOME="/home/capcalc"
 # Installing capcalc
 COPY . /src/capcalc
 RUN cd /src/capcalc && \
-    python setup.py install && \
+    pip install . && \
     rm -rf /src/capcalc/build /src/capcalc/dist
 
 ENV IS_DOCKER_8395080871=1
