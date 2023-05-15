@@ -683,7 +683,7 @@ if preprocessingtype == "pca":
     thetransform = thepca.transform(X)
     X = thepca.inverse_transform(thetransform)
     print("shape coming out:", X.shape)
-    ccalc_io.writenpvecs(np.transpose(X), outfilename + "_pcadenoiseddata.txt")
+    ccalc_io.writenpvecs(np.transpose(thetransform), outfilename + "_pcadenoiseddata.txt")
     for i in range(thepca.n_components_):
         print(
             "component",
