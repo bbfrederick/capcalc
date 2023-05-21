@@ -163,6 +163,7 @@ def usage():
     print(
         "    --minhold=MINHOLD)           - time in a state shorter than MINHOLD will be assigned to the previous state.  Default is 1"
     )
+    print("    --maskfile=MASKFILE        - name of a mask file to use if input files are nifti")
     print("")
     print("  Other:")
     print(
@@ -251,6 +252,7 @@ try:
             "skippts=",
             "minout=",
             "minhold=",
+            "maskname=",
             "modelroot=",
             "initialcenters=",
             "quality",
@@ -278,6 +280,7 @@ subseggroupIDs = None
 sampletime = None
 Fs = None
 outfilename = None
+datamaskname = None
 
 theprefilter = ccalc_filt.NoncausalFilter(transferfunc="butterworth")
 theprefilter.setbutterorder(filtorder)
@@ -350,6 +353,10 @@ for o, a in opts:
         timenormmethod = "ppnorm"
         if verbose:
             print("will do p-p normalization")
+    elif o == "--maskname":
+        datamaskname = a
+        if verbose:
+            print("data mask name is " + datamaskname)
     elif o == "--modelroot":
         trainedmodelroot = a
         if verbose:
@@ -553,11 +560,46 @@ ccalc_io.writevec([" ".join(sys.argv)], outfilename + "_commandline.txt")
 
 # read in the files and get everything trimmed to the right length
 startpoint = max([int(starttime * Fs), 0]) + skippts
+# see if we are dealing with NIFTI files or text files
+if ccalc_io.checkifnifti(infilename[0]):
+    inputisnifti = True
+    if datamaskname is not None:
+        (
+            datamask_img,
+            datamask_data,
+            datamask_hdr,
+            datamaskdims,
+            datamasksizes,
+        ) = ccalc_io.readfromnifti(datamaskname)
+    else:
+        print("using nifti files requires the use of a mask file")
+        sys.exit()
+    xsize, ysize, numslices, timepoints = ccalc_io.parseniftidims(datamaskdims)
+    numspatialpoints = xsize * ysize * numslices
+    themask = datamask_data.reshape((numspatialpoints))
+    thevalidpoints = np.where(themask > 0.5)
+    numfiles = len(infilename)
+
+else:
+    inputisnifti = False
 if len(infilename) == 1:
     # each column is a timecourse, each row is a timepoint
     print("processing single input file")
     matrixoutput = True
-    inputdata = ccalc_io.readvecs(infilename[0])[skippts:]
+    if inputisnifti:
+        (
+            datafile_img,
+            datafile_data,
+            datafile_hdr,
+            datafiledims,
+            datafilesizes,
+        ) = ccalc_io.readfromnifti(infilename[0])
+        if (not ccalc_io.checkspacedimmatch(datafiledims, datamaskdims)):
+            print(f"dimension mismatch with mask for file {infilename[0]}")
+            sys.exit(1)
+        inputdata = datafile_data.reshape((numspatialpoints, -1))[thevalidpoints, skippts:]
+    else:
+        inputdata = ccalc_io.readvecs(infilename[0])[skippts:]
     if verbose:
         print("input data shape is ", inputdata.shape)
     numpoints = inputdata.shape[1]
