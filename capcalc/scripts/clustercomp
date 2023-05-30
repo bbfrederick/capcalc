@@ -18,15 +18,8 @@
 #       $Date: 2016/01/25 20:17:55 $
 #       $Id: pixelcomp,v 1.4 2016/01/25 20:17:55 frederic Exp $
 #
-from __future__ import division, print_function
-
 import getopt
-import string
-import sys
-
-import matplotlib.pyplot as plt
 import nibabel as nib
-import numpy as np
 from pylab import *
 
 import capcalc.io as ccalc_io

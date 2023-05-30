@@ -19,8 +19,6 @@
 #       $Date: 2016/06/14 12:04:51 $
 #       $Id: showstxcorr,v 1.11 2016/06/14 12:04:51 frederic Exp $
 #
-from __future__ import division, print_function
-
 import sys
 
 import numpy as np
