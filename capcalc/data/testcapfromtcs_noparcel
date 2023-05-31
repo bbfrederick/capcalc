@@ -1,0 +1,13 @@
+#!/bin/csh -f
+capfromtcs \
+    -i /Users/frederic/Dropbox_PHC/awsspeedcomparison/HCP_1200/100206/rapidtide_rfMRI_REST1_LR_desc-lfofilterCleaned_bold.nii.gz \
+    -o output/noparcel \
+    --maskname=/Users/frederic/Dropbox_PHC/awsspeedcomparison/HCP_1200/100206/rapidtide_rfMRI_REST1_LR_desc-corrfit_mask.nii.gz \
+    --sampletime=0.72 \
+    --varnorm \
+    -m \
+    --quality \
+    -S 1200 \
+    -E default \
+    --sigma=3.0 \
+    --minout=2

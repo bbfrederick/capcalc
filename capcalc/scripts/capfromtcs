@@ -32,14 +32,12 @@ from sklearn.cluster import DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA, FastICA, IncrementalPCA
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.feature_selection import (
-    RFE,
-    SelectFdr,
-    SelectKBest,
     SelectPercentile,
     f_classif,
 )
 from sklearn.preprocessing import StandardScaler
 
+from capcalc.niftidecomp import niftidecomp_workflow
 import capcalc.filter as ccalc_filt
 import capcalc.fit as ccalc_fit
 import capcalc.io as ccalc_io
@@ -161,7 +159,8 @@ def usage():
     print(
         "    --minhold=MINHOLD)           - time in a state shorter than MINHOLD will be assigned to the previous state.  Default is 1"
     )
-    print("    --maskfile=MASKFILE        - name of a mask file to use if input files are nifti")
+    print(
+        "    --maskfile=MASKFILE          - name of a mask file to use if input files are nifti")
     print("")
     print("  Other:")
     print(
@@ -169,6 +168,7 @@ def usage():
     )
     print("    -d                           - display some quality metrics")
     print("    --quality                    - perform a silhouette test to evaluate fit quality")
+    print("    --sigma                      - if input is nifti, smooth with a kernel of this width in mm")
     print("    -v                           - turn on verbose mode")
     print(
         "    --modelroot=MODELROOT        - reread trained models from a previous run - MODELROOT should\n"
@@ -225,6 +225,7 @@ preproconly = False
 trainedmodelroot = None
 initialcenters = None
 
+sigma = 0.0
 
 # scan the command line arguments
 try:
@@ -254,6 +255,7 @@ try:
             "modelroot=",
             "initialcenters=",
             "quality",
+            "sigma=",
             "samplefreq=",
             "sampletime=",
             "help",
@@ -277,7 +279,7 @@ subsegs = []
 subseggroupIDs = None
 sampletime = None
 Fs = None
-outfilename = None
+outputroot = None
 datamaskname = None
 
 theprefilter = ccalc_filt.NoncausalFilter(transferfunc="butterworth")
@@ -292,9 +294,9 @@ for o, a in opts:
         if verbose:
             print("will use", infilename[-1], "as an input file")
     elif o == "--outfile" or o == "-o":
-        outfilename = a
+        outputroot = a
         if verbose:
-            print("will use", outfilename, "as output file")
+            print("will use", outputroot, "as output file")
     elif o == "-S":
         for seg in a.split(","):
             subsegs.append(int(seg))
@@ -406,6 +408,10 @@ for o, a in opts:
             sys.exit()
         if verbose:
             print("switching to hdbscan clustering")
+    elif o == "--sigma":
+        sigma = float(a)
+        if verbose:
+            print(f"spatial smoothing set to {sigma}")
     elif o == "--dbscan":
         clustertype = "dbscan"
         if verbose:
@@ -494,7 +500,7 @@ for o, a in opts:
         assert False, "unhandled option"
 
 # check that required arguments are set
-if outfilename is None:
+if outputroot is None:
     print("outfile must be set")
     usage()
     sys.exit()
@@ -554,7 +560,7 @@ elif timenormmethod == "ppnorm":
     print("will normalize timecourses to p-p deviation of 1.0")
 
 # save the command line
-ccalc_io.writevec([" ".join(sys.argv)], outfilename + "_commandline.txt")
+ccalc_io.writevec([" ".join(sys.argv)], outputroot + "_commandline.txt")
 
 # read in the files and get everything trimmed to the right length
 startpoint = max([int(starttime * Fs), 0]) + skippts
@@ -573,52 +579,91 @@ if ccalc_io.checkifnifti(infilename[0]):
         print("using nifti files requires the use of a mask file")
         sys.exit()
     xsize, ysize, numslices, timepoints = ccalc_io.parseniftidims(datamaskdims)
-    numspatialpoints = xsize * ysize * numslices
+    numspatialpoints = int(xsize) * int(ysize) * int(numslices)
+    print(f"number of spatial points from mask = {numspatialpoints}")
     themask = datamask_data.reshape((numspatialpoints))
     thevalidpoints = np.where(themask > 0.5)
+    numvalidpoints = len(thevalidpoints[0])
+    print(f"number of valid spatial points from mask = {numvalidpoints}")
     numfiles = len(infilename)
 
-else:
-    inputisnifti = False
-if len(infilename) == 1:
-    # each column is a timecourse, each row is a timepoint
-    print("processing single input file")
-    matrixoutput = True
-    if inputisnifti:
-        (
-            datafile_img,
-            datafile_data,
-            datafile_hdr,
-            datafiledims,
-            datafilesizes,
-        ) = ccalc_io.readfromnifti(infilename[0])
-        if (not ccalc_io.checkspacedimmatch(datafiledims, datamaskdims)):
-            print(f"dimension mismatch with mask for file {infilename[0]}")
-            sys.exit(1)
-        inputdata = datafile_data.reshape((numspatialpoints, -1))[thevalidpoints, skippts:]
-    else:
-        inputdata = ccalc_io.readvecs(infilename[0])[skippts:]
+    # Load the data.  If input is nifti, the first thing to do is reduce dimensionality A LOT
+    (
+        outputcomponents,
+        inputdata,
+        outinvtrans,
+        exp_var_pct,
+        datafile_hdr,
+        datafiledims,
+        datafilesizes,
+    ) = niftidecomp_workflow(
+            "spatial",
+            infilename,
+            datamaskname=datamaskname,
+            decomptype="pca",
+            pcacomponents=0.5,
+            icacomponents=None,
+            varnorm=True,
+            demean=True,
+            sigma=sigma,
+        )
+
+    print(f"{outputcomponents.shape=}")
+    print(f"{inputdata.shape=}")
+    print(f"{outinvtrans.shape=}")
+    print(f"{exp_var_pct.shape=}")
+    print(f"{datafiledims.shape=}")
+    print(f"{datafilesizes.shape=}")
+
+    # save the eigenvalues
+    print("variance explained by component:", exp_var_pct)
+    ccalc_io.writenpvecs(
+        exp_var_pct,
+        f"{outputroot}_explained_variance_pct.txt",
+    )
+    print("writing component images")
+    theheader = datafile_hdr.copy()
+    theheader["dim"][4] = outputcomponents.shape[3]
+    ccalc_io.savetonifti(
+        outputcomponents,
+        theheader,
+        f"{outputroot}_components",
+    )
+    print("writing out the coefficients")
+    ccalc_io.writenpvecs(inputdata, f"{outputroot}_coefficients.txt")
     if verbose:
         print("input data shape is ", inputdata.shape)
     numpoints = inputdata.shape[1]
     endpoint = min([startpoint + int(duration * Fs), numpoints])
     trimmeddata = inputdata[:, startpoint:endpoint]
-elif len(infilename) == 2:
-    print("processing two input files")
-    inputdata1 = ccalc_io.readvec(infilename[0])
-    numpoints = len(inputdata1)
-    inputdata2 = ccalc_io.readvec(infilename[1])
-    endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
-    endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
-    trimmeddata = np.zeros((2, numpoints), dtype="float")
-    trimmeddata[0, :] = inputdata1[startpoint:endpoint1]
-    trimmeddata[1, :] = inputdata2[0:endpoint2]
 else:
-    print(
-        "showstxcorr requires 1 multicolumn timecourse file or two single column timecourse files as input"
-    )
-    usage()
-    sys.exit()
+    inputisnifti = False
+    if len(infilename) == 1:
+        # each column is a timecourse, each row is a timepoint
+        print("processing single input file")
+        matrixoutput = True
+        inputdata = ccalc_io.readvecs(infilename[0])[skippts:]
+        if verbose:
+            print("input data shape is ", inputdata.shape)
+        numpoints = inputdata.shape[1]
+        endpoint = min([startpoint + int(duration * Fs), numpoints])
+        trimmeddata = inputdata[:, startpoint:endpoint]
+    elif len(infilename) == 2:
+        print("processing two input files")
+        inputdata1 = ccalc_io.readvec(infilename[0])
+        numpoints = len(inputdata1)
+        inputdata2 = ccalc_io.readvec(infilename[1])
+        endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
+        endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
+        trimmeddata = np.zeros((2, numpoints), dtype="float")
+        trimmeddata[0, :] = inputdata1[startpoint:endpoint1]
+        trimmeddata[1, :] = inputdata2[0:endpoint2]
+    else:
+        print(
+            "showstxcorr requires 1 multicolumn timecourse file or two single column timecourse files as input"
+        )
+        usage()
+        sys.exit()
 
 # band limit the regressors if that is needed
 if theprefilter.gettype() != "None":
@@ -706,7 +751,7 @@ if preprocessingtype == "pca":
             thepca = PCA(n_components=n_pca).fit(X)
 
         # save the model
-        joblib.dump(thepca, outfilename + "_pca.joblib")
+        joblib.dump(thepca, outputroot + "_pca.joblib")
     else:
         modelfilename = trainedmodelroot + "_pca.joblib"
         print("reading PCA from", modelfilename)
@@ -723,7 +768,7 @@ if preprocessingtype == "pca":
     thetransform = thepca.transform(X)
     X = thepca.inverse_transform(thetransform)
     print("shape coming out:", X.shape)
-    ccalc_io.writenpvecs(np.transpose(thetransform), outfilename + "_pcadenoiseddata.txt")
+    ccalc_io.writenpvecs(np.transpose(thetransform), outputroot + "_pcadenoiseddata.txt")
     for i in range(thepca.n_components_):
         print(
             "component",
@@ -733,9 +778,9 @@ if preprocessingtype == "pca":
             "explained variance %:",
             100.0 * thepca.explained_variance_ratio_[i],
         )
-    ccalc_io.writenpvecs(thepca.components_, outfilename + "_pcacomponents.txt")
+    ccalc_io.writenpvecs(thepca.components_, outputroot + "_pcacomponents.txt")
     ccalc_io.writenpvecs(
-        np.transpose(thepca.components_), outfilename + "_pcacomponents_transpose.txt"
+        np.transpose(thepca.components_), outputroot + "_pcacomponents_transpose.txt"
     )
 elif preprocessingtype == "ica":
     print("running FastICA")
@@ -745,7 +790,7 @@ elif preprocessingtype == "ica":
         theica = FastICA(n_components=n_pca, algorithm="deflation").fit(X)
 
         # save the model
-        joblib.dump(theica, outfilename + "_ica.joblib")
+        joblib.dump(theica, outputroot + "_ica.joblib")
     else:
         modelfilename = trainedmodelroot + "_ica.joblib"
         print("reading ICA from", modelfilename)
@@ -761,12 +806,12 @@ elif preprocessingtype == "ica":
 
     thetransform = theica.transform(X)
     X = theica.inverse_transform(thetransform)
-    ccalc_io.writenpvecs(theica.components_, outfilename + "_icacomponents.txt")
+    ccalc_io.writenpvecs(theica.components_, outputroot + "_icacomponents.txt")
     ccalc_io.writenpvecs(
-        np.transpose(theica.components_), outfilename + "_icacomponents_transpose.txt"
+        np.transpose(theica.components_), outputroot + "_icacomponents_transpose.txt"
     )
 
-ccalc_io.writenpvecs(reformdata, outfilename + "_preprocessed.txt")
+ccalc_io.writenpvecs(reformdata, outputroot + "_preprocessed.txt")
 if preproconly:
     print("preprocessing done - quitting")
     sys.exit()
@@ -791,7 +836,7 @@ if clustertype == "kmeans":
             ).fit(X)
 
         # save the model
-        joblib.dump(kmeans, outfilename + "_kmeans.joblib")
+        joblib.dump(kmeans, outputroot + "_kmeans.joblib")
     else:
         modelfilename = trainedmodelroot + "_kmeans.joblib"
         print("reading kmeans model from", modelfilename)
@@ -810,7 +855,7 @@ if clustertype == "kmeans":
     # thestatelabels = kmeans.labels_
     print("thestatelabels shape", thestatelabels.shape)
     print("kmeans done")
-    ccalc_io.writenpvecs(theclusters, outfilename + "_clustercenters.txt")
+    ccalc_io.writenpvecs(theclusters, outputroot + "_clustercenters.txt")
 
     # make normalized clusters
     thenormclusters = theclusters * 0.0
@@ -821,10 +866,10 @@ if clustertype == "kmeans":
     print("shape:", theclusters.shape)
     for i in range(theclusters.shape[1]):
         thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
-    ccalc_io.writenpvecs(thenormclusters, outfilename + "_norm_clustercenters.txt")
+    ccalc_io.writenpvecs(thenormclusters, outputroot + "_norm_clustercenters.txt")
 
     # save the states
-    ccalc_io.writenpvecs(thestatelabels, outfilename + "_statelabels.txt")
+    ccalc_io.writenpvecs(thestatelabels, outputroot + "_statelabels.txt")
 
     # find most important features
     print("finding most important features")
@@ -863,7 +908,7 @@ if clustertype == "kmeans":
     thesilavgs, thesilclusterstats = capcalc_utils.silhouette_test(
         X, kmeans, n_clusters, numsegs, segsize, summaryonly
     )
-    ccalc_io.writenpvecs(thesilavgs, outfilename + "_silhouettesegmentstats.txt")
+    ccalc_io.writenpvecs(thesilavgs, outputroot + "_silhouettesegmentstats.txt")
 
     silinfo = []
     for state in range(n_clusters):
@@ -890,10 +935,10 @@ if clustertype == "kmeans":
             groups[key]["stdinstate"][state, :] = np.std(np.concatenate(tcbyseg, axis=0), axis=0)
         ccalc_io.writenpvecs(
             groups[key]["meaninstate"],
-            outfilename + "_" + str(key) + "_meaninstate.txt",
+            outputroot + "_" + str(key) + "_meaninstate.txt",
         )
         ccalc_io.writenpvecs(
-            groups[key]["stdinstate"], outfilename + "_" + str(key) + "_stdinstate.txt"
+            groups[key]["stdinstate"], outputroot + "_" + str(key) + "_stdinstate.txt"
         )
     allstatestats = []
     allrawtransmats = []
@@ -918,17 +963,17 @@ if clustertype == "kmeans":
         ccalc_io.savetonifti(
             np.transpose(rawtransmat),
             init_hdr,
-            outfilename + "_seg_" + str(segment).zfill(4) + "_rawtransmat",
+            outputroot + "_seg_" + str(segment).zfill(4) + "_rawtransmat",
         )
         ccalc_io.savetonifti(
             np.transpose(normtransmat),
             init_hdr,
-            outfilename + "_seg_" + str(segment).zfill(4) + "_normtransmat",
+            outputroot + "_seg_" + str(segment).zfill(4) + "_normtransmat",
         )
         ccalc_io.savetonifti(
             np.transpose(offdiagtransmat),
             init_hdr,
-            outfilename + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat",
+            outputroot + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat",
         )
 
         # write as text as well
@@ -940,19 +985,19 @@ if clustertype == "kmeans":
         df = pd.DataFrame(data=rawtransmat, columns=cols)
         df.insert(0, "sources", pd.Series(rows))
         df.to_csv(
-            outfilename + "_seg_" + str(segment).zfill(4) + "_rawtransmat.csv",
+            outputroot + "_seg_" + str(segment).zfill(4) + "_rawtransmat.csv",
             index=False,
         )
         df = pd.DataFrame(data=normtransmat, columns=cols)
         df.insert(0, "sources", pd.Series(rows))
         df.to_csv(
-            outfilename + "_seg_" + str(segment).zfill(4) + "_normtransmat.csv",
+            outputroot + "_seg_" + str(segment).zfill(4) + "_normtransmat.csv",
             index=False,
         )
         df = pd.DataFrame(data=offdiagtransmat, columns=cols)
         df.insert(0, "sources", pd.Series(rows))
         df.to_csv(
-            outfilename + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat.csv",
+            outputroot + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat.csv",
             index=False,
         )
         # rawtransmat files are an n_clusters by n_clusters matrix with the total number of transitions from each state to each other state.
@@ -970,10 +1015,10 @@ if clustertype == "kmeans":
         ]
         df = pd.DataFrame(data=thestats, columns=cols)
         df.to_csv(
-            outfilename + "_seg_" + str(segment).zfill(4) + "_statestats.csv",
+            outputroot + "_seg_" + str(segment).zfill(4) + "_statestats.csv",
             index=False,
         )
-        # ccalc_io.writenpvecs(np.transpose(thestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
+        # ccalc_io.writenpvecs(np.transpose(thestats), outputroot + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
         thetimestats = 1.0 * thestats
         thetimestats[:, 2:] *= sampletime
         cols = [
@@ -988,21 +1033,21 @@ if clustertype == "kmeans":
         ]
         df = pd.DataFrame(data=thetimestats, columns=cols)
         df.to_csv(
-            outfilename + "_seg_" + str(segment).zfill(4) + "_statetimestats.csv",
+            outputroot + "_seg_" + str(segment).zfill(4) + "_statetimestats.csv",
             index=False,
         )
-        # ccalc_io.writenpvecs(np.transpose(thetimestats), outfilename + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
+        # ccalc_io.writenpvecs(np.transpose(thetimestats), outputroot + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
 
         ccalc_io.writenpvecs(
             thesestatelabels,
-            outfilename + "_seg_" + str(segment).zfill(4) + "_statelabels.txt",
+            outputroot + "_seg_" + str(segment).zfill(4) + "_statelabels.txt",
         )
         print("Segment %d average silhouette Coefficient: %0.3f" % (segment, thesilavgs[segment]))
         for state in range(n_clusters):
             tc = np.where(thesestatelabels == state, 1, 0)
             ccalc_io.writenpvecs(
                 tc,
-                outfilename
+                outputroot
                 + "_seg_"
                 + str(segment).zfill(4)
                 + "_instate_"
@@ -1013,11 +1058,11 @@ if clustertype == "kmeans":
             cols = ["Mean", "Median", "Min", "Max"]
             df = pd.DataFrame(data=np.transpose(thesilclusterstats[segment, :, :]), columns=cols)
             df.to_csv(
-                outfilename + "_seg_" + str(segment).zfill(4) + "_silhouetteclusterstats.csv",
+                outputroot + "_seg_" + str(segment).zfill(4) + "_silhouetteclusterstats.csv",
                 index=False,
             )
             # ccalc_io.writenpvecs(thesilclusterstats[segment, :, :],
-            #             outfilename + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
+            #             outputroot + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
 
         for state in range(n_clusters):
             if thestats[state, 2] > 0:
@@ -1070,7 +1115,7 @@ if clustertype == "kmeans":
     ]
     df = pd.DataFrame(data=overallstatestats, columns=cols)
     df.to_csv(
-        outfilename + "_overall_statestats.csv",
+        outputroot + "_overall_statestats.csv",
         index=False,
     )
 
@@ -1086,7 +1131,7 @@ if clustertype == "kmeans":
     ]
     df = pd.DataFrame(data=thetimestats, columns=cols)
     df.to_csv(
-        outfilename + "_overall_statetimestats.csv",
+        outputroot + "_overall_statetimestats.csv",
         index=False,
     )
     overallrawtransmat = allrawtransmats[0] * 0.0
@@ -1101,17 +1146,17 @@ if clustertype == "kmeans":
     ccalc_io.savetonifti(
         np.transpose(overallrawtransmat),
         init_hdr,
-        outfilename + "_overall_rawtransmat",
+        outputroot + "_overall_rawtransmat",
     )
     ccalc_io.savetonifti(
         np.transpose(overallnormtransmat),
         init_hdr,
-        outfilename + "_overall_normtransmat",
+        outputroot + "_overall_normtransmat",
     )
     ccalc_io.savetonifti(
         np.transpose(overalloffdiagtransmat),
         init_hdr,
-        outfilename + "_overall_offdiagtransmat",
+        outputroot + "_overall_offdiagtransmat",
     )
     themaxlen = 0
     for i in range(n_clusters):
@@ -1121,7 +1166,7 @@ if clustertype == "kmeans":
             np.array(alllenlists[i]),
             themaxlen,
             0,
-            outfilename + "_" + str(i).zfill(2) + "_lenhist",
+            outputroot + "_" + str(i).zfill(2) + "_lenhist",
             therange=[1, themaxlen],
         )
     silavgs = []
@@ -1130,7 +1175,7 @@ if clustertype == "kmeans":
             silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
         ccalc_io.writenpvecs(
             np.asarray(silavgs, dtype="float"),
-            outfilename + "_overallsilhouettemean.txt",
+            outputroot + "_overallsilhouettemean.txt",
         )
     pctarray = np.asarray(allstatestats[:], dtype="float")
     cols = [
@@ -1145,17 +1190,17 @@ if clustertype == "kmeans":
     ]
     df = pd.DataFrame(data=np.mean(pctarray, axis=0), columns=cols)
     df.to_csv(
-        outfilename + "_seg_" + str(segment).zfill(4) + "_overallmeanstats.csv",
+        outputroot + "_seg_" + str(segment).zfill(4) + "_overallmeanstats.csv",
         index=False,
     )
-    # ccalc_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), outfilename + '_overallmeanstats.txt')
+    # ccalc_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), outputroot + '_overallmeanstats.txt')
 
     if doGBR:
         clf = GradientBoostingRegressor().fit(X, thestatelabels)
         print("GBR fitting score is:", clf.score(X, thestatelabels))
         ccalc_io.writenpvecs(
             np.reshape(clf.feature_importances_, (n_features, 1)),
-            outfilename + "_featureimportances.txt",
+            outputroot + "_featureimportances.txt",
         )
 
 elif clustertype == "dbscan":
@@ -1163,7 +1208,7 @@ elif clustertype == "dbscan":
         db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(X)
 
         # save the model
-        joblib.dump(db, outfilename + "_dbscan.joblib")
+        joblib.dump(db, outputroot + "_dbscan.joblib")
     else:
         modelfilename = trainedmodelroot + "_dbscan.joblib"
         print("reading dbscan model from", modelfilename)
@@ -1187,11 +1232,11 @@ elif clustertype == "dbscan":
     thestatelabels = db.labels_
     print(thestatelabels)
     print("thestatelabels shape", thestatelabels.shape)
-    ccalc_io.writenpvecs(thestatelabels, outfilename + "_statelabels.txt")
+    ccalc_io.writenpvecs(thestatelabels, outputroot + "_statelabels.txt")
 
     print("core_sample_indices:", db.core_sample_indices_)
     core_centers = np.transpose(X[db.core_sample_indices_, :])
-    ccalc_io.writenpvecs(core_centers, outfilename + "_core_centers.txt")
+    ccalc_io.writenpvecs(core_centers, outputroot + "_core_centers.txt")
 
     # Number of clusters in labels, ignoring noise if present.
     n_clusters_ = len(set(thestatelabels)) - (1 if -1 in thestatelabels else 0)
@@ -1208,7 +1253,7 @@ elif clustertype == "hdbscan":
         ).fit(X)
 
         # save the model
-        joblib.dump(hdb, outfilename + "_hdbscan.joblib")
+        joblib.dump(hdb, outputroot + "_hdbscan.joblib")
     else:
         modelfilename = trainedmodelroot + "_hdbscan.joblib"
         print("reading hdbscan model from", modelfilename)
