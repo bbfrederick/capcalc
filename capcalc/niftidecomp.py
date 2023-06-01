@@ -147,7 +147,6 @@ def niftidecomp_workflow(
     ) = tide_io.readfromnifti(datamaskname)
 
     xsize, ysize, numslices, mask_timepoints = tide_io.parseniftidims(datamaskdims)
-    xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datamasksizes)
     numspatiallocs = int(xsize) * int(ysize) * int(numslices)
 
     if mask_timepoints == 1:
@@ -161,6 +160,7 @@ def niftidecomp_workflow(
     print("reading in data files")
     numfiles = len(datafilelist)
     for idx, datafile in enumerate(datafilelist):
+        print(f"reading {datafile}...")
         (
             datafile_img,
             datafile_data,
@@ -184,7 +184,7 @@ def niftidecomp_workflow(
 
         # smooth the data
         if sigma > 0.0:
-            print("smoothing data")
+            print("\tsmoothing data")
             for i in range(timepoints):
                 datafile_data[:, :, :, i] = tide_filt.ssmooth(
                     xdim, ydim, slicethickness, sigma, datafile_data[:, :, :, i]
@@ -192,7 +192,7 @@ def niftidecomp_workflow(
 
         # prefilter the data
         if theprefilter is not None:
-            print("temporally filtering data")
+            print("\ttemporally filtering data")
             rs_singlefile = datafile_data.reshape((numspatiallocs, timepoints))
             for i in range(numspatiallocs):
                 rs_singlefile[i, :] = theprefilter.apply(1.0 / tr, rs_singlefile[i, :])
@@ -206,9 +206,6 @@ def niftidecomp_workflow(
         print("checking mask dimensions")
         if not tide_io.checkspacedimmatch(datafiledims, datamaskdims):
             print("input mask spatial dimensions do not match image")
-            exit()
-        if not (tide_io.checktimematch(datafiledims, datamaskdims) or datamaskdims[4] == 1):
-            print("input mask time dimension does not match image")
             exit()
 
     print("masking arrays")
@@ -246,10 +243,6 @@ def niftidecomp_workflow(
         procdata = np.nan_to_num(procdata)
     else:
         thevar = np.ones(procdata.shape[1 - decompaxisnum])
-
-    # applying mask
-    if datamaskdims[4] > 1:
-        procdata *= rs_mask
 
     # now perform the decomposition
     if decomptype == "ica":
