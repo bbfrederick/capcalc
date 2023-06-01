@@ -31,18 +31,15 @@ from sklearn import metrics
 from sklearn.cluster import DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA, FastICA, IncrementalPCA
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.feature_selection import (
-    SelectPercentile,
-    f_classif,
-)
+from sklearn.feature_selection import SelectPercentile, f_classif
 from sklearn.preprocessing import StandardScaler
 
-from capcalc.niftidecomp import niftidecomp_workflow
 import capcalc.filter as ccalc_filt
 import capcalc.fit as ccalc_fit
 import capcalc.io as ccalc_io
 import capcalc.miscmath as ccalc_math
 import capcalc.stats as ccalc_stats
+from capcalc.niftidecomp import niftidecomp_workflow
 
 try:
     import hdbscan as hdbs
@@ -159,8 +156,7 @@ def usage():
     print(
         "    --minhold=MINHOLD)           - time in a state shorter than MINHOLD will be assigned to the previous state.  Default is 1"
     )
-    print(
-        "    --maskfile=MASKFILE          - name of a mask file to use if input files are nifti")
+    print("    --maskfile=MASKFILE          - name of a mask file to use if input files are nifti")
     print("")
     print("  Other:")
     print(
@@ -168,7 +164,9 @@ def usage():
     )
     print("    -d                           - display some quality metrics")
     print("    --quality                    - perform a silhouette test to evaluate fit quality")
-    print("    --sigma                      - if input is nifti, smooth with a kernel of this width in mm")
+    print(
+        "    --sigma                      - if input is nifti, smooth with a kernel of this width in mm"
+    )
     print("    -v                           - turn on verbose mode")
     print(
         "    --modelroot=MODELROOT        - reread trained models from a previous run - MODELROOT should\n"
@@ -281,6 +279,7 @@ sampletime = None
 Fs = None
 outputroot = None
 datamaskname = None
+maskthresh = 0.25
 
 theprefilter = ccalc_filt.NoncausalFilter(transferfunc="butterworth")
 theprefilter.setbutterorder(filtorder)
@@ -582,10 +581,7 @@ if ccalc_io.checkifnifti(infilename[0]):
     numspatialpoints = int(xsize) * int(ysize) * int(numslices)
     print(f"number of spatial points from mask = {numspatialpoints}")
     themask = datamask_data.reshape((numspatialpoints))
-    thevalidpoints = np.where(themask > 0.5)
-    numvalidpoints = len(thevalidpoints[0])
-    print(f"number of valid spatial points from mask = {numvalidpoints}")
-    numfiles = len(infilename)
+    thevalidpoints = np.where(themask > maskthresh)
 
     # Load the data.  If input is nifti, the first thing to do is reduce dimensionality A LOT
     (
@@ -597,16 +593,18 @@ if ccalc_io.checkifnifti(infilename[0]):
         datafiledims,
         datafilesizes,
     ) = niftidecomp_workflow(
-            "spatial",
-            infilename,
-            datamaskname=datamaskname,
-            decomptype="pca",
-            pcacomponents=0.5,
-            icacomponents=None,
-            varnorm=True,
-            demean=True,
-            sigma=sigma,
-        )
+        "spatial",
+        infilename,
+        datamaskname=datamaskname,
+        decomptype="pca",
+        pcacomponents=n_pca,
+        icacomponents=None,
+        varnorm=True,
+        demean=True,
+        theprefilter=theprefilter,
+        sigma=sigma,
+        maskthresh=maskthresh,
+    )
 
     print(f"{outputcomponents.shape=}")
     print(f"{inputdata.shape=}")
@@ -653,7 +651,9 @@ else:
         inputdata1 = ccalc_io.readvec(infilename[0])
         numpoints = len(inputdata1)
         inputdata2 = ccalc_io.readvec(infilename[1])
-        endpoint1 = min([startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
+        endpoint1 = min(
+            [startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))]
+        )
         endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
         trimmeddata = np.zeros((2, numpoints), dtype="float")
         trimmeddata[0, :] = inputdata1[startpoint:endpoint1]

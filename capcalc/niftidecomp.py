@@ -125,7 +125,9 @@ def niftidecomp_workflow(
     icacomponents=None,
     varnorm=True,
     demean=True,
+    theprefilter=None,
     sigma=0.0,
+    maskthresh=0.25,
 ):
     print(f"Will perform {decomptype} analysis along the {decompaxis} axis")
 
@@ -134,17 +136,29 @@ def niftidecomp_workflow(
     else:
         decompaxisnum = 0
 
-    # read in data
-    print("reading in data arrays")
-    if datamaskname is not None:
-        (
-            datamask_img,
-            datamask_data,
-            datamask_hdr,
-            datamaskdims,
-            datamasksizes,
-        ) = tide_io.readfromnifti(datamaskname)
+    # read in data mask (it must exist)
+    print("reading in mask array")
+    (
+        datamask_img,
+        datamask_data,
+        datamask_hdr,
+        datamaskdims,
+        datamasksizes,
+    ) = tide_io.readfromnifti(datamaskname)
 
+    xsize, ysize, numslices, mask_timepoints = tide_io.parseniftidims(datamaskdims)
+    xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datamasksizes)
+    numspatiallocs = int(xsize) * int(ysize) * int(numslices)
+
+    if mask_timepoints == 1:
+        themask = datamask_data.reshape((numspatiallocs))
+        proclocs = np.where(themask > maskthresh)
+    else:
+        print("mask must have only 3 dimensions")
+        sys.exit()
+
+    # now read in data
+    print("reading in data files")
     numfiles = len(datafilelist)
     for idx, datafile in enumerate(datafilelist):
         (
@@ -160,8 +174,7 @@ def niftidecomp_workflow(
             xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
             totaltimepoints = timepoints * numfiles
             originaldatafiledims = datafiledims.copy()
-
-            fulldataarray = np.zeros((xsize, ysize, numslices, timepoints * numfiles), dtype=float)
+            rs_datafile = np.zeros((numspatiallocs, totaltimepoints), dtype=float)
         else:
             if (not tide_io.checkspacedimmatch(datafiledims, originaldatafiledims)) or (
                 not tide_io.checktimematch(datafiledims, originaldatafiledims)
@@ -176,9 +189,17 @@ def niftidecomp_workflow(
                 datafile_data[:, :, :, i] = tide_filt.ssmooth(
                     xdim, ydim, slicethickness, sigma, datafile_data[:, :, :, i]
                 )
-        fulldataarray[:, :, :, idx * timepoints : (idx + 1) * timepoints] = datafile_data[
+
+        # prefilter the data
+        if theprefilter is not None:
+            print("temporally filtering data")
+            rs_singlefile = datafile_data.reshape((numspatiallocs, timepoints))
+            for i in range(numspatiallocs):
+                rs_singlefile[i, :] = theprefilter.apply(1.0 / tr, rs_singlefile[i, :])
+
+        rs_datafile[:, idx * timepoints : (idx + 1) * timepoints] = datafile_data[
             :, :, :, :
-        ]
+        ].reshape((numspatiallocs, timepoints))
 
     # check dimensions
     if datamaskname is not None:
@@ -190,24 +211,8 @@ def niftidecomp_workflow(
             print("input mask time dimension does not match image")
             exit()
 
-    # allocating arrays
-    print("reshaping arrays")
-    numspatiallocs = int(xsize) * int(ysize) * int(numslices)
-    rs_datafile = fulldataarray.reshape((numspatiallocs, totaltimepoints))
-
     print("masking arrays")
-    maskthresh = 0.25
-    if datamaskname is not None:
-        if datamaskdims[4] == 1:
-            proclocs = np.where(datamask_data.reshape(numspatiallocs) > maskthresh)
-        else:
-            proclocs = np.where(
-                np.mean(datamask_data.reshape((numspatiallocs, totaltimepoints)), axis=1)
-                > maskthresh
-            )
-            rs_mask = datamask_data.reshape((numspatiallocs, totaltimepoints))[proclocs, :]
-            rs_mask = np.where(rs_mask > maskthresh, 1.0, 0.0)[0]
-    else:
+    if datamaskname is None:
         datamaskdims = [1, xsize, ysize, numslices, 1]
         themaxes = np.max(rs_datafile, axis=1)
         themins = np.min(rs_datafile, axis=1)
@@ -266,13 +271,14 @@ def niftidecomp_workflow(
             print("returning first", thecomponents.shape[1], "components found")
     else:
         print("performing pca decomposition")
-        if pcacomponents < 1.0:
+        if 0.0 < pcacomponents < 1.0:
             print(
                 "will return the components accounting for",
                 pcacomponents * 100.0,
                 "% of the variance",
             )
-        else:
+        elif pcacomponents < 0.0:
+            pcacomponents = "mle"
             print("will return", pcacomponents, "components")
         if decomptype == "pca":
             thepca = PCA(n_components=pcacomponents)
