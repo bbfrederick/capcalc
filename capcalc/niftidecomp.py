@@ -123,7 +123,7 @@ def niftidecomp_workflow(
     decomptype="pca",
     pcacomponents=0.5,
     icacomponents=None,
-    varnorm=True,
+    normtype=None,
     demean=True,
     theprefilter=None,
     sigma=0.0,
@@ -216,7 +216,9 @@ def niftidecomp_workflow(
         thediffs = (themaxes - themins).reshape(numspatiallocs)
         proclocs = np.where(thediffs > 0.0)
     procdata = rs_datafile[proclocs, :][0]
-    print(rs_datafile.shape, procdata.shape)
+    print("data shapes:")
+    print(f"\t{rs_datafile.shape[0]} total voxels, {rs_datafile.shape[1]} time points")
+    print(f"\t{procdata.shape[0]} valid voxels, {procdata.shape[1]} time points")
 
     # normalize the individual images
     if demean:
@@ -231,7 +233,7 @@ def niftidecomp_workflow(
     else:
         themean = np.ones(procdata.shape[1 - decompaxisnum])
 
-    if varnorm:
+    if normtype == "var":
         print("variance normalizing array")
         thevar = np.var(procdata, axis=decompaxisnum)
         print("shape of var", thevar.shape)
