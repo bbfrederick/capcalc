@@ -19,6 +19,7 @@
 #       $Date: 2016/06/14 12:04:51 $
 #       $Id: showstxcorr,v 1.11 2016/06/14 12:04:51 frederic Exp $
 #
+import argparse
 import getopt
 import sys
 
@@ -28,7 +29,7 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 from sklearn import metrics
-from sklearn.cluster import DBSCAN, KMeans, MiniBatchKMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA, FastICA, IncrementalPCA
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.feature_selection import SelectPercentile, f_classif
@@ -41,15 +42,110 @@ import capcalc.miscmath as ccalc_math
 import capcalc.stats as ccalc_stats
 from capcalc.niftidecomp import niftidecomp_workflow
 
-try:
-    import hdbscan as hdbs
 
-    hdbpresent = True
-    print("hdbscan is present")
-except:
-    hdbpresent = False
+def gettimecoursedata(infilename, datamaskname):
+    # see if we are dealing with NIFTI files or text files
+    if ccalc_io.checkifnifti(infilename[0]):
+        inputisnifti = True
+        if datamaskname is not None:
+            (
+                datamask_img,
+                datamask_data,
+                datamask_hdr,
+                datamaskdims,
+                datamasksizes,
+            ) = ccalc_io.readfromnifti(datamaskname)
+        else:
+            print("using nifti files requires the use of a mask file")
+            sys.exit()
+        xsize, ysize, numslices, timepoints = ccalc_io.parseniftidims(datamaskdims)
+        numspatialpoints = int(xsize) * int(ysize) * int(numslices)
+        print(f"number of spatial points from mask = {numspatialpoints}")
+        themask = datamask_data.reshape((numspatialpoints))
+        thevalidpoints = np.where(themask > maskthresh)
 
-import capcalc.utils as capcalc_utils
+        # Load the data.  If input is nifti, the first thing to do is reduce dimensionality A LOT
+        (
+            outputcomponents,
+            inputdata,
+            outinvtrans,
+            exp_var_pct,
+            datafile_hdr,
+            datafiledims,
+            datafilesizes,
+        ) = niftidecomp_workflow(
+            "spatial",
+            infilename,
+            datamaskname=datamaskname,
+            decomptype="pca",
+            pcacomponents=n_pca,
+            icacomponents=None,
+            varnorm=True,
+            demean=True,
+            theprefilter=theprefilter,
+            sigma=sigma,
+            maskthresh=maskthresh,
+        )
+
+        print(f"{outputcomponents.shape=}")
+        print(f"{inputdata.shape=}")
+        print(f"{outinvtrans.shape=}")
+        print(f"{exp_var_pct.shape=}")
+        print(f"{datafiledims.shape=}")
+        print(f"{datafilesizes.shape=}")
+
+        # save the eigenvalues
+        print("variance explained by component:", exp_var_pct)
+        ccalc_io.writenpvecs(
+            exp_var_pct,
+            f"{outputroot}_explained_variance_pct.txt",
+        )
+        print("writing component images")
+        theheader = datafile_hdr.copy()
+        theheader["dim"][4] = outputcomponents.shape[3]
+        ccalc_io.savetonifti(
+            outputcomponents,
+            theheader,
+            f"{outputroot}_components",
+        )
+        print("writing out the coefficients")
+        ccalc_io.writenpvecs(inputdata, f"{outputroot}_coefficients.txt")
+        if verbose:
+            print("input data shape is ", inputdata.shape)
+        numpoints = inputdata.shape[1]
+        endpoint = min([startpoint + int(duration * Fs), numpoints])
+        trimmeddata = inputdata[:, startpoint:endpoint]
+    else:
+        inputisnifti = False
+        if len(infilename) == 1:
+            # each column is a timecourse, each row is a timepoint
+            print("processing single input file")
+            matrixoutput = True
+            inputdata = ccalc_io.readvecs(infilename[0])[skippts:]
+            if verbose:
+                print("input data shape is ", inputdata.shape)
+            numpoints = inputdata.shape[1]
+            endpoint = min([startpoint + int(duration * Fs), numpoints])
+            trimmeddata = inputdata[:, startpoint:endpoint]
+        elif len(infilename) == 2:
+            print("processing two input files")
+            inputdata1 = ccalc_io.readvec(infilename[0])
+            numpoints = len(inputdata1)
+            inputdata2 = ccalc_io.readvec(infilename[1])
+            endpoint1 = min(
+                [startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))]
+            )
+            endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
+            trimmeddata = np.zeros((2, numpoints), dtype="float")
+            trimmeddata[0, :] = inputdata1[startpoint:endpoint1]
+            trimmeddata[1, :] = inputdata2[0:endpoint2]
+        else:
+            print(
+                "showstxcorr requires 1 multicolumn timecourse file or two single column timecourse files as input"
+            )
+            usage()
+            sys.exit()
+    return trimmeddata
 
 
 def usage():
@@ -212,7 +308,7 @@ minholdlength = 1
 
 duration = 100000000.0
 starttime = 0.0
-usebutterworthfilter = False
+
 filtorder = 3
 verbose = True
 
@@ -265,6 +361,7 @@ except getopt.GetoptError as err:
     usage()
     sys.exit(2)
 
+
 if len(args) > 1:
     print("capfromtcs takes no unflagged arguments")
     print(args)
@@ -287,15 +384,42 @@ theprefilter.setbutterorder(filtorder)
 # set the default characteristics
 theprefilter.settype("None")
 
+
+def _get_parser():
+    # get the command line parameters
+    parser = argparse.ArgumentParser(
+        prog="capfromany",
+        description="Calculate and cluster coactivation patterns for a set of timecourses",
+        usage="%(prog)s  datafile outputroot",
+    )
+
+    parser.add_argument(
+        "--infile",
+        help="Input file - at least one is required",
+        action="append",
+        required=True,
+        dest="infilename",
+        type=lambda x: pf.is_valid_file(parser, x),
+        metavar="FILENAME",
+    )
+    parser.add_argument("outputroot", metavar="FILE", help="The root of the output file names.")
+    parser.add_argument(
+        "--starttime",
+        type=float,
+        metavar="TIME",
+        help="start time in seconds",
+        default=0.0,
+    )
+    parser.add_argument(
+        "--segsize",
+        type=str,
+        metavar="SEGSIZE[,SEGSIZE...]",
+        help="Segment sizes in TRs.  One or more integers, separated by commas.",
+        default=None,
+    )
+
+
 for o, a in opts:
-    if o == "--infile" or o == "-i":
-        infilename.append(a)
-        if verbose:
-            print("will use", infilename[-1], "as an input file")
-    elif o == "--outfile" or o == "-o":
-        outputroot = a
-        if verbose:
-            print("will use", outputroot, "as output file")
     elif o == "-S":
         for seg in a.split(","):
             subsegs.append(int(seg))
@@ -400,21 +524,10 @@ for o, a in opts:
         preprocessingtype = "pca"
         if verbose:
             print("will perform pca dimensionality reduction step")
-    elif o == "--hdbscan":
-        clustertype = "hdbscan"
-        if not hdbpresent:
-            print("hdbs is not installed, cannot perform hdbscan clustering.  Exiting")
-            sys.exit()
-        if verbose:
-            print("switching to hdbscan clustering")
     elif o == "--sigma":
         sigma = float(a)
         if verbose:
             print(f"spatial smoothing set to {sigma}")
-    elif o == "--dbscan":
-        clustertype = "dbscan"
-        if verbose:
-            print("switching to dbscan clustering")
     elif o == "--nodetrend":
         detrendorder = 0
         if verbose:
@@ -563,108 +676,9 @@ ccalc_io.writevec([" ".join(sys.argv)], outputroot + "_commandline.txt")
 
 # read in the files and get everything trimmed to the right length
 startpoint = max([int(starttime * Fs), 0]) + skippts
-# see if we are dealing with NIFTI files or text files
-if ccalc_io.checkifnifti(infilename[0]):
-    inputisnifti = True
-    if datamaskname is not None:
-        (
-            datamask_img,
-            datamask_data,
-            datamask_hdr,
-            datamaskdims,
-            datamasksizes,
-        ) = ccalc_io.readfromnifti(datamaskname)
-    else:
-        print("using nifti files requires the use of a mask file")
-        sys.exit()
-    xsize, ysize, numslices, timepoints = ccalc_io.parseniftidims(datamaskdims)
-    numspatialpoints = int(xsize) * int(ysize) * int(numslices)
-    print(f"number of spatial points from mask = {numspatialpoints}")
-    themask = datamask_data.reshape((numspatialpoints))
-    thevalidpoints = np.where(themask > maskthresh)
 
-    # Load the data.  If input is nifti, the first thing to do is reduce dimensionality A LOT
-    (
-        outputcomponents,
-        inputdata,
-        outinvtrans,
-        exp_var_pct,
-        datafile_hdr,
-        datafiledims,
-        datafilesizes,
-    ) = niftidecomp_workflow(
-        "spatial",
-        infilename,
-        datamaskname=datamaskname,
-        decomptype="pca",
-        pcacomponents=n_pca,
-        icacomponents=None,
-        varnorm=True,
-        demean=True,
-        theprefilter=theprefilter,
-        sigma=sigma,
-        maskthresh=maskthresh,
-    )
 
-    print(f"{outputcomponents.shape=}")
-    print(f"{inputdata.shape=}")
-    print(f"{outinvtrans.shape=}")
-    print(f"{exp_var_pct.shape=}")
-    print(f"{datafiledims.shape=}")
-    print(f"{datafilesizes.shape=}")
-
-    # save the eigenvalues
-    print("variance explained by component:", exp_var_pct)
-    ccalc_io.writenpvecs(
-        exp_var_pct,
-        f"{outputroot}_explained_variance_pct.txt",
-    )
-    print("writing component images")
-    theheader = datafile_hdr.copy()
-    theheader["dim"][4] = outputcomponents.shape[3]
-    ccalc_io.savetonifti(
-        outputcomponents,
-        theheader,
-        f"{outputroot}_components",
-    )
-    print("writing out the coefficients")
-    ccalc_io.writenpvecs(inputdata, f"{outputroot}_coefficients.txt")
-    if verbose:
-        print("input data shape is ", inputdata.shape)
-    numpoints = inputdata.shape[1]
-    endpoint = min([startpoint + int(duration * Fs), numpoints])
-    trimmeddata = inputdata[:, startpoint:endpoint]
-else:
-    inputisnifti = False
-    if len(infilename) == 1:
-        # each column is a timecourse, each row is a timepoint
-        print("processing single input file")
-        matrixoutput = True
-        inputdata = ccalc_io.readvecs(infilename[0])[skippts:]
-        if verbose:
-            print("input data shape is ", inputdata.shape)
-        numpoints = inputdata.shape[1]
-        endpoint = min([startpoint + int(duration * Fs), numpoints])
-        trimmeddata = inputdata[:, startpoint:endpoint]
-    elif len(infilename) == 2:
-        print("processing two input files")
-        inputdata1 = ccalc_io.readvec(infilename[0])
-        numpoints = len(inputdata1)
-        inputdata2 = ccalc_io.readvec(infilename[1])
-        endpoint1 = min(
-            [startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))]
-        )
-        endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
-        trimmeddata = np.zeros((2, numpoints), dtype="float")
-        trimmeddata[0, :] = inputdata1[startpoint:endpoint1]
-        trimmeddata[1, :] = inputdata2[0:endpoint2]
-    else:
-        print(
-            "showstxcorr requires 1 multicolumn timecourse file or two single column timecourse files as input"
-        )
-        usage()
-        sys.exit()
-
+trimmeddata = gettimecoursedata(infilename, datamaskname)
 # band limit the regressors if that is needed
 if theprefilter.gettype() != "None":
     if verbose:
@@ -673,10 +687,10 @@ else:
     if verbose:
         print("no prefiltering applied")
 
-origdims = inputdata.shape
+# origdims = inputdata.shape
 thedims = trimmeddata.shape
-print("original file dimensions:", origdims)
-print("trimmed file dimensions:", thedims)
+# print("original file dimensions:", origdims)
+print("trimmed data dimensions:", thedims)
 n_features = thedims[0]
 n_samples = thedims[1]
 if segsize < 0:
@@ -816,192 +830,306 @@ if preproconly:
     print("preprocessing done - quitting")
     sys.exit()
 
-if clustertype == "kmeans":
-    print("setting up kmeans")
-    if trainedmodelroot is None:
-        if initialcenters is None:
-            theinit = "k-means++"
-        else:
-            theinit = theclustercenters
-            max_iter = 1
 
-        print("training model")
-        if minibatch:
-            kmeans = MiniBatchKMeans(
-                n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter, init=theinit
-            ).fit(X)
-        else:
-            kmeans = KMeans(
-                n_clusters=n_clusters, max_iter=max_iter, n_init=n_init, init=theinit
-            ).fit(X)
+def doclustering(X, minibatch=True, trainedmodelroot=None, initialcenters=None):
+    if clustertype == "kmeans":
+        print("setting up kmeans")
+        if trainedmodelroot is None:
+            if initialcenters is None:
+                theinit = "k-means++"
+            else:
+                theinit = theclustercenters
+                max_iter = 1
 
-        # save the model
-        joblib.dump(kmeans, outputroot + "_kmeans.joblib")
-    else:
-        modelfilename = trainedmodelroot + "_kmeans.joblib"
-        print("reading kmeans model from", modelfilename)
-        try:
-            kmeans = joblib.load(modelfilename)
-        except Exception as ex:
-            template = (
-                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            print("training model")
+            if minibatch:
+                kmeans = MiniBatchKMeans(
+                    n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter, init=theinit
+                ).fit(X)
+            else:
+                kmeans = KMeans(
+                    n_clusters=n_clusters, max_iter=max_iter, n_init=n_init, init=theinit
+                ).fit(X)
+
+            # save the model
+            joblib.dump(kmeans, outputroot + "_kmeans.joblib")
+        else:
+            modelfilename = trainedmodelroot + "_kmeans.joblib"
+            print("reading kmeans model from", modelfilename)
+            try:
+                kmeans = joblib.load(modelfilename)
+            except Exception as ex:
+                template = (
+                    "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+                )
+                message = template.format(type(ex).__name__, modelfilename, ex.args)
+                print(message)
+                sys.exit()
+
+        theclusters = np.transpose(kmeans.cluster_centers_)
+        thestatelabels = kmeans.predict(X)
+        # thestatelabels = kmeans.labels_
+        print("thestatelabels shape", thestatelabels.shape)
+        print("kmeans done")
+        ccalc_io.writenpvecs(theclusters, outputroot + "_clustercenters.txt")
+
+        # make normalized clusters
+        thenormclusters = theclusters * 0.0
+        themeans = np.mean(theclusters, axis=0)
+        thestds = np.std(theclusters, axis=0)
+        print("themeans:", themeans)
+        print("thestds:", thestds)
+        print("shape:", theclusters.shape)
+        for i in range(theclusters.shape[1]):
+            thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
+        ccalc_io.writenpvecs(thenormclusters, outputroot + "_norm_clustercenters.txt")
+
+        # save the states
+        ccalc_io.writenpvecs(thestatelabels, outputroot + "_statelabels.txt")
+
+        # find most important features
+        print("finding most important features")
+        # rfe = RFE(kmeans, 10)
+        # rfe.fit(X, thestatelabels)
+        # print(rfe.support_)
+        # print(rfe.ranking_)
+
+        print(
+            "calling SelectPercentiles with X and y of dimensions",
+            X.shape,
+            thestatelabels.shape,
+        )
+        selector = SelectPercentile(f_classif, percentile=10)
+        selector.fit(X, thestatelabels)
+        print(selector.get_params())
+        X_indices = np.arange(X.shape[-1])
+        scores = -np.nan_to_num(np.log10(np.nan_to_num(selector.pvalues_)))
+        scores /= scores.max()
+        sortedscores = np.sort(np.nan_to_num(selector.scores_))[::-1]
+        print(sortedscores)
+        if display:
+            plt.bar(
+                X_indices - 0.45,
+                scores,
+                width=0.2,
+                label=r"Univariate score ($-Log(p_{value})$)",
+                color="darkorange",
             )
-            message = template.format(type(ex).__name__, modelfilename, ex.args)
-            print(message)
-            sys.exit()
+            print(selector.get_support(indices=True))
+            fig = plt.subplots(1, 1)
+            plt.plot(sortedscores)
+            plt.show()
 
-    theclusters = np.transpose(kmeans.cluster_centers_)
-    thestatelabels = kmeans.predict(X)
-    # thestatelabels = kmeans.labels_
-    print("thestatelabels shape", thestatelabels.shape)
-    print("kmeans done")
-    ccalc_io.writenpvecs(theclusters, outputroot + "_clustercenters.txt")
-
-    # make normalized clusters
-    thenormclusters = theclusters * 0.0
-    themeans = np.mean(theclusters, axis=0)
-    thestds = np.std(theclusters, axis=0)
-    print("themeans:", themeans)
-    print("thestds:", thestds)
-    print("shape:", theclusters.shape)
-    for i in range(theclusters.shape[1]):
-        thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
-    ccalc_io.writenpvecs(thenormclusters, outputroot + "_norm_clustercenters.txt")
-
-    # save the states
-    ccalc_io.writenpvecs(thestatelabels, outputroot + "_statelabels.txt")
-
-    # find most important features
-    print("finding most important features")
-    # rfe = RFE(kmeans, 10)
-    # rfe.fit(X, thestatelabels)
-    # print(rfe.support_)
-    # print(rfe.ranking_)
-
-    print(
-        "calling SelectPercentiles with X and y of dimensions",
-        X.shape,
-        thestatelabels.shape,
-    )
-    selector = SelectPercentile(f_classif, percentile=10)
-    selector.fit(X, thestatelabels)
-    print(selector.get_params())
-    X_indices = np.arange(X.shape[-1])
-    scores = -np.nan_to_num(np.log10(np.nan_to_num(selector.pvalues_)))
-    scores /= scores.max()
-    sortedscores = np.sort(np.nan_to_num(selector.scores_))[::-1]
-    print(sortedscores)
-    if display:
-        plt.bar(
-            X_indices - 0.45,
-            scores,
-            width=0.2,
-            label=r"Univariate score ($-Log(p_{value})$)",
-            color="darkorange",
+        # now do some stats!
+        thesilavgs, thesilclusterstats = capcalc_utils.silhouette_test(
+            X, kmeans, n_clusters, numsegs, segsize, summaryonly
         )
-        print(selector.get_support(indices=True))
-        fig = plt.subplots(1, 1)
-        plt.plot(sortedscores)
-        plt.show()
+        ccalc_io.writenpvecs(thesilavgs, outputroot + "_silhouettesegmentstats.txt")
 
-    # now do some stats!
-    thesilavgs, thesilclusterstats = capcalc_utils.silhouette_test(
-        X, kmeans, n_clusters, numsegs, segsize, summaryonly
-    )
-    ccalc_io.writenpvecs(thesilavgs, outputroot + "_silhouettesegmentstats.txt")
-
-    silinfo = []
-    for state in range(n_clusters):
-        silinfo.append([])
-    print("shape going in:", thestatelabels.shape)
-    statelabelsbysegment = np.reshape(thestatelabels, (-1, segsize))
-    print("shape coming out:", statelabelsbysegment.shape)
-    meaninstate = np.zeros((n_clusters, segsize), dtype="float")
-    stdinstate = np.zeros((n_clusters, segsize), dtype="float")
-
-    # do the subsegment summaries
-    for key in groups:
-        groups[key]["meaninstate"] = np.zeros(
-            (n_clusters, groups[key]["seglen"][0]), dtype="float"
-        )
-        groups[key]["stdinstate"] = np.zeros((n_clusters, groups[key]["seglen"][0]), dtype="float")
+        silinfo = []
         for state in range(n_clusters):
-            tcbyseg = []
-            for seginstance in range(len(groups[key]["segnum"])):
-                startpos = groups[key]["segstart"][seginstance]
-                endpos = startpos + groups[key]["seglen"][seginstance]
-                tcbyseg.append(np.where(statelabelsbysegment[:, startpos:endpos] == state, 1, 0))
-            groups[key]["meaninstate"][state, :] = np.mean(np.concatenate(tcbyseg, axis=0), axis=0)
-            groups[key]["stdinstate"][state, :] = np.std(np.concatenate(tcbyseg, axis=0), axis=0)
-        ccalc_io.writenpvecs(
-            groups[key]["meaninstate"],
-            outputroot + "_" + str(key) + "_meaninstate.txt",
-        )
-        ccalc_io.writenpvecs(
-            groups[key]["stdinstate"], outputroot + "_" + str(key) + "_stdinstate.txt"
-        )
-    allstatestats = []
-    allrawtransmats = []
-    alllenlists = []
-    for i in range(n_clusters):
-        alllenlists.append([])
-    for segment in range(numsegs):
-        thesestatelabels = thestatelabels[segment * segsize : (segment + 1) * segsize]
+            silinfo.append([])
+        print("shape going in:", thestatelabels.shape)
+        statelabelsbysegment = np.reshape(thestatelabels, (-1, segsize))
+        print("shape coming out:", statelabelsbysegment.shape)
+        meaninstate = np.zeros((n_clusters, segsize), dtype="float")
+        stdinstate = np.zeros((n_clusters, segsize), dtype="float")
 
-        outputaffine = np.eye(4)
-        rawtransmat, thestats, lenlist = capcalc_utils.statestats(
-            thesestatelabels, n_clusters, 0, minout=minoutlength, minhold=minholdlength
-        )
-        allrawtransmats.append(rawtransmat * 1.0)
-        allstatestats.append(thestats)
+        # do the subsegment summaries
+        for key in groups:
+            groups[key]["meaninstate"] = np.zeros(
+                (n_clusters, groups[key]["seglen"][0]), dtype="float"
+            )
+            groups[key]["stdinstate"] = np.zeros(
+                (n_clusters, groups[key]["seglen"][0]), dtype="float"
+            )
+            for state in range(n_clusters):
+                tcbyseg = []
+                for seginstance in range(len(groups[key]["segnum"])):
+                    startpos = groups[key]["segstart"][seginstance]
+                    endpos = startpos + groups[key]["seglen"][seginstance]
+                    tcbyseg.append(
+                        np.where(statelabelsbysegment[:, startpos:endpos] == state, 1, 0)
+                    )
+                groups[key]["meaninstate"][state, :] = np.mean(
+                    np.concatenate(tcbyseg, axis=0), axis=0
+                )
+                groups[key]["stdinstate"][state, :] = np.std(
+                    np.concatenate(tcbyseg, axis=0), axis=0
+                )
+            ccalc_io.writenpvecs(
+                groups[key]["meaninstate"],
+                outputroot + "_" + str(key) + "_meaninstate.txt",
+            )
+            ccalc_io.writenpvecs(
+                groups[key]["stdinstate"], outputroot + "_" + str(key) + "_stdinstate.txt"
+            )
+        allstatestats = []
+        allrawtransmats = []
+        alllenlists = []
         for i in range(n_clusters):
-            alllenlists[i] += lenlist[i]
-        normtransmat, offdiagtransmat = capcalc_utils.calcmats(rawtransmat, n_clusters)
-        init_img = nib.Nifti1Image(normtransmat, outputaffine)
-        init_hdr = init_img.header
-        init_sizes = init_hdr["pixdim"]
-        ccalc_io.savetonifti(
-            np.transpose(rawtransmat),
-            init_hdr,
-            outputroot + "_seg_" + str(segment).zfill(4) + "_rawtransmat",
-        )
-        ccalc_io.savetonifti(
-            np.transpose(normtransmat),
-            init_hdr,
-            outputroot + "_seg_" + str(segment).zfill(4) + "_normtransmat",
-        )
-        ccalc_io.savetonifti(
-            np.transpose(offdiagtransmat),
-            init_hdr,
-            outputroot + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat",
-        )
+            alllenlists.append([])
+        for segment in range(numsegs):
+            thesestatelabels = thestatelabels[segment * segsize : (segment + 1) * segsize]
 
-        # write as text as well
-        rows = []
-        cols = []
+            outputaffine = np.eye(4)
+            rawtransmat, thestats, lenlist = capcalc_utils.statestats(
+                thesestatelabels, n_clusters, 0, minout=minoutlength, minhold=minholdlength
+            )
+            allrawtransmats.append(rawtransmat * 1.0)
+            allstatestats.append(thestats)
+            for i in range(n_clusters):
+                alllenlists[i] += lenlist[i]
+            normtransmat, offdiagtransmat = capcalc_utils.calcmats(rawtransmat, n_clusters)
+            init_img = nib.Nifti1Image(normtransmat, outputaffine)
+            init_hdr = init_img.header
+            init_sizes = init_hdr["pixdim"]
+            ccalc_io.savetonifti(
+                np.transpose(rawtransmat),
+                init_hdr,
+                outputroot + "_seg_" + str(segment).zfill(4) + "_rawtransmat",
+            )
+            ccalc_io.savetonifti(
+                np.transpose(normtransmat),
+                init_hdr,
+                outputroot + "_seg_" + str(segment).zfill(4) + "_normtransmat",
+            )
+            ccalc_io.savetonifti(
+                np.transpose(offdiagtransmat),
+                init_hdr,
+                outputroot + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat",
+            )
+
+            # write as text as well
+            rows = []
+            cols = []
+            for i in range(n_clusters):
+                rows.append("from state " + str(i + 1))
+                cols.append("to state " + str(i + 1))
+            df = pd.DataFrame(data=rawtransmat, columns=cols)
+            df.insert(0, "sources", pd.Series(rows))
+            df.to_csv(
+                outputroot + "_seg_" + str(segment).zfill(4) + "_rawtransmat.csv",
+                index=False,
+            )
+            df = pd.DataFrame(data=normtransmat, columns=cols)
+            df.insert(0, "sources", pd.Series(rows))
+            df.to_csv(
+                outputroot + "_seg_" + str(segment).zfill(4) + "_normtransmat.csv",
+                index=False,
+            )
+            df = pd.DataFrame(data=offdiagtransmat, columns=cols)
+            df.insert(0, "sources", pd.Series(rows))
+            df.to_csv(
+                outputroot + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat.csv",
+                index=False,
+            )
+            # rawtransmat files are an n_clusters by n_clusters matrix with the total number of transitions from each state to each other state.
+            # normtransmat files are an n_clusters by n_clusters matrix with the total for of transitions from each state to each other state.
+
+            cols = [
+                "% TRs in state",
+                "Number of runs in state",
+                "Total TRs in state",
+                "Min run (TRs)",
+                "Max run (TRs)",
+                "Mean run (TRs)",
+                "Median run (TRs)",
+                "StdDev run (TRs)",
+            ]
+            df = pd.DataFrame(data=thestats, columns=cols)
+            df.to_csv(
+                outputroot + "_seg_" + str(segment).zfill(4) + "_statestats.csv",
+                index=False,
+            )
+            # ccalc_io.writenpvecs(np.transpose(thestats), outputroot + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
+            thetimestats = 1.0 * thestats
+            thetimestats[:, 2:] *= sampletime
+            cols = [
+                "% Seconds in state",
+                "Number of runs in state",
+                "Total seconds in state",
+                "Min run (sec)",
+                "Max run (sec)",
+                "Mean run (sec)",
+                "Median run (sec)",
+                "StdDev run (sec)",
+            ]
+            df = pd.DataFrame(data=thetimestats, columns=cols)
+            df.to_csv(
+                outputroot + "_seg_" + str(segment).zfill(4) + "_statetimestats.csv",
+                index=False,
+            )
+            # ccalc_io.writenpvecs(np.transpose(thetimestats), outputroot + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
+
+            ccalc_io.writenpvecs(
+                thesestatelabels,
+                outputroot + "_seg_" + str(segment).zfill(4) + "_statelabels.txt",
+            )
+            print(
+                "Segment %d average silhouette Coefficient: %0.3f" % (segment, thesilavgs[segment])
+            )
+            for state in range(n_clusters):
+                tc = np.where(thesestatelabels == state, 1, 0)
+                ccalc_io.writenpvecs(
+                    tc,
+                    outputroot
+                    + "_seg_"
+                    + str(segment).zfill(4)
+                    + "_instate_"
+                    + str(state).zfill(2)
+                    + ".txt",
+                )
+            if not summaryonly:
+                cols = ["Mean", "Median", "Min", "Max"]
+                df = pd.DataFrame(
+                    data=np.transpose(thesilclusterstats[segment, :, :]), columns=cols
+                )
+                df.to_csv(
+                    outputroot + "_seg_" + str(segment).zfill(4) + "_silhouetteclusterstats.csv",
+                    index=False,
+                )
+                # ccalc_io.writenpvecs(thesilclusterstats[segment, :, :],
+                #             outputroot + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
+
+            for state in range(n_clusters):
+                if thestats[state, 2] > 0:
+                    silinfo[state].append(thesilclusterstats[segment, 0, state])
+
+        # now generate some summary information
+        overallstatestats = []
+        thetimestats = []
+        alllens = 0
         for i in range(n_clusters):
-            rows.append("from state " + str(i + 1))
-            cols.append("to state " + str(i + 1))
-        df = pd.DataFrame(data=rawtransmat, columns=cols)
-        df.insert(0, "sources", pd.Series(rows))
-        df.to_csv(
-            outputroot + "_seg_" + str(segment).zfill(4) + "_rawtransmat.csv",
-            index=False,
-        )
-        df = pd.DataFrame(data=normtransmat, columns=cols)
-        df.insert(0, "sources", pd.Series(rows))
-        df.to_csv(
-            outputroot + "_seg_" + str(segment).zfill(4) + "_normtransmat.csv",
-            index=False,
-        )
-        df = pd.DataFrame(data=offdiagtransmat, columns=cols)
-        df.insert(0, "sources", pd.Series(rows))
-        df.to_csv(
-            outputroot + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat.csv",
-            index=False,
-        )
-        # rawtransmat files are an n_clusters by n_clusters matrix with the total number of transitions from each state to each other state.
-        # normtransmat files are an n_clusters by n_clusters matrix with the total for of transitions from each state to each other state.
+            alllens += np.sum(np.asarray(alllenlists[i], dtype="float"))
+
+        for i in range(n_clusters):
+            lenarray = np.asarray(alllenlists[i], dtype="float")
+            if len(lenarray) > 2:
+                overallstatestats.append(
+                    [
+                        100.0 * np.sum(lenarray) / alllens,
+                        len(lenarray),
+                        np.sum(lenarray),
+                        np.min(lenarray),
+                        np.max(lenarray),
+                        np.mean(lenarray),
+                        np.median(lenarray),
+                        np.std(lenarray),
+                    ]
+                )
+                thetimestats.append(
+                    [
+                        100.0 * np.sum(lenarray) / alllens,
+                        sampletime * len(lenarray),
+                        sampletime * np.sum(lenarray),
+                        sampletime * np.min(lenarray),
+                        sampletime * np.max(lenarray),
+                        sampletime * np.mean(lenarray),
+                        sampletime * np.median(lenarray),
+                        sampletime * np.std(lenarray),
+                    ]
+                )
 
         cols = [
             "% TRs in state",
@@ -1013,14 +1141,12 @@ if clustertype == "kmeans":
             "Median run (TRs)",
             "StdDev run (TRs)",
         ]
-        df = pd.DataFrame(data=thestats, columns=cols)
+        df = pd.DataFrame(data=overallstatestats, columns=cols)
         df.to_csv(
-            outputroot + "_seg_" + str(segment).zfill(4) + "_statestats.csv",
+            outputroot + "_overall_statestats.csv",
             index=False,
         )
-        # ccalc_io.writenpvecs(np.transpose(thestats), outputroot + '_seg_' + str(segment).zfill(4) + '_statestats.txt')
-        thetimestats = 1.0 * thestats
-        thetimestats[:, 2:] *= sampletime
+
         cols = [
             "% Seconds in state",
             "Number of runs in state",
@@ -1033,251 +1159,74 @@ if clustertype == "kmeans":
         ]
         df = pd.DataFrame(data=thetimestats, columns=cols)
         df.to_csv(
-            outputroot + "_seg_" + str(segment).zfill(4) + "_statetimestats.csv",
+            outputroot + "_overall_statetimestats.csv",
             index=False,
         )
-        # ccalc_io.writenpvecs(np.transpose(thetimestats), outputroot + '_seg_' + str(segment).zfill(4) + '_statetimestats.txt')
-
-        ccalc_io.writenpvecs(
-            thesestatelabels,
-            outputroot + "_seg_" + str(segment).zfill(4) + "_statelabels.txt",
+        overallrawtransmat = allrawtransmats[0] * 0.0
+        for segment in range(numsegs):
+            overallrawtransmat += allrawtransmats[segment]
+        overallnormtransmat, overalloffdiagtransmat = capcalc_utils.calcmats(
+            overallrawtransmat, n_clusters
         )
-        print("Segment %d average silhouette Coefficient: %0.3f" % (segment, thesilavgs[segment]))
-        for state in range(n_clusters):
-            tc = np.where(thesestatelabels == state, 1, 0)
-            ccalc_io.writenpvecs(
-                tc,
-                outputroot
-                + "_seg_"
-                + str(segment).zfill(4)
-                + "_instate_"
-                + str(state).zfill(2)
-                + ".txt",
+        init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
+        init_hdr = init_img.header
+        init_sizes = init_hdr["pixdim"]
+        ccalc_io.savetonifti(
+            np.transpose(overallrawtransmat),
+            init_hdr,
+            outputroot + "_overall_rawtransmat",
+        )
+        ccalc_io.savetonifti(
+            np.transpose(overallnormtransmat),
+            init_hdr,
+            outputroot + "_overall_normtransmat",
+        )
+        ccalc_io.savetonifti(
+            np.transpose(overalloffdiagtransmat),
+            init_hdr,
+            outputroot + "_overall_offdiagtransmat",
+        )
+        themaxlen = 0
+        for i in range(n_clusters):
+            themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))
+        for i in range(n_clusters):
+            thishist = ccalc_stats.makeandsavehistogram(
+                np.array(alllenlists[i]),
+                themaxlen,
+                0,
+                outputroot + "_" + str(i).zfill(2) + "_lenhist",
+                therange=[1, themaxlen],
             )
+        silavgs = []
         if not summaryonly:
-            cols = ["Mean", "Median", "Min", "Max"]
-            df = pd.DataFrame(data=np.transpose(thesilclusterstats[segment, :, :]), columns=cols)
-            df.to_csv(
-                outputroot + "_seg_" + str(segment).zfill(4) + "_silhouetteclusterstats.csv",
-                index=False,
+            for state in range(n_clusters):
+                silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
+            ccalc_io.writenpvecs(
+                np.asarray(silavgs, dtype="float"),
+                outputroot + "_overallsilhouettemean.txt",
             )
-            # ccalc_io.writenpvecs(thesilclusterstats[segment, :, :],
-            #             outputroot + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
-
-        for state in range(n_clusters):
-            if thestats[state, 2] > 0:
-                silinfo[state].append(thesilclusterstats[segment, 0, state])
-
-    # now generate some summary information
-    overallstatestats = []
-    thetimestats = []
-    alllens = 0
-    for i in range(n_clusters):
-        alllens += np.sum(np.asarray(alllenlists[i], dtype="float"))
-
-    for i in range(n_clusters):
-        lenarray = np.asarray(alllenlists[i], dtype="float")
-        if len(lenarray) > 2:
-            overallstatestats.append(
-                [
-                    100.0 * np.sum(lenarray) / alllens,
-                    len(lenarray),
-                    np.sum(lenarray),
-                    np.min(lenarray),
-                    np.max(lenarray),
-                    np.mean(lenarray),
-                    np.median(lenarray),
-                    np.std(lenarray),
-                ]
-            )
-            thetimestats.append(
-                [
-                    100.0 * np.sum(lenarray) / alllens,
-                    sampletime * len(lenarray),
-                    sampletime * np.sum(lenarray),
-                    sampletime * np.min(lenarray),
-                    sampletime * np.max(lenarray),
-                    sampletime * np.mean(lenarray),
-                    sampletime * np.median(lenarray),
-                    sampletime * np.std(lenarray),
-                ]
-            )
-
-    cols = [
-        "% TRs in state",
-        "Number of runs in state",
-        "Total TRs in state",
-        "Min run (TRs)",
-        "Max run (TRs)",
-        "Mean run (TRs)",
-        "Median run (TRs)",
-        "StdDev run (TRs)",
-    ]
-    df = pd.DataFrame(data=overallstatestats, columns=cols)
-    df.to_csv(
-        outputroot + "_overall_statestats.csv",
-        index=False,
-    )
-
-    cols = [
-        "% Seconds in state",
-        "Number of runs in state",
-        "Total seconds in state",
-        "Min run (sec)",
-        "Max run (sec)",
-        "Mean run (sec)",
-        "Median run (sec)",
-        "StdDev run (sec)",
-    ]
-    df = pd.DataFrame(data=thetimestats, columns=cols)
-    df.to_csv(
-        outputroot + "_overall_statetimestats.csv",
-        index=False,
-    )
-    overallrawtransmat = allrawtransmats[0] * 0.0
-    for segment in range(numsegs):
-        overallrawtransmat += allrawtransmats[segment]
-    overallnormtransmat, overalloffdiagtransmat = capcalc_utils.calcmats(
-        overallrawtransmat, n_clusters
-    )
-    init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
-    init_hdr = init_img.header
-    init_sizes = init_hdr["pixdim"]
-    ccalc_io.savetonifti(
-        np.transpose(overallrawtransmat),
-        init_hdr,
-        outputroot + "_overall_rawtransmat",
-    )
-    ccalc_io.savetonifti(
-        np.transpose(overallnormtransmat),
-        init_hdr,
-        outputroot + "_overall_normtransmat",
-    )
-    ccalc_io.savetonifti(
-        np.transpose(overalloffdiagtransmat),
-        init_hdr,
-        outputroot + "_overall_offdiagtransmat",
-    )
-    themaxlen = 0
-    for i in range(n_clusters):
-        themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))
-    for i in range(n_clusters):
-        thishist = ccalc_stats.makeandsavehistogram(
-            np.array(alllenlists[i]),
-            themaxlen,
-            0,
-            outputroot + "_" + str(i).zfill(2) + "_lenhist",
-            therange=[1, themaxlen],
+        pctarray = np.asarray(allstatestats[:], dtype="float")
+        cols = [
+            "% TRs in state",
+            "Number of runs in state",
+            "Total TRs in state",
+            "Min run (TRs)",
+            "Max run (TRs)",
+            "Mean run (TRs)",
+            "Median run (TRs)",
+            "StdDev run (TRs)",
+        ]
+        df = pd.DataFrame(data=np.mean(pctarray, axis=0), columns=cols)
+        df.to_csv(
+            outputroot + "_seg_" + str(segment).zfill(4) + "_overallmeanstats.csv",
+            index=False,
         )
-    silavgs = []
-    if not summaryonly:
-        for state in range(n_clusters):
-            silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
-        ccalc_io.writenpvecs(
-            np.asarray(silavgs, dtype="float"),
-            outputroot + "_overallsilhouettemean.txt",
-        )
-    pctarray = np.asarray(allstatestats[:], dtype="float")
-    cols = [
-        "% TRs in state",
-        "Number of runs in state",
-        "Total TRs in state",
-        "Min run (TRs)",
-        "Max run (TRs)",
-        "Mean run (TRs)",
-        "Median run (TRs)",
-        "StdDev run (TRs)",
-    ]
-    df = pd.DataFrame(data=np.mean(pctarray, axis=0), columns=cols)
-    df.to_csv(
-        outputroot + "_seg_" + str(segment).zfill(4) + "_overallmeanstats.csv",
-        index=False,
-    )
-    # ccalc_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), outputroot + '_overallmeanstats.txt')
+        # ccalc_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), outputroot + '_overallmeanstats.txt')
 
-    if doGBR:
-        clf = GradientBoostingRegressor().fit(X, thestatelabels)
-        print("GBR fitting score is:", clf.score(X, thestatelabels))
-        ccalc_io.writenpvecs(
-            np.reshape(clf.feature_importances_, (n_features, 1)),
-            outputroot + "_featureimportances.txt",
-        )
-
-elif clustertype == "dbscan":
-    if trainedmodelroot is None:
-        db = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1).fit(X)
-
-        # save the model
-        joblib.dump(db, outputroot + "_dbscan.joblib")
-    else:
-        modelfilename = trainedmodelroot + "_dbscan.joblib"
-        print("reading dbscan model from", modelfilename)
-        try:
-            db = joblib.load(modelfilename)
-        except Exception as ex:
-            template = (
-                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+        if doGBR:
+            clf = GradientBoostingRegressor().fit(X, thestatelabels)
+            print("GBR fitting score is:", clf.score(X, thestatelabels))
+            ccalc_io.writenpvecs(
+                np.reshape(clf.feature_importances_, (n_features, 1)),
+                outputroot + "_featureimportances.txt",
             )
-            message = template.format(type(ex).__name__, modelfilename, ex.args)
-            print(message)
-            sys.exit()
-
-        db.predict(X)
-
-    print("dbscan done")
-
-    # core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-    # core_samples_mask[db.core_sample_indices_] = True
-
-    thestatelabels = db.labels_
-    print(thestatelabels)
-    print("thestatelabels shape", thestatelabels.shape)
-    ccalc_io.writenpvecs(thestatelabels, outputroot + "_statelabels.txt")
-
-    print("core_sample_indices:", db.core_sample_indices_)
-    core_centers = np.transpose(X[db.core_sample_indices_, :])
-    ccalc_io.writenpvecs(core_centers, outputroot + "_core_centers.txt")
-
-    # Number of clusters in labels, ignoring noise if present.
-    n_clusters_ = len(set(thestatelabels)) - (1 if -1 in thestatelabels else 0)
-    print("Estimated number of clusters: %d" % n_clusters_)
-
-    methodname = "dbscan_" + str(n_clusters).zfill(2)
-
-elif clustertype == "hdbscan":
-    if trainedmodelroot is None:
-        hdb = hdbs.HDBSCAN(
-            min_samples=min_samples,
-            alpha=alpha,
-            memory="/Users/frederic/Documents/MR_data/connectome/movies",
-        ).fit(X)
-
-        # save the model
-        joblib.dump(hdb, outputroot + "_hdbscan.joblib")
-    else:
-        modelfilename = trainedmodelroot + "_hdbscan.joblib"
-        print("reading hdbscan model from", modelfilename)
-        try:
-            hdb = joblib.load(modelfilename)
-        except Exception as ex:
-            template = (
-                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
-            )
-            message = template.format(type(ex).__name__, modelfilename, ex.args)
-            print(message)
-            sys.exit()
-
-        hdb.predict(X)
-
-    thestatelabels = hdb.labels_
-    print(thestatelabels)
-
-    # Number of clusters in labels, ignoring noise if present.
-    n_clusters_ = len(set(thestatelabels)) - (1 if -1 in thestatelabels else 0)
-
-    print("Estimated number of clusters: %d" % n_clusters_)
-    methodname = "hdbscan_" + str(n_clusters).zfill(2)
-
-else:
-    print("unknown clustering type")
-    sys.exit()
