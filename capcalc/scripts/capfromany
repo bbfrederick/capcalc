@@ -219,7 +219,7 @@ def doclustering(
 
     # save the clusters
     theclusters = np.transpose(kmeans.cluster_centers_)
-    ccalc_io.writenpvecs(theclusters, args.outputroot + "_clustercenters.txt")
+    ccalc_io.writenpvecs(theclusters, outputroot + "_clustercenters.txt")
 
     # make normalized clusters
     thenormclusters = theclusters * 0.0
@@ -230,7 +230,7 @@ def doclustering(
     print("shape:", theclusters.shape)
     for i in range(theclusters.shape[1]):
         thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
-    ccalc_io.writenpvecs(thenormclusters, args.outputroot + "_norm_clustercenters.txt")
+    ccalc_io.writenpvecs(thenormclusters, outputroot + "_norm_clustercenters.txt")
 
     print("kmeans done")
     return kmeans
