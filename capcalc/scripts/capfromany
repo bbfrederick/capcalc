@@ -176,6 +176,7 @@ def gettimecoursedata(
 
 def doclustering(
     X,
+    outputroot,
     minibatch=True,
     batch_size=DEFAULT_BATCH_SIZE,
     n_clusters=DEFAULT_NCLUSTERS,
@@ -202,7 +203,7 @@ def doclustering(
             ).fit(X)
 
         # save the model
-        joblib.dump(kmeans, args.outputroot + "_kmeans.joblib")
+        joblib.dump(kmeans, outputroot + "_kmeans.joblib")
     else:
         modelfilename = trainedmodelroot + "_kmeans.joblib"
         print("reading kmeans model from", modelfilename)
@@ -215,6 +216,23 @@ def doclustering(
             message = template.format(type(ex).__name__, modelfilename, ex.args)
             print(message)
             sys.exit()
+
+    # save the clusters
+    theclusters = np.transpose(kmeans.cluster_centers_)
+    ccalc_io.writenpvecs(theclusters, args.outputroot + "_clustercenters.txt")
+
+    # make normalized clusters
+    thenormclusters = theclusters * 0.0
+    themeans = np.mean(theclusters, axis=0)
+    thestds = np.std(theclusters, axis=0)
+    print("themeans:", themeans)
+    print("thestds:", thestds)
+    print("shape:", theclusters.shape)
+    for i in range(theclusters.shape[1]):
+        thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
+    ccalc_io.writenpvecs(thenormclusters, args.outputroot + "_norm_clustercenters.txt")
+
+    print("kmeans done")
     return kmeans
 
 
@@ -968,6 +986,7 @@ def capfromany_main():
 
     kmeans = doclustering(
         X,
+        args.outputroot,
         minibatch=True,
         batch_size=args.batch_size,
         n_clusters=args.n_clusters,
@@ -976,23 +995,9 @@ def capfromany_main():
         initialcenters=args.initialcenters,
     )
 
-    theclusters = np.transpose(kmeans.cluster_centers_)
+    # generate the state labels
     thestatelabels = kmeans.predict(X)
-    # thestatelabels = kmeans.labels_
     print("thestatelabels shape", thestatelabels.shape)
-    print("kmeans done")
-    ccalc_io.writenpvecs(theclusters, args.outputroot + "_clustercenters.txt")
-
-    # make normalized clusters
-    thenormclusters = theclusters * 0.0
-    themeans = np.mean(theclusters, axis=0)
-    thestds = np.std(theclusters, axis=0)
-    print("themeans:", themeans)
-    print("thestds:", thestds)
-    print("shape:", theclusters.shape)
-    for i in range(theclusters.shape[1]):
-        thenormclusters[:, i] = (theclusters[:, i] - themeans[i]) / thestds[i]
-    ccalc_io.writenpvecs(thenormclusters, args.outputroot + "_norm_clustercenters.txt")
 
     # save the states
     ccalc_io.writenpvecs(thestatelabels, args.outputroot + "_statelabels.txt")
