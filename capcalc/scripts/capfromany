@@ -886,7 +886,7 @@ X = np.nan_to_num(np.transpose(reformdata))
 if standardscale:
     X = StandardScaler().fit_transform(X)
 
-""""""if preprocessingtype == "pca":
+"""if preprocessingtype == "pca":
     print("running PCA")
     print("shape going in:", X.shape)
     if trainedmodelroot is None:
