@@ -220,6 +220,48 @@ def addnormalizationopts(parser, normtarget="timecourse", defaultmethod=DEFAULT_
     )
 
 
+def addversionopts(parser):
+    version_opts = parser.add_argument_group("Version options")
+    version_opts.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {ccalc_util.version()[0]}",
+    )
+    version_opts.add_argument(
+        "--detailedversion",
+        action="version",
+        version=f"%(prog)s {ccalc_util.version()}",
+    )
+
+
+def addsamplerateopts(parser, details=False):
+    sampling = parser.add_mutually_exclusive_group()
+    sampling.add_argument(
+        "--samplerate",
+        dest="samplerate",
+        action="store",
+        metavar="FREQ",
+        type=lambda x: is_float(parser, x),
+        help=(
+            "Set the sample rate of the data file to FREQ. "
+            "If neither samplerate or sampletime is specified, sample rate is 1.0."
+        ),
+        default="auto",
+    )
+    sampling.add_argument(
+        "--sampletime",
+        dest="samplerate",
+        action="store",
+        metavar="TSTEP",
+        type=lambda x: invert_float(parser, x),
+        help=(
+            "Set the sample rate of the data file to 1.0/TSTEP. "
+            "If neither samplerate or sampletime is specified, sample rate is 1.0."
+        ),
+        default="auto",
+    )
+
+
 def addfilteropts(
     parser, filtertarget="timecourses", defaultmethod=DEFAULT_FILTERBAND, details=False
 ):
@@ -304,6 +346,17 @@ def addfilteropts(
             ),
             default=DEFAULT_PAD_SECONDS,
         )
+
+
+def postprocesssamplerateopts(args, debug=False):
+    # set the sample rate
+    if args.samplerate == "auto":
+        samplerate = 1.0
+        args.samplerate = samplerate
+    else:
+        samplerate = args.samplerate
+
+    return args
 
 
 def postprocessfilteropts(args, debug=False):
