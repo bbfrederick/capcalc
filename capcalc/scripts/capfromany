@@ -46,6 +46,9 @@ from capcalc.niftidecomp import niftidecomp_workflow
 DEFAULT_BATCH_SIZE = 100
 DEFAULT_MINOUTLENGTH = 1
 DEFAULT_MINHOLDLENGTH = 1
+DEFAULT_NCLUSTERS = 8
+DEFAULT_NPCA = 8
+DEFAULT_MAXITER = 250
 
 
 def gettimecoursedata(
@@ -175,8 +178,8 @@ def doclustering(
     X,
     minibatch=True,
     batch_size=DEFAULT_BATCH_SIZE,
-    n_clusters=args.n_clusters,
-    max_iter=args.max_iter,
+    n_clusters=DEFAULT_NCLUSTERS,
+    max_iter=DEFAULT_MAXITER,
     trainedmodelroot=None,
     initialcenters=None,
 ):
@@ -445,15 +448,15 @@ def _get_parser():
         "--n_clusters",
         type=int,
         metavar="N_CLUSTERS",
-        help="Number of clusters to find",
-        default=8,
+        help=f"Number of clusters to find.  Default is {DEFAULT_NCLUSTERS}.",
+        default=DEFAULT_NCLUSTERS,
     )
     cluster_opts.add_argument(
         "--max_iter",
         type=int,
         metavar="MAX_ITER",
-        help="Number of iterations to perform for cluster fitting",
-        default=250,
+        help=f"Number of iterations to perform for cluster fitting.  Default is {DEFAULT_MAXITER}.",
+        default=DEFAULT_MAXITER,
     )
     cluster_opts.add_argument(
         "--n_init",
