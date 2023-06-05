@@ -1042,21 +1042,23 @@ def capfromany_main():
     ccalc_io.writenpvecs(thesilavgs, args.outputroot + "_silhouettesegmentstats.txt")
 
     silinfo = []
-    for state in range(n_clusters):
+    for state in range(args.n_clusters):
         silinfo.append([])
     print("shape going in:", thestatelabels.shape)
     statelabelsbysegment = np.reshape(thestatelabels, (-1, segsize))
     print("shape coming out:", statelabelsbysegment.shape)
-    meaninstate = np.zeros((n_clusters, segsize), dtype="float")
-    stdinstate = np.zeros((n_clusters, segsize), dtype="float")
+    meaninstate = np.zeros((args.n_clusters, segsize), dtype="float")
+    stdinstate = np.zeros((args.n_clusters, segsize), dtype="float")
 
     # do the subsegment summaries
     for key in groups:
         groups[key]["meaninstate"] = np.zeros(
-            (n_clusters, groups[key]["seglen"][0]), dtype="float"
+            (args.n_clusters, groups[key]["seglen"][0]), dtype="float"
         )
-        groups[key]["stdinstate"] = np.zeros((n_clusters, groups[key]["seglen"][0]), dtype="float")
-        for state in range(n_clusters):
+        groups[key]["stdinstate"] = np.zeros(
+            (args.n_clusters, groups[key]["seglen"][0]), dtype="float"
+        )
+        for state in range(args.n_clusters):
             tcbyseg = []
             for seginstance in range(len(groups[key]["segnum"])):
                 startpos = groups[key]["segstart"][seginstance]
@@ -1074,20 +1076,20 @@ def capfromany_main():
     allstatestats = []
     allrawtransmats = []
     alllenlists = []
-    for i in range(n_clusters):
+    for i in range(args.n_clusters):
         alllenlists.append([])
     for segment in range(numsegs):
         thesestatelabels = thestatelabels[segment * segsize : (segment + 1) * segsize]
 
         outputaffine = np.eye(4)
         rawtransmat, thestats, lenlist = ccalc_utils.statestats(
-            thesestatelabels, n_clusters, 0, minout=minoutlength, minhold=minholdlength
+            thesestatelabels, args.n_clusters, 0, minout=minoutlength, minhold=minholdlength
         )
         allrawtransmats.append(rawtransmat * 1.0)
         allstatestats.append(thestats)
-        for i in range(n_clusters):
+        for i in range(args.n_clusters):
             alllenlists[i] += lenlist[i]
-        normtransmat, offdiagtransmat = ccalc_utils.calcmats(rawtransmat, n_clusters)
+        normtransmat, offdiagtransmat = ccalc_utils.calcmats(rawtransmat, args.n_clusters)
         init_img = nib.Nifti1Image(normtransmat, outputaffine)
         init_hdr = init_img.header
         init_sizes = init_hdr["pixdim"]
@@ -1110,7 +1112,7 @@ def capfromany_main():
         # write as text as well
         rows = []
         cols = []
-        for i in range(n_clusters):
+        for i in range(args.n_clusters):
             rows.append("from state " + str(i + 1))
             cols.append("to state " + str(i + 1))
         df = pd.DataFrame(data=rawtransmat, columns=cols)
@@ -1131,8 +1133,8 @@ def capfromany_main():
             args.outputroot + "_seg_" + str(segment).zfill(4) + "_offdiagtransmat.csv",
             index=False,
         )
-        # rawtransmat files are an n_clusters by n_clusters matrix with the total number of transitions from each state to each other state.
-        # normtransmat files are an n_clusters by n_clusters matrix with the total for of transitions from each state to each other state.
+        # rawtransmat files are an args.n_clusters by args.n_clusters matrix with the total number of transitions from each state to each other state.
+        # normtransmat files are an args.n_clusters by args.n_clusters matrix with the total for of transitions from each state to each other state.
 
         cols = [
             "% TRs in state",
@@ -1174,7 +1176,7 @@ def capfromany_main():
             args.outputroot + "_seg_" + str(segment).zfill(4) + "_statelabels.txt",
         )
         print("Segment %d average silhouette Coefficient: %0.3f" % (segment, thesilavgs[segment]))
-        for state in range(n_clusters):
+        for state in range(args.n_clusters):
             tc = np.where(thesestatelabels == state, 1, 0)
             ccalc_io.writenpvecs(
                 tc,
@@ -1195,7 +1197,7 @@ def capfromany_main():
             # ccalc_io.writenpvecs(thesilclusterstats[segment, :, :],
             #             args.outputroot + '_seg_' + str(segment).zfill(4) + '_silhouetteclusterstats.txt')
 
-        for state in range(n_clusters):
+        for state in range(args.n_clusters):
             if thestats[state, 2] > 0:
                 silinfo[state].append(thesilclusterstats[segment, 0, state])
 
@@ -1203,10 +1205,10 @@ def capfromany_main():
         overallstatestats = []
         thetimestats = []
         alllens = 0
-        for i in range(n_clusters):
+        for i in range(args.n_clusters):
             alllens += np.sum(np.asarray(alllenlists[i], dtype="float"))
 
-        for i in range(n_clusters):
+        for i in range(args.n_clusters):
             lenarray = np.asarray(alllenlists[i], dtype="float")
             if len(lenarray) > 2:
                 overallstatestats.append(
@@ -1269,7 +1271,7 @@ def capfromany_main():
         for segment in range(numsegs):
             overallrawtransmat += allrawtransmats[segment]
         overallnormtransmat, overalloffdiagtransmat = ccalc_utils.calcmats(
-            overallrawtransmat, n_clusters
+            overallrawtransmat, args.n_clusters
         )
         init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
         init_hdr = init_img.header
@@ -1290,9 +1292,9 @@ def capfromany_main():
             args.outputroot + "_overall_offdiagtransmat",
         )
         themaxlen = 0
-        for i in range(n_clusters):
+        for i in range(args.n_clusters):
             themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))
-        for i in range(n_clusters):
+        for i in range(args.n_clusters):
             thishist = ccalc_stats.makeandsavehistogram(
                 np.array(alllenlists[i]),
                 themaxlen,
@@ -1302,7 +1304,7 @@ def capfromany_main():
             )
         silavgs = []
         if not args.summaryonly:
-            for state in range(n_clusters):
+            for state in range(args.n_clusters):
                 silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
             ccalc_io.writenpvecs(
                 np.asarray(silavgs, dtype="float"),
