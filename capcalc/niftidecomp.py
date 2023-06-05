@@ -19,6 +19,7 @@
 import argparse
 import sys
 
+import joblib
 import numpy as np
 from sklearn.decomposition import PCA, FastICA, SparsePCA
 
@@ -119,10 +120,12 @@ def transposeifspatial(data, decompaxis="temporal"):
 def niftidecomp_workflow(
     decompaxis,
     datafilelist,
+    outputroot,
     datamaskname=None,
     decomptype="pca",
     pcacomponents=0.5,
     icacomponents=None,
+    trainedmodelroot=None,
     varnorm=False,
     normtype=None,
     demean=True,
@@ -266,25 +269,43 @@ def niftidecomp_workflow(
             )
             print("returning first", thecomponents.shape[1], "components found")
     else:
-        print("performing pca decomposition")
-        if 0.0 < pcacomponents < 1.0:
-            print(
-                "will return the components accounting for",
-                pcacomponents * 100.0,
-                "% of the variance",
-            )
-        elif pcacomponents < 0.0:
-            pcacomponents = "mle"
-            print("will return", pcacomponents, "components")
-        if decomptype == "pca":
-            thepca = PCA(n_components=pcacomponents)
+        if trainedmodelroot is not None:
+            modelfilename = trainedmodelroot + "_pca.joblib"
+            print("reading PCA from", modelfilename)
+            try:
+                thepca = joblib.load(modelfilename)
+            except Exception as ex:
+                template = (
+                    "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+                )
+                message = template.format(type(ex).__name__, modelfilename, ex.args)
+                print(message)
+                sys.exit()
         else:
-            thepca = SparsePCA(n_components=pcacomponents)
-        thefit = thepca.fit(transposeifspatial(procdata, decompaxis=decompaxis))
+            print("performing pca decomposition")
+            if 0.0 < pcacomponents < 1.0:
+                print(
+                    "will return the components accounting for",
+                    pcacomponents * 100.0,
+                    "% of the variance",
+                )
+            elif pcacomponents < 0.0:
+                pcacomponents = "mle"
+                print("will return", pcacomponents, "components")
+            if decomptype == "pca":
+                thepca = PCA(n_components=pcacomponents)
+            else:
+                thepca = SparsePCA(n_components=pcacomponents)
+            thefit = thepca.fit(transposeifspatial(procdata, decompaxis=decompaxis))
+
+            # save the model
+            joblib.dump(thepca, outputroot + "_pca.joblib")
+
         thetransform = thepca.transform(transposeifspatial(procdata, decompaxis=decompaxis))
         theinvtrans = transposeifspatial(
             thepca.inverse_transform(thetransform), decompaxis=decompaxis
         )
+
         if pcacomponents < 1.0:
             thecomponents = transposeifspatial(thefit.components_[:], decompaxis=decompaxis)
             print("returning", thecomponents.shape[1], "components")

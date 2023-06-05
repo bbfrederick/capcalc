@@ -96,6 +96,7 @@ def gettimecoursedata(
         ) = niftidecomp_workflow(
             "spatial",
             infilename,
+            outputroot,
             datamaskname=datamaskname,
             decomptype="pca",
             pcacomponents=n_pca,
@@ -1004,11 +1005,6 @@ def capfromany_main():
 
     # find most important features
     print("finding most important features")
-    # rfe = RFE(kmeans, 10)
-    # rfe.fit(X, thestatelabels)
-    # print(rfe.support_)
-    # print(rfe.ranking_)
-
     print(
         "calling SelectPercentiles with X and y of dimensions",
         X.shape,
