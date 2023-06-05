@@ -373,6 +373,7 @@ def _get_parser():
     )
     preproc_opts.add_argument(
         "--nostandardscalar",
+        dest=standardscale,
         action="store_false",
         help=("Do not use StandardScaler on input timecourses."),
         default=True,
@@ -899,8 +900,10 @@ for feature in range(n_features):
             )
             subsegstart += subseglen
 X = np.nan_to_num(np.transpose(reformdata))
+if debug:
+    print(f"X matrix has dimensions {X.shape}")
 
-if standardscale:
+if args.standardscale:
     X = StandardScaler().fit_transform(X)
 
 """if preprocessingtype == "pca":
