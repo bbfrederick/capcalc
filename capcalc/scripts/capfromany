@@ -1083,7 +1083,11 @@ def capfromany_main():
 
         outputaffine = np.eye(4)
         rawtransmat, thestats, lenlist = ccalc_utils.statestats(
-            thesestatelabels, args.n_clusters, 0, minout=minoutlength, minhold=minholdlength
+            thesestatelabels,
+            args.n_clusters,
+            0,
+            minout=args.minoutlength,
+            minhold=args.minholdlength,
         )
         allrawtransmats.append(rawtransmat * 1.0)
         allstatestats.append(thestats)
