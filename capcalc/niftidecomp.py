@@ -123,6 +123,7 @@ def niftidecomp_workflow(
     decomptype="pca",
     pcacomponents=0.5,
     icacomponents=None,
+    varnorm=False,
     normtype=None,
     demean=True,
     theprefilter=None,
