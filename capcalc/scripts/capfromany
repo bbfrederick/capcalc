@@ -20,7 +20,6 @@
 #       $Id: showstxcorr,v 1.11 2016/06/14 12:04:51 frederic Exp $
 #
 import argparse
-import getopt
 import sys
 
 import joblib
@@ -41,6 +40,7 @@ import capcalc.io as ccalc_io
 import capcalc.miscmath as ccalc_math
 import capcalc.parser_funcs as pf
 import capcalc.stats as ccalc_stats
+import capcalc.utils as ccalc_utils
 from capcalc.niftidecomp import niftidecomp_workflow
 
 DEFAULT_BATCH_SIZE = 100
@@ -1036,7 +1036,7 @@ def capfromany_main():
         plt.show()
 
     # now do some stats!
-    thesilavgs, thesilclusterstats = capcalc_utils.silhouette_test(
+    thesilavgs, thesilclusterstats = ccalc_utils.silhouette_test(
         X, kmeans, args.n_clusters, numsegs, segsize, summaryonly
     )
     ccalc_io.writenpvecs(thesilavgs, args.outputroot + "_silhouettesegmentstats.txt")
@@ -1080,14 +1080,14 @@ def capfromany_main():
         thesestatelabels = thestatelabels[segment * segsize : (segment + 1) * segsize]
 
         outputaffine = np.eye(4)
-        rawtransmat, thestats, lenlist = capcalc_utils.statestats(
+        rawtransmat, thestats, lenlist = ccalc_utils.statestats(
             thesestatelabels, n_clusters, 0, minout=minoutlength, minhold=minholdlength
         )
         allrawtransmats.append(rawtransmat * 1.0)
         allstatestats.append(thestats)
         for i in range(n_clusters):
             alllenlists[i] += lenlist[i]
-        normtransmat, offdiagtransmat = capcalc_utils.calcmats(rawtransmat, n_clusters)
+        normtransmat, offdiagtransmat = ccalc_utils.calcmats(rawtransmat, n_clusters)
         init_img = nib.Nifti1Image(normtransmat, outputaffine)
         init_hdr = init_img.header
         init_sizes = init_hdr["pixdim"]
@@ -1268,7 +1268,7 @@ def capfromany_main():
         overallrawtransmat = allrawtransmats[0] * 0.0
         for segment in range(numsegs):
             overallrawtransmat += allrawtransmats[segment]
-        overallnormtransmat, overalloffdiagtransmat = capcalc_utils.calcmats(
+        overallnormtransmat, overalloffdiagtransmat = ccalc_utils.calcmats(
             overallrawtransmat, n_clusters
         )
         init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
