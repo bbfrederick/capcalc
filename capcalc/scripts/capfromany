@@ -482,7 +482,7 @@ def _get_parser():
         "--trainedmodelroot",
         type=str,
         metavar="DIRECTORY",
-        help="Directory name where previously trained models are stored.",
+        help="Root name where previously trained model joblibs are stored (dirname and name stub).",
         default=None,
     )
     cluster_opts.add_argument(
@@ -777,8 +777,8 @@ def capfromany_main():
     print(groups)
 
     # read in cluster centers if specified
-    if initialcenters is not None:
-        theclustercenters = np.transpose(ccalc_io.readvecs(initialcenters))
+    if args.initialcenters is not None:
+        theclustercenters = np.transpose(ccalc_io.readvecs(args.initialcenters))
         ccentershape = theclustercenters.shape
         print("clustercenter shape:", ccentershape)
         n_clusters = ccentershape[0]
