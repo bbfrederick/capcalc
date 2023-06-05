@@ -48,6 +48,7 @@ script_list = [
     "capcalc/scripts/behavioralprediction",
     "capcalc/scripts/capcalc_dispatcher",
     "capcalc/scripts/capfromtcs",
+    "capcalc/scripts/capfromany",
     "capcalc/scripts/clustercomp",
     "capcalc/scripts/clustersort",
     "capcalc/scripts/clusternifti",
