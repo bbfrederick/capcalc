@@ -171,6 +171,50 @@ def gettimecoursedata(
     return trimmeddata, Fs
 
 
+def doclustering(
+    X,
+    minibatch=True,
+    batch_size=DEFAULT_BATCH_SIZE,
+    n_clusters=args.n_clusters,
+    max_iter=args.max_iter,
+    trainedmodelroot=None,
+    initialcenters=None,
+):
+    print("setting up kmeans")
+    if trainedmodelroot is None:
+        if initialcenters is None:
+            theinit = "k-means++"
+        else:
+            theinit = theclustercenters
+            max_iter = 1
+
+        print("training model")
+        if minibatch:
+            kmeans = MiniBatchKMeans(
+                n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter, init=theinit
+            ).fit(X)
+        else:
+            kmeans = KMeans(
+                n_clusters=n_clusters, max_iter=max_iter, n_init=n_init, init=theinit
+            ).fit(X)
+
+        # save the model
+        joblib.dump(kmeans, args.outputroot + "_kmeans.joblib")
+    else:
+        modelfilename = trainedmodelroot + "_kmeans.joblib"
+        print("reading kmeans model from", modelfilename)
+        try:
+            kmeans = joblib.load(modelfilename)
+        except Exception as ex:
+            template = (
+                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+            )
+            message = template.format(type(ex).__name__, modelfilename, ex.args)
+            print(message)
+            sys.exit()
+    return kmeans
+
+
 def usage():
     print("")
     print("capfromtcs - calculate and cluster coactivation patterns for a set of timecourses")
@@ -431,6 +475,20 @@ def _get_parser():
         help=("Run MiniBatch Kmeans rather than conventional - use with very large datasets."),
         default=False,
     )
+    cluster_opts.add_argument(
+        "--trainedmodelroot",
+        type=str,
+        metavar="DIRECTORY",
+        help="Directory name where previously trained models are stored.",
+        default=None,
+    )
+    cluster_opts.add_argument(
+        "--initialcenters",
+        type=str,
+        metavar="FILE",
+        help="Name of a file containing previously calculated cluster centers.",
+        default=None,
+    )
 
     # postprocessing
     postproc_opts = parser.add_argument_group("Postprocessing options")
@@ -500,552 +558,420 @@ def _get_parser():
         default=False,
     )
 
-    # preprocessing options
-    preprocessingtype = None
-    timenormmethod = "varnorm"
-
-    # clustering/partitioning options
-
-    verbose = True
-
-    trainedmodelroot = None
-    initialcenters = None
-
-    sigma = 0.0
-
     return parser
 
 
-# preprocessing options
-preprocessingtype = None
-detrendorder = 1
-timenormmethod = "varnorm"
+def capfromany_main():
+    # preprocessing options
+    preprocessingtype = None
+    detrendorder = 1
+    timenormmethod = "varnorm"
 
-# clustering/partitioning options
-trainedmodelroot = None
-initialcenters = None
+    # get the command line parameters
+    try:
+        args = _get_parser().parse_args()
+    except SystemExit:
+        _get_parser().print_help()
+        raise
 
-# get the command line parameters
-try:
-    args = _get_parser().parse_args()
-except SystemExit:
-    _get_parser().print_help()
-    raise
+    args, theprefilter = pf.postprocessfilteropts(args, debug=args.debug)
 
-args, theprefilter = pf.postprocessfilteropts(args, debug=args.debug)
+    if args.debug:
+        print(args)
 
-if args.debug:
-    print(args)
+    """
+    # unset all required arguments
+    infilename = []
+    segsize = -1
+    subsegs = []
+    subseggroupIDs = None
+    sampletime = None
+    Fs = None
+    outputroot = None
+    datamaskname = None
+    maskthresh = 0.25
+    
+    
+    for o, a in opts:
+        elif o == "--nonorm":
+            timenormmethod = "none"
+            if verbose:
+                print("will do no normalization")
+        elif o == "--pctnorm":
+            timenormmethod = "pctnorm"
+            if verbose:
+                print("will do percent normalization")
+        elif o == "--stdnorm":
+            timenormmethod = "stdnorm"
+            if verbose:
+                print("will do std dev normalization")
+        elif o == "--varnorm":
+            timenormmethod = "varnorm"
+            if verbose:
+                print("will do variance normalization")
+        elif o == "--ppnorm":
+            timenormmethod = "ppnorm"
+            if verbose:
+                print("will do p-p normalization")
+        elif o == "--skippts":
+            skippts = int(a)
+            if verbose:
+                print("will drop first", skippts, "points from each segnent")
+        elif o == "--quality":
+            summaryonly = False
+            if verbose:
+                print("will do silhouette test")
+        elif o == "-v":
+            verbose = True
+            if verbose:
+                print("verbose mode enabled")
+        elif o == "--ica":
+            preprocessingtype = "ica"
+            if verbose:
+                print("will perform ica dimensionality reduction step")
+        elif o == "--GBR":
+            doGBR = True
+            if verbose:
+                print("will do GBR on clusters")
+        elif o == "--pca":
+            preprocessingtype = "pca"
+            if verbose:
+                print("will perform pca dimensionality reduction step")
+        elif o == "--sigma":
+            sigma = float(a)
+            if verbose:
+                print(f"spatial smoothing set to {sigma}")
+        elif o == "--nodetrend":
+            detrendorder = 0
+            if verbose:
+                print("disabling detrending")
+        elif o == "-D":
+            duration = float(a)
+            if verbose:
+                print("duration set to", duration)
+        elif o == "-s":
+            starttime = float(a)
+            if verbose:
+                print("starttime set to", starttime)
+        elif o == "-V":
+            theprefilter.settype("vlf")
+            if verbose:
+                print("prefiltering to vlf band")
+        elif o == "-L":
+            theprefilter.settype("lfo")
+            if verbose:
+                print("prefiltering to lfo band")
+        elif o == "-R":
+            theprefilter.settype("resp")
+            if verbose:
+                print("prefiltering to respiratory band")
+        elif o == "-C":
+            theprefilter.settype("card")
+            if verbose:
+                print("prefiltering to cardiac band")
+        elif o == "-F":
+            arbvec = a.split(",")
+            if len(arbvec) != 2 and len(arbvec) != 4:
+                usage()
+                sys.exit()
+            if len(arbvec) == 2:
+                arb_lower = float(arbvec[0])
+                arb_upper = float(arbvec[1])
+                arb_lowerstop = 0.9 * float(arbvec[0])
+                arb_upperstop = 1.1 * float(arbvec[1])
+            if len(arbvec) == 4:
+                arb_lower = float(arbvec[0])
+                arb_upper = float(arbvec[1])
+                arb_lowerstop = float(arbvec[2])
+                arb_upperstop = float(arbvec[3])
+            theprefilter.settype("arb")
+            theprefilter.setfreqs(arb_lowerstop, arb_lower, arb_upper, arb_upperstop)
+            if verbose:
+                print(
+                    "prefiltering to ",
+                    arb_lower,
+                    arb_upper,
+                    "(stops at ",
+                    arb_lowerstop,
+                    arb_upperstop,
+                    ")",
+                )
+        elif o == "-m":
+            minibatch = True
+            print("will perform MiniBatchKMeans")
+        elif o == "-b":
+            batch_size = int(a)
+            print("will use", batch_size, "as batch_size")
+        elif o == "-I":
+            n_init = int(a)
+            print("will do", n_init, "initializations")
+        elif o == "-n":
+            n_clusters = int(a)
+            print("will use", n_clusters, "clusters")
+        elif o == "-p":
+            n_pca = float(a)
+            if n_pca <= 0.0:
+                print("will estimate the number of pca components for dimensionality reduction")
+            elif n_pca < 1.0:
+                print(
+                    "will use enough pca components to explain at least",
+                    100.0 * n_pca,
+                    "% of the variance",
+                )
+            else:
+                n_pca = int(a)
+                print("will use", n_pca, "pca components for dimensionality reduction")
+        else:
+            assert False, "unhandled option"
+    """
+    # check that required arguments are set
+    if args.outputroot is None:
+        print("outfile must be set")
+        usage()
+        sys.exit()
 
-"""
-# unset all required arguments
-infilename = []
-segsize = -1
-subsegs = []
-subseggroupIDs = None
-sampletime = None
-Fs = None
-outputroot = None
-datamaskname = None
-maskthresh = 0.25
-
-
-# set the default characteristics
-theprefilter.settype("None")
-
-
-
-
-
-
-for o, a in opts:
-    elif o == "-S":
-        for seg in a.split(","):
+    # check to make sure groups and subsegments are in agreement
+    if args.debug:
+        print("checking groups and subsegments")
+    groups = {}
+    subsegs = []
+    if args.segsize is not None:
+        print("subsegs:", args.segsize)
+        for seg in args.segsize.split(","):
             subsegs.append(int(seg))
         segsize = np.sum(np.asarray(subsegs))
         print("SUBSEGS:", subsegs)
-        if verbose:
-            print("Setting segment size to ", segsize)
-    elif o == "-E":
-        subseggroupIDs = []
-        for seg in a.split(","):
-            subseggroupIDs.append(seg)
-        print("SUBSEGGROUPIDS:", subseggroupIDs)
-    elif o == "--samplefreq":
-        Fs = float(a)
-        sampletime = 1.0 / Fs
-        linkchar = "="
-        if verbose:
-            print("Setting sample frequency to ", Fs)
-    elif o == "--sampletime":
-        sampletime = float(a)
-        Fs = 1.0 / sampletime
-        linkchar = "="
-        if verbose:
-            print("Setting sample time step to ", sampletime)
-    elif o == "-display":
-        display = True
-        if verbose:
-            print("will display quality metrics")
-    elif o == "--preproconly":
-        preproconly = True
-        if verbose:
-            print("only do preprocessing through PCA/ICA")
-    elif o == "--noscale":
-        standardscale = False
-        if verbose:
-            print("will not magnitude scale feature vectors")
-    elif o == "--nonorm":
-        timenormmethod = "none"
-        if verbose:
-            print("will do no normalization")
-    elif o == "--pctnorm":
-        timenormmethod = "pctnorm"
-        if verbose:
-            print("will do percent normalization")
-    elif o == "--stdnorm":
-        timenormmethod = "stdnorm"
-        if verbose:
-            print("will do std dev normalization")
-    elif o == "--varnorm":
-        timenormmethod = "varnorm"
-        if verbose:
-            print("will do variance normalization")
-    elif o == "--ppnorm":
-        timenormmethod = "ppnorm"
-        if verbose:
-            print("will do p-p normalization")
-    elif o == "--maskname":
-        datamaskname = a
-        if verbose:
-            print("data mask name is " + datamaskname)
-    elif o == "--modelroot":
-        trainedmodelroot = a
-        if verbose:
-            print("will read trained models from " + trainedmodelroot + "_*.joblib")
-    elif o == "--initialcenters":
-        initialcenters = a
-        if verbose:
-            print("will read in the initial cluster centers from", initialcenters)
-    elif o == "--minhold":
-        minholdlength = int(a)
-        if verbose:
-            print("residency in a state shorter than", minholdlength, "will be patched")
-    elif o == "--minout":
-        minoutlength = int(a)
-        if verbose:
-            print(
-                "transitions out of a state shorter than",
-                minoutlength,
-                "will be patched",
-            )
-    elif o == "--skippts":
-        skippts = int(a)
-        if verbose:
-            print("will drop first", skippts, "points from each segnent")
-    elif o == "--quality":
-        summaryonly = False
-        if verbose:
-            print("will do silhouette test")
-    elif o == "-v":
-        verbose = True
-        if verbose:
-            print("verbose mode enabled")
-    elif o == "--ica":
-        preprocessingtype = "ica"
-        if verbose:
-            print("will perform ica dimensionality reduction step")
-    elif o == "--GBR":
-        doGBR = True
-        if verbose:
-            print("will do GBR on clusters")
-    elif o == "--pca":
-        preprocessingtype = "pca"
-        if verbose:
-            print("will perform pca dimensionality reduction step")
-    elif o == "--sigma":
-        sigma = float(a)
-        if verbose:
-            print(f"spatial smoothing set to {sigma}")
-    elif o == "--nodetrend":
-        detrendorder = 0
-        if verbose:
-            print("disabling detrending")
-    elif o == "-D":
-        duration = float(a)
-        if verbose:
-            print("duration set to", duration)
-    elif o == "-s":
-        starttime = float(a)
-        if verbose:
-            print("starttime set to", starttime)
-    elif o == "-V":
-        theprefilter.settype("vlf")
-        if verbose:
-            print("prefiltering to vlf band")
-    elif o == "-L":
-        theprefilter.settype("lfo")
-        if verbose:
-            print("prefiltering to lfo band")
-    elif o == "-R":
-        theprefilter.settype("resp")
-        if verbose:
-            print("prefiltering to respiratory band")
-    elif o == "-C":
-        theprefilter.settype("card")
-        if verbose:
-            print("prefiltering to cardiac band")
-    elif o == "-F":
-        arbvec = a.split(",")
-        if len(arbvec) != 2 and len(arbvec) != 4:
-            usage()
-            sys.exit()
-        if len(arbvec) == 2:
-            arb_lower = float(arbvec[0])
-            arb_upper = float(arbvec[1])
-            arb_lowerstop = 0.9 * float(arbvec[0])
-            arb_upperstop = 1.1 * float(arbvec[1])
-        if len(arbvec) == 4:
-            arb_lower = float(arbvec[0])
-            arb_upper = float(arbvec[1])
-            arb_lowerstop = float(arbvec[2])
-            arb_upperstop = float(arbvec[3])
-        theprefilter.settype("arb")
-        theprefilter.setfreqs(arb_lowerstop, arb_lower, arb_upper, arb_upperstop)
-        if verbose:
-            print(
-                "prefiltering to ",
-                arb_lower,
-                arb_upper,
-                "(stops at ",
-                arb_lowerstop,
-                arb_upperstop,
-                ")",
-            )
-    elif o == "-m":
-        minibatch = True
-        print("will perform MiniBatchKMeans")
-    elif o == "-b":
-        batch_size = int(a)
-        print("will use", batch_size, "as batch_size")
-    elif o == "-I":
-        n_init = int(a)
-        print("will do", n_init, "initializations")
-    elif o == "-n":
-        n_clusters = int(a)
-        print("will use", n_clusters, "clusters")
-    elif o == "-p":
-        n_pca = float(a)
-        if n_pca <= 0.0:
-            print("will estimate the number of pca components for dimensionality reduction")
-        elif n_pca < 1.0:
-            print(
-                "will use enough pca components to explain at least",
-                100.0 * n_pca,
-                "% of the variance",
-            )
-        else:
-            n_pca = int(a)
-            print("will use", n_pca, "pca components for dimensionality reduction")
     else:
-        assert False, "unhandled option"
-"""
-# check that required arguments are set
-if args.outputroot is None:
-    print("outfile must be set")
-    usage()
-    sys.exit()
+        segsize = -1
 
-# check to make sure groups and subsegments are in agreement
-if args.debug:
-    print("checking groups and subsegments")
-groups = {}
-subsegs = []
-if args.segsize is not None:
-    print("subsegs:", args.segsize)
-    for seg in args.segsize.split(","):
-        subsegs.append(int(seg))
-    segsize = np.sum(np.asarray(subsegs))
-    print("SUBSEGS:", subsegs)
-else:
-    segsize = -1
-
-subseggroupIDs = []
-if args.segIDs is None:
-    if len(subsegs) > 0:
-        for i in range(len(subsegs)):
-            subseggroupIDs.append("group_" + str(i))
-else:
-    for segID in args.segIDs.split(","):
-        subseggroupIDs.append(segID)
-print("subseggroupIDs:", subseggroupIDs)
-if len(subsegs) != len(subseggroupIDs):
-    print("number of subsegment group IDs must match number of subsegs")
-    sys.exit()
-for segnum in range(len(subseggroupIDs)):
-    try:
-        groups[subseggroupIDs[segnum]]["segnum"].append(int(segnum))
-    except:
-        groups[subseggroupIDs[segnum]] = {}
-        groups[subseggroupIDs[segnum]]["seglen"] = []
-        groups[subseggroupIDs[segnum]]["segstart"] = []
-        groups[subseggroupIDs[segnum]]["segnum"] = [int(segnum)]
-    groups[subseggroupIDs[segnum]]["seglen"].append(subsegs[segnum])
-    groups[subseggroupIDs[segnum]]["segstart"].append(int(np.sum(subsegs[0:segnum])))
-for key in groups:
-    groupsegs = groups[key]["seglen"]
-    if not all(x == groupsegs[0] for x in groupsegs):
-        print("all subsegments in a group must have the same length")
+    subseggroupIDs = []
+    if args.segIDs is None:
+        if len(subsegs) > 0:
+            for i in range(len(subsegs)):
+                subseggroupIDs.append("group_" + str(i))
+    else:
+        for segID in args.segIDs.split(","):
+            subseggroupIDs.append(segID)
+    print("subseggroupIDs:", subseggroupIDs)
+    if len(subsegs) != len(subseggroupIDs):
+        print("number of subsegment group IDs must match number of subsegs")
         sys.exit()
-print(groups)
+    for segnum in range(len(subseggroupIDs)):
+        try:
+            groups[subseggroupIDs[segnum]]["segnum"].append(int(segnum))
+        except:
+            groups[subseggroupIDs[segnum]] = {}
+            groups[subseggroupIDs[segnum]]["seglen"] = []
+            groups[subseggroupIDs[segnum]]["segstart"] = []
+            groups[subseggroupIDs[segnum]]["segnum"] = [int(segnum)]
+        groups[subseggroupIDs[segnum]]["seglen"].append(subsegs[segnum])
+        groups[subseggroupIDs[segnum]]["segstart"].append(int(np.sum(subsegs[0:segnum])))
+    for key in groups:
+        groupsegs = groups[key]["seglen"]
+        if not all(x == groupsegs[0] for x in groupsegs):
+            print("all subsegments in a group must have the same length")
+            sys.exit()
+    print(groups)
 
-# read in cluster centers if specified
-if initialcenters is not None:
-    theclustercenters = np.transpose(ccalc_io.readvecs(initialcenters))
-    ccentershape = theclustercenters.shape
-    print("clustercenter shape:", ccentershape)
-    n_clusters = ccentershape[0]
-    targetfeatures = ccentershape[1]
-    print("will use", n_clusters, "clusters and", targetfeatures, "features")
+    # read in cluster centers if specified
+    if initialcenters is not None:
+        theclustercenters = np.transpose(ccalc_io.readvecs(initialcenters))
+        ccentershape = theclustercenters.shape
+        print("clustercenter shape:", ccentershape)
+        n_clusters = ccentershape[0]
+        targetfeatures = ccentershape[1]
+        print("will use", n_clusters, "clusters and", targetfeatures, "features")
 
-if timenormmethod == "none":
-    print("will not normalize timecourses")
-elif timenormmethod == "pctnorm":
-    print("will normalize timecourses to percentage of mean")
-elif timenormmethod == "stdnorm":
-    print("will normalize timecourses to standard deviation of 1.0")
-elif timenormmethod == "varnorm":
-    print("will normalize timecourses to variance of 1.0")
-elif timenormmethod == "ppnorm":
-    print("will normalize timecourses to p-p deviation of 1.0")
+    if timenormmethod == "none":
+        print("will not normalize timecourses")
+    elif timenormmethod == "pctnorm":
+        print("will normalize timecourses to percentage of mean")
+    elif timenormmethod == "stdnorm":
+        print("will normalize timecourses to standard deviation of 1.0")
+    elif timenormmethod == "varnorm":
+        print("will normalize timecourses to variance of 1.0")
+    elif timenormmethod == "ppnorm":
+        print("will normalize timecourses to p-p deviation of 1.0")
 
-# save the command line
-ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
+    # save the command line
+    ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
 
-# read in the files and get everything trimmed to the right length
-trimmeddata, Fs = gettimecoursedata(
-    args.infilename,
-    args.datamaskname,
-    args.outputroot,
-    args.n_pca,
-    theprefilter,
-    starttime=args.starttime,
-    duration=args.duration,
-    sigma=args.sigma,
-    skippts=args.skip,
-)
-sampletime = 1.0 / Fs
+    # read in the files and get everything trimmed to the right length
+    trimmeddata, Fs = gettimecoursedata(
+        args.infilename,
+        args.datamaskname,
+        args.outputroot,
+        args.n_pca,
+        theprefilter,
+        starttime=args.starttime,
+        duration=args.duration,
+        sigma=args.sigma,
+        skippts=args.skip,
+    )
+    sampletime = 1.0 / Fs
 
-# band limit the regressors if that is needed
-if theprefilter.gettype() != "None":
-    if args.debug:
-        print("filtering to ", theprefilter.gettype(), " band")
-else:
-    if args.debug:
-        print("no prefiltering applied")
+    # band limit the regressors if that is needed
+    if theprefilter.gettype() != "None":
+        if args.debug:
+            print("filtering to ", theprefilter.gettype(), " band")
+    else:
+        if args.debug:
+            print("no prefiltering applied")
 
-# origdims = inputdata.shape
-thedims = trimmeddata.shape
-# print("original file dimensions:", origdims)
-print("trimmed data dimensions:", thedims)
-n_features = thedims[0]
-n_samples = thedims[1]
-if segsize < 0:
-    segsize = n_samples
-    subsegs.append(segsize)
-print(
-    "input dataset has",
-    n_features,
-    "features and",
-    n_samples,
-    "samples in segments of size",
-    segsize,
-)
-if len(subsegs) > 1:
-    print("    segment is broken into", len(subsegs), "subsegments of length", subsegs)
-reformdata = np.reshape(trimmeddata, (n_features, n_samples))
-if n_samples % segsize > 0:
+    # origdims = inputdata.shape
+    thedims = trimmeddata.shape
+    # print("original file dimensions:", origdims)
+    print("trimmed data dimensions:", thedims)
+    n_features = thedims[0]
+    n_samples = thedims[1]
+    if segsize < 0:
+        segsize = n_samples
+        subsegs.append(segsize)
     print(
-        "segment size (",
-        segsize,
-        ") is not an even divisor of the total length (",
+        "input dataset has",
+        n_features,
+        "features and",
         n_samples,
-        ")- exiting",
+        "samples in segments of size",
+        segsize,
     )
-    sys.exit()
-else:
-    numsegs = int(n_samples // segsize)
-
-for feature in range(n_features):
-    if args.debug:
-        print("preprocessing feature", feature)
-    for segment in range(numsegs):
-        subsegstart = segment * segsize
-        for subseglen in subsegs:
-            if args.detrendorder > 0:
-                segdata = ccalc_fit.detrend(
-                    reformdata[feature, subsegstart : subsegstart + subseglen]
-                )
-            else:
-                segdata = reformdata[feature, subsegstart : subsegstart + subseglen]
-
-            if timenormmethod == "none":
-                segnorm = segdata - np.mean(segdata)
-            elif timenormmethod == "pctnorm":
-                segnorm = ccalc_math.pcnormalize(segdata)
-            elif timenormmethod == "varnorm":
-                segnorm = ccalc_math.varnormalize(segdata)
-            elif timenormmethod == "stdnorm":
-                segnorm = ccalc_math.stdnormalize(segdata)
-            elif timenormmethod == "ppnorm":
-                segnorm = ccalc_math.ppnormalize(segdata)
-            else:
-                segnorm = segdata
-
-            reformdata[feature, subsegstart : subsegstart + subseglen] = theprefilter.apply(
-                Fs, segnorm
-            )
-            subsegstart += subseglen
-X = np.nan_to_num(np.transpose(reformdata))
-if args.debug:
-    print(f"X matrix has dimensions {X.shape}")
-
-if args.standardscale:
-    X = StandardScaler().fit_transform(X)
-
-"""if preprocessingtype == "pca":
-    print("running PCA")
-    print("shape going in:", X.shape)
-    if trainedmodelroot is None:
-        print("running PCA")
-        if n_pca <= 0:
-            thepca = PCA(n_components="mle", svd_solver="full").fit(X)
-        else:
-            thepca = PCA(n_components=n_pca).fit(X)
-
-        # save the model
-        joblib.dump(thepca, outputroot + "_pca.joblib")
-    else:
-        modelfilename = trainedmodelroot + "_pca.joblib"
-        print("reading PCA from", modelfilename)
-        try:
-            thepca = joblib.load(modelfilename)
-        except Exception as ex:
-            template = (
-                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
-            )
-            message = template.format(type(ex).__name__, modelfilename, ex.args)
-            print(message)
-            sys.exit()
-
-    thetransform = thepca.transform(X)
-    X = thepca.inverse_transform(thetransform)
-    print("shape coming out:", X.shape)
-    ccalc_io.writenpvecs(np.transpose(thetransform), outputroot + "_pcadenoiseddata.txt")
-    for i in range(thepca.n_components_):
+    if len(subsegs) > 1:
+        print("    segment is broken into", len(subsegs), "subsegments of length", subsegs)
+    reformdata = np.reshape(trimmeddata, (n_features, n_samples))
+    if n_samples % segsize > 0:
         print(
-            "component",
-            i,
-            "explained variance:",
-            thepca.explained_variance_[i],
-            "explained variance %:",
-            100.0 * thepca.explained_variance_ratio_[i],
+            "segment size (",
+            segsize,
+            ") is not an even divisor of the total length (",
+            n_samples,
+            ")- exiting",
         )
-    ccalc_io.writenpvecs(thepca.components_, outputroot + "_pcacomponents.txt")
-    ccalc_io.writenpvecs(
-        np.transpose(thepca.components_), outputroot + "_pcacomponents_transpose.txt"
+        sys.exit()
+    else:
+        numsegs = int(n_samples // segsize)
+
+    for feature in range(n_features):
+        if args.debug:
+            print("preprocessing feature", feature)
+        for segment in range(numsegs):
+            subsegstart = segment * segsize
+            for subseglen in subsegs:
+                if args.detrendorder > 0:
+                    segdata = ccalc_fit.detrend(
+                        reformdata[feature, subsegstart : subsegstart + subseglen]
+                    )
+                else:
+                    segdata = reformdata[feature, subsegstart : subsegstart + subseglen]
+
+                if timenormmethod == "none":
+                    segnorm = segdata - np.mean(segdata)
+                elif timenormmethod == "pctnorm":
+                    segnorm = ccalc_math.pcnormalize(segdata)
+                elif timenormmethod == "varnorm":
+                    segnorm = ccalc_math.varnormalize(segdata)
+                elif timenormmethod == "stdnorm":
+                    segnorm = ccalc_math.stdnormalize(segdata)
+                elif timenormmethod == "ppnorm":
+                    segnorm = ccalc_math.ppnormalize(segdata)
+                else:
+                    segnorm = segdata
+
+                reformdata[feature, subsegstart : subsegstart + subseglen] = theprefilter.apply(
+                    Fs, segnorm
+                )
+                subsegstart += subseglen
+    X = np.nan_to_num(np.transpose(reformdata))
+    if args.debug:
+        print(f"X matrix has dimensions {X.shape}")
+
+    if args.standardscale:
+        X = StandardScaler().fit_transform(X)
+
+    """if preprocessingtype == "pca":
+        print("running PCA")
+        print("shape going in:", X.shape)
+        if trainedmodelroot is None:
+            print("running PCA")
+            if n_pca <= 0:
+                thepca = PCA(n_components="mle", svd_solver="full").fit(X)
+            else:
+                thepca = PCA(n_components=n_pca).fit(X)
+    
+            # save the model
+            joblib.dump(thepca, outputroot + "_pca.joblib")
+        else:
+            modelfilename = trainedmodelroot + "_pca.joblib"
+            print("reading PCA from", modelfilename)
+            try:
+                thepca = joblib.load(modelfilename)
+            except Exception as ex:
+                template = (
+                    "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+                )
+                message = template.format(type(ex).__name__, modelfilename, ex.args)
+                print(message)
+                sys.exit()
+    
+        thetransform = thepca.transform(X)
+        X = thepca.inverse_transform(thetransform)
+        print("shape coming out:", X.shape)
+        ccalc_io.writenpvecs(np.transpose(thetransform), outputroot + "_pcadenoiseddata.txt")
+        for i in range(thepca.n_components_):
+            print(
+                "component",
+                i,
+                "explained variance:",
+                thepca.explained_variance_[i],
+                "explained variance %:",
+                100.0 * thepca.explained_variance_ratio_[i],
+            )
+        ccalc_io.writenpvecs(thepca.components_, outputroot + "_pcacomponents.txt")
+        ccalc_io.writenpvecs(
+            np.transpose(thepca.components_), outputroot + "_pcacomponents_transpose.txt"
+        )
+    elif preprocessingtype == "ica":
+        print("running FastICA")
+        if n_pca <= 1.0:
+            n_pca = int(0)
+        if trainedmodelroot is None:
+            theica = FastICA(n_components=n_pca, algorithm="deflation").fit(X)
+    
+            # save the model
+            joblib.dump(theica, outputroot + "_ica.joblib")
+        else:
+            modelfilename = trainedmodelroot + "_ica.joblib"
+            print("reading ICA from", modelfilename)
+            try:
+                theica = joblib.load(modelfilename)
+            except Exception as ex:
+                template = (
+                    "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
+                )
+                message = template.format(type(ex).__name__, modelfilename, ex.args)
+                print(message)
+                sys.exit()
+    
+        thetransform = theica.transform(X)
+        X = theica.inverse_transform(thetransform)
+        ccalc_io.writenpvecs(theica.components_, outputroot + "_icacomponents.txt")
+        ccalc_io.writenpvecs(
+            np.transpose(theica.components_), outputroot + "_icacomponents_transpose.txt"
+        )"""
+
+    ccalc_io.writenpvecs(reformdata, args.outputroot + "_preprocessed.txt")
+    if args.preproconly:
+        print("preprocessing done - quitting")
+        sys.exit()
+
+    kmeans = doclustering(
+        X,
+        minibatch=True,
+        batch_size=args.batch_size,
+        n_clusters=args.n_clusters,
+        max_iter=args.max_iter,
+        trainedmodelroot=args.trainedmodelroot,
+        initialcenters=args.initialcenters,
     )
-elif preprocessingtype == "ica":
-    print("running FastICA")
-    if n_pca <= 1.0:
-        n_pca = int(0)
-    if trainedmodelroot is None:
-        theica = FastICA(n_components=n_pca, algorithm="deflation").fit(X)
-
-        # save the model
-        joblib.dump(theica, outputroot + "_ica.joblib")
-    else:
-        modelfilename = trainedmodelroot + "_ica.joblib"
-        print("reading ICA from", modelfilename)
-        try:
-            theica = joblib.load(modelfilename)
-        except Exception as ex:
-            template = (
-                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
-            )
-            message = template.format(type(ex).__name__, modelfilename, ex.args)
-            print(message)
-            sys.exit()
-
-    thetransform = theica.transform(X)
-    X = theica.inverse_transform(thetransform)
-    ccalc_io.writenpvecs(theica.components_, outputroot + "_icacomponents.txt")
-    ccalc_io.writenpvecs(
-        np.transpose(theica.components_), outputroot + "_icacomponents_transpose.txt"
-    )"""
-
-ccalc_io.writenpvecs(reformdata, args.outputroot + "_preprocessed.txt")
-if args.preproconly:
-    print("preprocessing done - quitting")
-    sys.exit()
-
-
-doclustering(
-    X,
-    minibatch=True,
-    minoutlength=args.minoutlength,
-    minholdlength=args.minholdlength,
-    batch_size=args.batch_size,
-    n_clusters=args.n_clusters,
-    max_iter=args.max_iter,
-    trainedmodelroot=None,
-    initialcenters=None,
-)
-
-
-def doclustering(
-    X,
-    minibatch=True,
-    minoutlength=DEFAULT_MINOUTLENGTH,
-    minholdlength=DEFAULT_MINHOLDLENGTH,
-    batch_size=DEFAULT_BATCH_SIZE,
-    n_clusters=args.n_clusters,
-    max_iter=args.max_iter,
-    trainedmodelroot=None,
-    initialcenters=None,
-):
-    print("setting up kmeans")
-    if trainedmodelroot is None:
-        if initialcenters is None:
-            theinit = "k-means++"
-        else:
-            theinit = theclustercenters
-            max_iter = 1
-
-        print("training model")
-        if minibatch:
-            kmeans = MiniBatchKMeans(
-                n_clusters=n_clusters, batch_size=batch_size, max_iter=max_iter, init=theinit
-            ).fit(X)
-        else:
-            kmeans = KMeans(
-                n_clusters=n_clusters, max_iter=max_iter, n_init=n_init, init=theinit
-            ).fit(X)
-
-        # save the model
-        joblib.dump(kmeans, args.outputroot + "_kmeans.joblib")
-    else:
-        modelfilename = trainedmodelroot + "_kmeans.joblib"
-        print("reading kmeans model from", modelfilename)
-        try:
-            kmeans = joblib.load(modelfilename)
-        except Exception as ex:
-            template = (
-                "An exception of type {0} occurred when trying to open {1}. Arguments:\n{2!r}"
-            )
-            message = template.format(type(ex).__name__, modelfilename, ex.args)
-            print(message)
-            sys.exit()
 
     theclusters = np.transpose(kmeans.cluster_centers_)
     thestatelabels = kmeans.predict(X)
@@ -1103,7 +1029,7 @@ def doclustering(
 
     # now do some stats!
     thesilavgs, thesilclusterstats = capcalc_utils.silhouette_test(
-        X, kmeans, n_clusters, numsegs, segsize, summaryonly
+        X, kmeans, args.n_clusters, numsegs, segsize, summaryonly
     )
     ccalc_io.writenpvecs(thesilavgs, args.outputroot + "_silhouettesegmentstats.txt")
 
@@ -1265,137 +1191,141 @@ def doclustering(
             if thestats[state, 2] > 0:
                 silinfo[state].append(thesilclusterstats[segment, 0, state])
 
-    # now generate some summary information
-    overallstatestats = []
-    thetimestats = []
-    alllens = 0
-    for i in range(n_clusters):
-        alllens += np.sum(np.asarray(alllenlists[i], dtype="float"))
+        # now generate some summary information
+        overallstatestats = []
+        thetimestats = []
+        alllens = 0
+        for i in range(n_clusters):
+            alllens += np.sum(np.asarray(alllenlists[i], dtype="float"))
 
-    for i in range(n_clusters):
-        lenarray = np.asarray(alllenlists[i], dtype="float")
-        if len(lenarray) > 2:
-            overallstatestats.append(
-                [
-                    100.0 * np.sum(lenarray) / alllens,
-                    len(lenarray),
-                    np.sum(lenarray),
-                    np.min(lenarray),
-                    np.max(lenarray),
-                    np.mean(lenarray),
-                    np.median(lenarray),
-                    np.std(lenarray),
-                ]
+        for i in range(n_clusters):
+            lenarray = np.asarray(alllenlists[i], dtype="float")
+            if len(lenarray) > 2:
+                overallstatestats.append(
+                    [
+                        100.0 * np.sum(lenarray) / alllens,
+                        len(lenarray),
+                        np.sum(lenarray),
+                        np.min(lenarray),
+                        np.max(lenarray),
+                        np.mean(lenarray),
+                        np.median(lenarray),
+                        np.std(lenarray),
+                    ]
+                )
+                thetimestats.append(
+                    [
+                        100.0 * np.sum(lenarray) / alllens,
+                        sampletime * len(lenarray),
+                        sampletime * np.sum(lenarray),
+                        sampletime * np.min(lenarray),
+                        sampletime * np.max(lenarray),
+                        sampletime * np.mean(lenarray),
+                        sampletime * np.median(lenarray),
+                        sampletime * np.std(lenarray),
+                    ]
+                )
+
+        cols = [
+            "% TRs in state",
+            "Number of runs in state",
+            "Total TRs in state",
+            "Min run (TRs)",
+            "Max run (TRs)",
+            "Mean run (TRs)",
+            "Median run (TRs)",
+            "StdDev run (TRs)",
+        ]
+        df = pd.DataFrame(data=overallstatestats, columns=cols)
+        df.to_csv(
+            args.outputroot + "_overall_statestats.csv",
+            index=False,
+        )
+
+        cols = [
+            "% Seconds in state",
+            "Number of runs in state",
+            "Total seconds in state",
+            "Min run (sec)",
+            "Max run (sec)",
+            "Mean run (sec)",
+            "Median run (sec)",
+            "StdDev run (sec)",
+        ]
+        df = pd.DataFrame(data=thetimestats, columns=cols)
+        df.to_csv(
+            args.outputroot + "_overall_statetimestats.csv",
+            index=False,
+        )
+        overallrawtransmat = allrawtransmats[0] * 0.0
+        for segment in range(numsegs):
+            overallrawtransmat += allrawtransmats[segment]
+        overallnormtransmat, overalloffdiagtransmat = capcalc_utils.calcmats(
+            overallrawtransmat, n_clusters
+        )
+        init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
+        init_hdr = init_img.header
+        init_sizes = init_hdr["pixdim"]
+        ccalc_io.savetonifti(
+            np.transpose(overallrawtransmat),
+            init_hdr,
+            args.outputroot + "_overall_rawtransmat",
+        )
+        ccalc_io.savetonifti(
+            np.transpose(overallnormtransmat),
+            init_hdr,
+            args.outputroot + "_overall_normtransmat",
+        )
+        ccalc_io.savetonifti(
+            np.transpose(overalloffdiagtransmat),
+            init_hdr,
+            args.outputroot + "_overall_offdiagtransmat",
+        )
+        themaxlen = 0
+        for i in range(n_clusters):
+            themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))
+        for i in range(n_clusters):
+            thishist = ccalc_stats.makeandsavehistogram(
+                np.array(alllenlists[i]),
+                themaxlen,
+                0,
+                args.outputroot + "_" + str(i).zfill(2) + "_lenhist",
+                therange=[1, themaxlen],
             )
-            thetimestats.append(
-                [
-                    100.0 * np.sum(lenarray) / alllens,
-                    sampletime * len(lenarray),
-                    sampletime * np.sum(lenarray),
-                    sampletime * np.min(lenarray),
-                    sampletime * np.max(lenarray),
-                    sampletime * np.mean(lenarray),
-                    sampletime * np.median(lenarray),
-                    sampletime * np.std(lenarray),
-                ]
+        silavgs = []
+        if not summaryonly:
+            for state in range(n_clusters):
+                silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
+            ccalc_io.writenpvecs(
+                np.asarray(silavgs, dtype="float"),
+                args.outputroot + "_overallsilhouettemean.txt",
+            )
+        pctarray = np.asarray(allstatestats[:], dtype="float")
+        cols = [
+            "% TRs in state",
+            "Number of runs in state",
+            "Total TRs in state",
+            "Min run (TRs)",
+            "Max run (TRs)",
+            "Mean run (TRs)",
+            "Median run (TRs)",
+            "StdDev run (TRs)",
+        ]
+        df = pd.DataFrame(data=np.mean(pctarray, axis=0), columns=cols)
+        df.to_csv(
+            args.outputroot + "_seg_" + str(segment).zfill(4) + "_overallmeanstats.csv",
+            index=False,
+        )
+        # ccalc_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), args.outputroot + '_overallmeanstats.txt')
+
+        if args.doGBR:
+            clf = GradientBoostingRegressor().fit(X, thestatelabels)
+            print("GBR fitting score is:", clf.score(X, thestatelabels))
+            ccalc_io.writenpvecs(
+                np.reshape(clf.feature_importances_, (n_features, 1)),
+                args.outputroot + "_featureimportances.txt",
             )
 
-    cols = [
-        "% TRs in state",
-        "Number of runs in state",
-        "Total TRs in state",
-        "Min run (TRs)",
-        "Max run (TRs)",
-        "Mean run (TRs)",
-        "Median run (TRs)",
-        "StdDev run (TRs)",
-    ]
-    df = pd.DataFrame(data=overallstatestats, columns=cols)
-    df.to_csv(
-        args.outputroot + "_overall_statestats.csv",
-        index=False,
-    )
 
-    cols = [
-        "% Seconds in state",
-        "Number of runs in state",
-        "Total seconds in state",
-        "Min run (sec)",
-        "Max run (sec)",
-        "Mean run (sec)",
-        "Median run (sec)",
-        "StdDev run (sec)",
-    ]
-    df = pd.DataFrame(data=thetimestats, columns=cols)
-    df.to_csv(
-        args.outputroot + "_overall_statetimestats.csv",
-        index=False,
-    )
-    overallrawtransmat = allrawtransmats[0] * 0.0
-    for segment in range(numsegs):
-        overallrawtransmat += allrawtransmats[segment]
-    overallnormtransmat, overalloffdiagtransmat = capcalc_utils.calcmats(
-        overallrawtransmat, n_clusters
-    )
-    init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
-    init_hdr = init_img.header
-    init_sizes = init_hdr["pixdim"]
-    ccalc_io.savetonifti(
-        np.transpose(overallrawtransmat),
-        init_hdr,
-        args.outputroot + "_overall_rawtransmat",
-    )
-    ccalc_io.savetonifti(
-        np.transpose(overallnormtransmat),
-        init_hdr,
-        args.outputroot + "_overall_normtransmat",
-    )
-    ccalc_io.savetonifti(
-        np.transpose(overalloffdiagtransmat),
-        init_hdr,
-        args.outputroot + "_overall_offdiagtransmat",
-    )
-    themaxlen = 0
-    for i in range(n_clusters):
-        themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))
-    for i in range(n_clusters):
-        thishist = ccalc_stats.makeandsavehistogram(
-            np.array(alllenlists[i]),
-            themaxlen,
-            0,
-            args.outputroot + "_" + str(i).zfill(2) + "_lenhist",
-            therange=[1, themaxlen],
-        )
-    silavgs = []
-    if not summaryonly:
-        for state in range(n_clusters):
-            silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
-        ccalc_io.writenpvecs(
-            np.asarray(silavgs, dtype="float"),
-            args.outputroot + "_overallsilhouettemean.txt",
-        )
-    pctarray = np.asarray(allstatestats[:], dtype="float")
-    cols = [
-        "% TRs in state",
-        "Number of runs in state",
-        "Total TRs in state",
-        "Min run (TRs)",
-        "Max run (TRs)",
-        "Mean run (TRs)",
-        "Median run (TRs)",
-        "StdDev run (TRs)",
-    ]
-    df = pd.DataFrame(data=np.mean(pctarray, axis=0), columns=cols)
-    df.to_csv(
-        args.outputroot + "_seg_" + str(segment).zfill(4) + "_overallmeanstats.csv",
-        index=False,
-    )
-    # ccalc_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), args.outputroot + '_overallmeanstats.txt')
-
-    if args.doGBR:
-        clf = GradientBoostingRegressor().fit(X, thestatelabels)
-        print("GBR fitting score is:", clf.score(X, thestatelabels))
-        ccalc_io.writenpvecs(
-            np.reshape(clf.feature_importances_, (n_features, 1)),
-            args.outputroot + "_featureimportances.txt",
-        )
+if __name__ == "__main__":
+    capfromany_main()
