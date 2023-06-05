@@ -1037,7 +1037,7 @@ def capfromany_main():
 
     # now do some stats!
     thesilavgs, thesilclusterstats = ccalc_utils.silhouette_test(
-        X, kmeans, args.n_clusters, numsegs, segsize, summaryonly
+        X, kmeans, args.n_clusters, numsegs, segsize, args.summaryonly
     )
     ccalc_io.writenpvecs(thesilavgs, args.outputroot + "_silhouettesegmentstats.txt")
 
@@ -1185,7 +1185,7 @@ def capfromany_main():
                 + str(state).zfill(2)
                 + ".txt",
             )
-        if not summaryonly:
+        if not args.summaryonly:
             cols = ["Mean", "Median", "Min", "Max"]
             df = pd.DataFrame(data=np.transpose(thesilclusterstats[segment, :, :]), columns=cols)
             df.to_csv(
@@ -1301,7 +1301,7 @@ def capfromany_main():
                 therange=[1, themaxlen],
             )
         silavgs = []
-        if not summaryonly:
+        if not args.summaryonly:
             for state in range(n_clusters):
                 silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
             ccalc_io.writenpvecs(
