@@ -49,7 +49,17 @@ DEFAULT_MINHOLDLENGTH = 1
 
 
 def gettimecoursedata(
-    infilename, datamaskname, outputroot, n_pca, skippts=0, maskthresh=0.25, debug=False
+    infilename,
+    datamaskname,
+    outputroot,
+    n_pca,
+    theprefilter,
+    skippts=0,
+    starttime=0.0,
+    duration=100000000.0,
+    sigma=0.0,
+    maskthresh=0.25,
+    debug=False,
 ):
     # see if we are dealing with NIFTI files or text files
     if ccalc_io.checkifnifti(infilename[0]):
@@ -124,6 +134,7 @@ def gettimecoursedata(
         if debug:
             print("input data shape is ", inputdata.shape)
         numpoints = inputdata.shape[1]
+        startpoint = max([int(starttime * Fs), 0]) + skippts
         endpoint = min([startpoint + int(duration * Fs), numpoints])
         trimmeddata = inputdata[:, startpoint:endpoint]
     else:
@@ -136,6 +147,7 @@ def gettimecoursedata(
             if debug:
                 print("input data shape is ", inputdata.shape)
             numpoints = inputdata.shape[1]
+            startpoint = max([int(starttime * Fs), 0]) + skippts
             endpoint = min([startpoint + int(duration * Fs), numpoints])
             trimmeddata = inputdata[:, startpoint:endpoint]
         elif len(infilename) == 2:
@@ -803,11 +815,16 @@ elif timenormmethod == "ppnorm":
 ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
 
 # read in the files and get everything trimmed to the right length
-#                  startpoint = max([int(args.starttime * Fs), 0]) + args.skippts
-
-
 trimmeddata, Fs = gettimecoursedata(
-    args.infilename, args.datamaskname, args.outputroot, n_pca=args.n_pca, skippts=args.skip
+    args.infilename,
+    args.datamaskname,
+    args.outputroot,
+    args.n_pca,
+    theprefilter,
+    starttime=args.starttime,
+    duration=args.duration,
+    sigma=args.sigma,
+    skippts=args.skip,
 )
 sampletime = 1.0 / Fs
 
