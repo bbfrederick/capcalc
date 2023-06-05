@@ -103,7 +103,7 @@ def gettimecoursedata(
             sigma=sigma,
             maskthresh=maskthresh,
         )
-
+        Fs = 1.0 / datafilesizes[4]
         if debug:
             print(f"{outputcomponents.shape=}")
             print(f"{inputdata.shape=}")
@@ -168,7 +168,7 @@ def gettimecoursedata(
             )
             usage()
             sys.exit()
-    return trimmeddata, 1.0 / datafilesizes[4]
+    return trimmeddata, Fs
 
 
 def usage():
