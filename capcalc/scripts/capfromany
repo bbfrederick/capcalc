@@ -237,136 +237,6 @@ def doclustering(
     return kmeans
 
 
-def usage():
-    print("")
-    print("capfromtcs - calculate and cluster coactivation patterns for a set of timecourses")
-    print("")
-    print("usage: capfromtcs -i timecoursefile -o outputfile --samplefreq=FREQ --sampletime=TSTEP")
-    print("                  [--nodetrend] [-s STARTTIME] [-D DURATION]")
-    print("                  [-F LOWERFREQ,UPPERFREQ[,LOWERSTOP,UPPERSTOP]] [-V] [-L] [-R] [-C]")
-    print(
-        "                  [-m] [-n NUMCLUSTER] [-b BATCHSIZE] [-S SEGMENTSIZE] [-E SEGMENTTYPE] [-I INITIALIZATIONS]"
-    )
-    print(
-        "                  [--noscale] [--nonorm] [--pctnorm] [--varnorm] [--stdnorm] [--ppnorm] [--quality]"
-    )
-    print("                  [--pca] [--ica] [-p NUMCOMPONENTS] --modelroot=MODELROOT")
-    print("")
-    print("required arguments:")
-    print("    -i, --infile=TIMECOURSEFILE  - text file multiple timeseries")
-    print("    -o, --outfile=OUTNAME        - the root name of the output files")
-    print("")
-    print("    --samplefreq=FREQ            - sample frequency of all timecourses is FREQ ")
-    print("           or")
-    print("    --sampletime=TSTEP           - time step of all timecourses is TSTEP ")
-    print(
-        "                                   NB: --samplefreq and --sampletime are two ways to specify"
-    )
-    print("                                   the same thing.")
-    print("")
-    print("optional arguments:")
-    print("")
-    print("  Data selection/partition:")
-    print(
-        "    -s STARTTIME                 - time of first datapoint to use in seconds in the first file"
-    )
-    print("    -D DURATION                  - amount of data to use in seconds")
-    print("    -S SEGMENTSIZE,[SEGSIZE2,...SEGSIZEN]")
-    print(
-        "                                 - treat the timecourses as segments of length SEGMENTSIZE for preprocessing."
-    )
-    print("    -E SEGTYPE,SEGTYPE2[,...SEGTYPEN]")
-    print(
-        "                                 - group subsegments for summary statistics.  All subsegments in the same group must be the same length"
-    )
-    print(
-        "                                   If there are multiple, comma separated numbers, treat these as subsegment lengths."
-    )
-    print("                                   Default segmentsize is the entire length")
-    print("  --skippts=NUMPTS               - drop first NUMPTS points from each segment")
-    print("  Clustering:")
-    print(
-        "    -m                           - run MiniBatch Kmeans rather than conventional - use with very large datasets"
-    )
-    print(
-        "    -n NUMCLUSTER                - set the number of clusters to NUMCLUSTER (default is 8)"
-    )
-    print(
-        "    -b BATCHSIZE                 - use a batchsize of BATCHSIZE if doing MiniBatch - ignored if not.  Default is 1000"
-    )
-    print("    --dbscan                     - perform dbscan clustering")
-    print("    --hdbscan                    - perform hdbscan clustering")
-    print(
-        "    -I INITIALIZATIONS           - Restart KMeans INITIALIZATIONS times to find best fit (default is 1000)"
-    )
-    print("")
-    print("  Preprocessing:")
-    print(
-        "    -F LOWERFREQ,UPPERFREQ       - filter data and regressors from LOWERFREQ to UPPERFREQ."
-    )
-    print(
-        "                                   LOWERSTOP and UPPERSTOP can be specified, or will be calculated automatically"
-    )
-    print("    -V                           - filter data and regressors to VLF band")
-    print("    -L                           - filter data and regressors to LFO band")
-    print("    -R                           - filter data and regressors to respiratory band")
-    print("    -C                           - filter data and regressors to cardiac band")
-    print("    --nodetrend                  - do not detrend the data before correlation")
-    print("    --noscale                    - don't perform vector magnitude scaling")
-    print("    --nonorm                     - don't normalize timecourses")
-    print("    --pctnorm                    - scale each timecourse to its percentage of the mean")
-    print(
-        "    --varnorm                    - scale each timecourse to have a variance of 1.0 (default)"
-    )
-    print(
-        "    --stdnorm                    - scale each timecourse to have a standard deviation of 1.0"
-    )
-    print(
-        "    --ppnorm                     - scale each timecourse to have a peak to peak range of 1.0"
-    )
-    print(
-        "    --pca                        - perform PCA dimensionality reduction prior to analysis"
-    )
-    print(
-        "    --ica                        - perform ICA dimensionality reduction prior to analysis"
-    )
-    print(
-        "    -p NUMCOMPONENTS             - set the number of p/ica components to NUMCOMPONENTS (default is 8).  Set to -1 to estimate"
-    )
-    print("    --noscale                    - do not apply standard scaler before cluster fitting")
-    print("    --preproconly                - do preprocessing then quit")
-    print(
-        "    --minout=MINOUT              - transitions out of a state shorter than MINOUT will be patched.  Default is 1"
-    )
-    print(
-        "    --minhold=MINHOLD)           - time in a state shorter than MINHOLD will be assigned to the previous state.  Default is 1"
-    )
-    print("    --maskfile=MASKFILE          - name of a mask file to use if input files are nifti")
-    print("")
-    print("  Other:")
-    print(
-        "    --GBR                        - apply gradient boosting regressor testing on clusters"
-    )
-    print("    -d                           - display some quality metrics")
-    print("    --quality                    - perform a silhouette test to evaluate fit quality")
-    print(
-        "    --sigma                      - if input is nifti, smooth with a kernel of this width in mm"
-    )
-    print("    -v                           - turn on verbose mode")
-    print(
-        "    --modelroot=MODELROOT        - reread trained models from a previous run - MODELROOT should\n"
-        "                                   be the outputfile from the previous run (i.e. what followed -o)"
-    )
-    print(
-        "    --initialcenters=CENTERSFILE - reread cluster centers from a previous run - CENTERSFILE should\n"
-        "                                   be the XXX_clustercenters.txt file from a previous run (i.e. what\n"
-        "                                   followed -o).  This overrides the number of clusters given, and must\n"
-        "                                   match the number of PCA or ICA components given (if used) or the number of features."
-    )
-    print("")
-    return ()
-
-
 def _get_parser():
     # get the command line parameters
     parser = argparse.ArgumentParser(
@@ -460,6 +330,9 @@ def _get_parser():
 
     # filtering
     pf.addfilteropts(parser)
+
+    # normalization
+    pf.addnormalizationopts(parser, defaultmethod="variance")
 
     # clustering
     cluster_opts = parser.add_argument_group("Clustering options")
@@ -585,8 +458,6 @@ def _get_parser():
 
 def capfromany_main():
     # preprocessing options
-    preprocessingtype = None
-    detrendorder = 1
     timenormmethod = "varnorm"
 
     # get the command line parameters
@@ -602,18 +473,6 @@ def capfromany_main():
         print(args)
 
     """
-    # unset all required arguments
-    infilename = []
-    segsize = -1
-    subsegs = []
-    subseggroupIDs = None
-    sampletime = None
-    Fs = None
-    outputroot = None
-    datamaskname = None
-    maskthresh = 0.25
-    
-    
     for o, a in opts:
         elif o == "--nonorm":
             timenormmethod = "none"
