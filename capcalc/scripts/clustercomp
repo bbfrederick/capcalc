@@ -19,6 +19,7 @@
 #       $Id: pixelcomp,v 1.4 2016/01/25 20:17:55 frederic Exp $
 #
 import getopt
+
 import nibabel as nib
 from pylab import *
 
