@@ -49,7 +49,7 @@ DEFAULT_MINHOLDLENGTH = 1
 
 
 def gettimecoursedata(
-    infilename, datamaskname, outputroot, skippts=0, maskthresh=0.25, debug=False
+    infilename, datamaskname, outputroot, n_pca, skippts=0, maskthresh=0.25, debug=False
 ):
     # see if we are dealing with NIFTI files or text files
     if ccalc_io.checkifnifti(infilename[0]):
@@ -807,7 +807,7 @@ ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
 
 
 trimmeddata, Fs = gettimecoursedata(
-    args.infilename, args.datamaskname, args.outputroot, skippts=args.skip
+    args.infilename, args.datamaskname, args.outputroot, n_pca=args.n_pca, skippts=args.skip
 )
 sampletime = 1.0 / Fs
 
@@ -886,7 +886,7 @@ X = np.nan_to_num(np.transpose(reformdata))
 if standardscale:
     X = StandardScaler().fit_transform(X)
 
-if preprocessingtype == "pca":
+""""""if preprocessingtype == "pca":
     print("running PCA")
     print("shape going in:", X.shape)
     if trainedmodelroot is None:
@@ -955,7 +955,7 @@ elif preprocessingtype == "ica":
     ccalc_io.writenpvecs(theica.components_, outputroot + "_icacomponents.txt")
     ccalc_io.writenpvecs(
         np.transpose(theica.components_), outputroot + "_icacomponents_transpose.txt"
-    )
+    )"""
 
 ccalc_io.writenpvecs(reformdata, outputroot + "_preprocessed.txt")
 if preproconly:
