@@ -307,14 +307,22 @@ def _get_parser():
         metavar="FILENAME",
     )
     parser.add_argument(
+        "--outputroot",
+        help="The root of the output file names.",
+        action="store",
+        required=True,
+        dest="outputroot",
+        type=str,
+        metavar="FILEROOT",
+    )
+    parser.add_argument(
         "--maskname",
         help="Mask file - required if input is a nifti file",
-        action="append",
+        action="store",
         dest="datamaskname",
         type=lambda x: pf.is_valid_file(parser, x),
         metavar="FILENAME",
     )
-    parser.add_argument("outputroot", metavar="FILE", help="The root of the output file names.")
 
     # version options
     pf.addversionopts(parser)
