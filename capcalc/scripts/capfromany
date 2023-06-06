@@ -95,6 +95,8 @@ def gettimecoursedata(
             datafile_hdr,
             datafiledims,
             datafilesizes,
+            normfacs,
+            means,
         ) = niftidecomp_workflow(
             infilename,
             outputroot,
@@ -175,7 +177,7 @@ def gettimecoursedata(
             )
             usage()
             sys.exit()
-    return trimmeddata, Fs
+    return trimmeddata, Fs, normfacs, means
 
 
 def doclustering(
@@ -550,7 +552,7 @@ def capfromany_main():
     ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
 
     # read in the files and get everything trimmed to the right length
-    trimmeddata, Fs = gettimecoursedata(
+    trimmeddata, Fs, normfacs, means = gettimecoursedata(
         args.infilename,
         args.datamaskname,
         args.outputroot,

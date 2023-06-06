@@ -236,9 +236,9 @@ def niftidecomp_workflow(
         #    outputcoefficients * thevar[i], outputroot + "_denormcoefficients.txt"
         # )
 
-        # unnormalize the dimensionality reduced data
+        # denormalize the dimensionality reduced data
         for i in range(totaltimepoints):
-            theinvtrans[:, i] = thevar[i] * theinvtrans[:, i] + themean[i]
+            theinvtrans[:, i] = thenormfac[i] * theinvtrans[:, i] + themean[i]
 
         print("writing fit data")
         theheader = datafile_hdr
@@ -254,4 +254,6 @@ def niftidecomp_workflow(
         datafile_hdr,
         datafiledims,
         datafilesizes,
+        thenormfac,
+        themean,
     )
