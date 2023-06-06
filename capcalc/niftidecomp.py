@@ -232,9 +232,6 @@ def niftidecomp_workflow(
 
         # save the coefficients
         outputcoefficients = np.transpose(thetransform)
-        # tide_io.writenpvecs(
-        #    outputcoefficients * thevar[i], outputroot + "_denormcoefficients.txt"
-        # )
 
         # denormalize the dimensionality reduced data
         for i in range(totaltimepoints):
