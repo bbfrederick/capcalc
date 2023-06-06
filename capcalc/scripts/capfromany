@@ -332,7 +332,7 @@ def _get_parser():
     pf.addfilteropts(parser)
 
     # normalization
-    pf.addnormalizationopts(parser, defaultmethod="variance")
+    pf.addnormalizationopts(parser, defaultmethod="None")
 
     # clustering
     cluster_opts = parser.add_argument_group("Clustering options")
@@ -457,9 +457,6 @@ def _get_parser():
 
 
 def capfromany_main():
-    # preprocessing options
-    timenormmethod = "varnorm"
-
     # get the command line parameters
     try:
         args = _get_parser().parse_args()
@@ -663,16 +660,18 @@ def capfromany_main():
         targetfeatures = ccentershape[1]
         print("will use", n_clusters, "clusters and", targetfeatures, "features")
 
-    if timenormmethod == "none":
+    if args.normmethod == "None":
         print("will not normalize timecourses")
-    elif timenormmethod == "pctnorm":
+    elif args.normmethod == "percent":
         print("will normalize timecourses to percentage of mean")
-    elif timenormmethod == "stdnorm":
+    elif args.normmethod == "stddev":
         print("will normalize timecourses to standard deviation of 1.0")
-    elif timenormmethod == "varnorm":
+    elif args.normmethod == "z":
         print("will normalize timecourses to variance of 1.0")
-    elif timenormmethod == "ppnorm":
+    elif args.normmethod == "p2p":
         print("will normalize timecourses to p-p deviation of 1.0")
+    elif args.normmethod == "mac":
+        print("will normalize timecourses to median average deviate of 1.0")
 
     # save the command line
     ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
@@ -744,16 +743,18 @@ def capfromany_main():
                 else:
                     segdata = reformdata[feature, subsegstart : subsegstart + subseglen]
 
-                if timenormmethod == "none":
+                if args.normmethod == "None":
                     segnorm = segdata - np.mean(segdata)
-                elif timenormmethod == "pctnorm":
+                elif args.normmethod == "percent":
                     segnorm = ccalc_math.pcnormalize(segdata)
-                elif timenormmethod == "varnorm":
+                elif args.normmethod == "z":
                     segnorm = ccalc_math.varnormalize(segdata)
-                elif timenormmethod == "stdnorm":
+                elif args.normmethod == "stddev":
                     segnorm = ccalc_math.stdnormalize(segdata)
-                elif timenormmethod == "ppnorm":
+                elif args.normmethod == "p2p":
                     segnorm = ccalc_math.ppnormalize(segdata)
+                elif args.normmethod == "mad":
+                    segnorm = ccalc_math.madnormalize(segdata)
                 else:
                     segnorm = segdata
 
@@ -847,7 +848,7 @@ def capfromany_main():
     kmeans = doclustering(
         X,
         args.outputroot,
-        minibatch=True,
+        minibatch=args.minibatch,
         batch_size=args.batch_size,
         n_clusters=args.n_clusters,
         max_iter=args.max_iter,
@@ -902,8 +903,6 @@ def capfromany_main():
     print("shape going in:", thestatelabels.shape)
     statelabelsbysegment = np.reshape(thestatelabels, (-1, segsize))
     print("shape coming out:", statelabelsbysegment.shape)
-    meaninstate = np.zeros((args.n_clusters, segsize), dtype="float")
-    stdinstate = np.zeros((args.n_clusters, segsize), dtype="float")
 
     # do the subsegment summaries
     for key in groups:
