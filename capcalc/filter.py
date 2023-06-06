@@ -23,7 +23,6 @@ package.
 
 """
 import sys
-import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,8 +32,11 @@ import pyfftw
 from scipy import fftpack, ndimage, signal
 from scipy.signal import savgol_filter
 
-fftpack = pyfftw.interfaces.scipy_fftpack
-pyfftw.interfaces.cache.enable()
+# import warnings
+
+
+# fftpack = pyfftw.interfaces.scipy_fftpack
+# pyfftw.interfaces.cache.enable()
 
 # ---------------------------------------- Global constants -------------------------------------------
 donotusenumba = True
@@ -1457,9 +1459,7 @@ class Plethfilter:
         self.a = retvec[1]
 
     def apply(self, data):
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=RuntimeError)
-            return signal.filtfilt(self.b, self.a, data, axis=-1, padtype="odd", padlen=None)
+        return signal.filtfilt(self.b, self.a, data, axis=-1, padtype="odd", padlen=None)
 
 
 class NoncausalFilter:
