@@ -1458,9 +1458,7 @@ class Plethfilter:
 
     def apply(self, data):
         with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore", message="Undefined plan with nthreads. This is a bug"
-            )
+            warnings.filterwarnings("ignore", category=RuntimeError)
             return signal.filtfilt(self.b, self.a, data, axis=-1, padtype="odd", padlen=None)
 
 

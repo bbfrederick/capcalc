@@ -1016,76 +1016,77 @@ def capfromany_main():
             args.outputroot + "_overall_statetimestats.csv",
             index=False,
         )
-        overallrawtransmat = allrawtransmats[0] * 0.0
-        if args.debug:
-            print(f"{len(allrawtransmats)=}")
-        for segment in range(numsegs):
-            overallrawtransmat += allrawtransmats[segment]
-        overallnormtransmat, overalloffdiagtransmat = ccalc_utils.calcmats(
-            overallrawtransmat, args.n_clusters
-        )
-        init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
-        init_hdr = init_img.header
-        init_sizes = init_hdr["pixdim"]
-        ccalc_io.savetonifti(
-            np.transpose(overallrawtransmat),
-            init_hdr,
-            args.outputroot + "_overall_rawtransmat",
-        )
-        ccalc_io.savetonifti(
-            np.transpose(overallnormtransmat),
-            init_hdr,
-            args.outputroot + "_overall_normtransmat",
-        )
-        ccalc_io.savetonifti(
-            np.transpose(overalloffdiagtransmat),
-            init_hdr,
-            args.outputroot + "_overall_offdiagtransmat",
-        )
-        themaxlen = 0
-        for i in range(args.n_clusters):
-            themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))
-        for i in range(args.n_clusters):
-            thishist = ccalc_stats.makeandsavehistogram(
-                np.array(alllenlists[i]),
-                themaxlen,
-                0,
-                args.outputroot + "_" + str(i).zfill(2) + "_lenhist",
-                therange=[1, themaxlen],
-            )
-        silavgs = []
-        if not args.summaryonly:
-            for state in range(args.n_clusters):
-                silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
-            ccalc_io.writenpvecs(
-                np.asarray(silavgs, dtype="float"),
-                args.outputroot + "_overallsilhouettemean.txt",
-            )
-        pctarray = np.asarray(allstatestats[:], dtype="float")
-        cols = [
-            "% TRs in state",
-            "Number of runs in state",
-            "Total TRs in state",
-            "Min run (TRs)",
-            "Max run (TRs)",
-            "Mean run (TRs)",
-            "Median run (TRs)",
-            "StdDev run (TRs)",
-        ]
-        df = pd.DataFrame(data=np.mean(pctarray, axis=0), columns=cols)
-        df.to_csv(
-            args.outputroot + "_seg_" + str(segment).zfill(4) + "_overallmeanstats.csv",
-            index=False,
-        )
-        # ccalc_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), args.outputroot + '_overallmeanstats.txt')
 
-        if args.doGBR:
-            clf = GradientBoostingRegressor().fit(X, thestatelabels)
-            print("GBR fitting score is:", clf.score(X, thestatelabels))
-            ccalc_io.writenpvecs(
-                np.reshape(clf.feature_importances_, (n_features, 1)),
-                args.outputroot + "_featureimportances.txt",
-            )
+    overallrawtransmat = allrawtransmats[0] * 0.0
+    if args.debug:
+        print(f"{len(allrawtransmats)=}")
+    for segment in range(numsegs):
+        overallrawtransmat += allrawtransmats[segment]
+    overallnormtransmat, overalloffdiagtransmat = ccalc_utils.calcmats(
+        overallrawtransmat, args.n_clusters
+    )
+    init_img = nib.Nifti1Image(overallnormtransmat, outputaffine)
+    init_hdr = init_img.header
+    init_sizes = init_hdr["pixdim"]
+    ccalc_io.savetonifti(
+        np.transpose(overallrawtransmat),
+        init_hdr,
+        args.outputroot + "_overall_rawtransmat",
+    )
+    ccalc_io.savetonifti(
+        np.transpose(overallnormtransmat),
+        init_hdr,
+        args.outputroot + "_overall_normtransmat",
+    )
+    ccalc_io.savetonifti(
+        np.transpose(overalloffdiagtransmat),
+        init_hdr,
+        args.outputroot + "_overall_offdiagtransmat",
+    )
+    themaxlen = 0
+    for i in range(args.n_clusters):
+        themaxlen = int(np.max([themaxlen, np.max(alllenlists[i])]))
+    for i in range(args.n_clusters):
+        thishist = ccalc_stats.makeandsavehistogram(
+            np.array(alllenlists[i]),
+            themaxlen,
+            0,
+            args.outputroot + "_" + str(i).zfill(2) + "_lenhist",
+            therange=[1, themaxlen],
+        )
+    silavgs = []
+    if not args.summaryonly:
+        for state in range(args.n_clusters):
+            silavgs.append(np.mean(np.asarray(silinfo[state], dtype="float")))
+        ccalc_io.writenpvecs(
+            np.asarray(silavgs, dtype="float"),
+            args.outputroot + "_overallsilhouettemean.txt",
+        )
+    pctarray = np.asarray(allstatestats[:], dtype="float")
+    cols = [
+        "% TRs in state",
+        "Number of runs in state",
+        "Total TRs in state",
+        "Min run (TRs)",
+        "Max run (TRs)",
+        "Mean run (TRs)",
+        "Median run (TRs)",
+        "StdDev run (TRs)",
+    ]
+    df = pd.DataFrame(data=np.mean(pctarray, axis=0), columns=cols)
+    df.to_csv(
+        args.outputroot + "_seg_" + str(segment).zfill(4) + "_overallmeanstats.csv",
+        index=False,
+    )
+    # ccalc_io.writenpvecs(np.transpose(np.mean(pctarray, axis=0)), args.outputroot + '_overallmeanstats.txt')
+
+    if args.doGBR:
+        clf = GradientBoostingRegressor().fit(X, thestatelabels)
+        print("GBR fitting score is:", clf.score(X, thestatelabels))
+        ccalc_io.writenpvecs(
+            np.reshape(clf.feature_importances_, (n_features, 1)),
+            args.outputroot + "_featureimportances.txt",
+        )
 
 
 if __name__ == "__main__":
