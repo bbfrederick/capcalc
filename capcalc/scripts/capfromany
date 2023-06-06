@@ -1001,6 +1001,8 @@ def capfromany_main():
             index=False,
         )
         overallrawtransmat = allrawtransmats[0] * 0.0
+        if debug:
+            print(f"{len(alltransmats)=}")
         for segment in range(numsegs):
             overallrawtransmat += allrawtransmats[segment]
         overallnormtransmat, overalloffdiagtransmat = ccalc_utils.calcmats(
