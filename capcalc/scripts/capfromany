@@ -57,6 +57,8 @@ def gettimecoursedata(
     outputroot,
     n_pca,
     theprefilter,
+    normmethod="None",
+    trainedmodelroot=None,
     skippts=0,
     starttime=0.0,
     duration=100000000.0,
@@ -94,20 +96,21 @@ def gettimecoursedata(
             datafiledims,
             datafilesizes,
         ) = niftidecomp_workflow(
-            "spatial",
             infilename,
             outputroot,
             datamaskname=datamaskname,
             decomptype="pca",
             pcacomponents=n_pca,
             icacomponents=None,
-            varnorm=True,
+            trainedmodelroot=trainedmodelroot,
+            normmethod=normmethod,
             demean=True,
             theprefilter=theprefilter,
             sigma=sigma,
             maskthresh=maskthresh,
         )
         Fs = 1.0 / datafilesizes[4]
+
         if debug:
             print(f"{outputcomponents.shape=}")
             print(f"{inputdata.shape=}")
@@ -143,6 +146,7 @@ def gettimecoursedata(
         trimmeddata = inputdata[:, startpoint:endpoint]
     else:
         inputisnifti = False
+        startpoint = max([int(starttime * Fs), 0]) + skippts
         if len(infilename) == 1:
             # each column is a timecourse, each row is a timepoint
             print("processing single input file")
@@ -151,7 +155,6 @@ def gettimecoursedata(
             if debug:
                 print("input data shape is ", inputdata.shape)
             numpoints = inputdata.shape[1]
-            startpoint = max([int(starttime * Fs), 0]) + skippts
             endpoint = min([startpoint + int(duration * Fs), numpoints])
             trimmeddata = inputdata[:, startpoint:endpoint]
         elif len(infilename) == 2:
@@ -332,7 +335,7 @@ def _get_parser():
     pf.addfilteropts(parser)
 
     # normalization
-    pf.addnormalizationopts(parser, defaultmethod="None")
+    pf.addnormalizationopts(parser, defaultmethod="z")
 
     # clustering
     cluster_opts = parser.add_argument_group("Clustering options")
@@ -469,139 +472,6 @@ def capfromany_main():
     if args.debug:
         print(args)
 
-    """
-    for o, a in opts:
-        elif o == "--nonorm":
-            timenormmethod = "none"
-            if verbose:
-                print("will do no normalization")
-        elif o == "--pctnorm":
-            timenormmethod = "pctnorm"
-            if verbose:
-                print("will do percent normalization")
-        elif o == "--stdnorm":
-            timenormmethod = "stdnorm"
-            if verbose:
-                print("will do std dev normalization")
-        elif o == "--varnorm":
-            timenormmethod = "varnorm"
-            if verbose:
-                print("will do variance normalization")
-        elif o == "--ppnorm":
-            timenormmethod = "ppnorm"
-            if verbose:
-                print("will do p-p normalization")
-        elif o == "--skippts":
-            skippts = int(a)
-            if verbose:
-                print("will drop first", skippts, "points from each segnent")
-        elif o == "--quality":
-            summaryonly = False
-            if verbose:
-                print("will do silhouette test")
-        elif o == "-v":
-            verbose = True
-            if verbose:
-                print("verbose mode enabled")
-        elif o == "--ica":
-            preprocessingtype = "ica"
-            if verbose:
-                print("will perform ica dimensionality reduction step")
-        elif o == "--GBR":
-            doGBR = True
-            if verbose:
-                print("will do GBR on clusters")
-        elif o == "--pca":
-            preprocessingtype = "pca"
-            if verbose:
-                print("will perform pca dimensionality reduction step")
-        elif o == "--sigma":
-            sigma = float(a)
-            if verbose:
-                print(f"spatial smoothing set to {sigma}")
-        elif o == "--nodetrend":
-            detrendorder = 0
-            if verbose:
-                print("disabling detrending")
-        elif o == "-D":
-            duration = float(a)
-            if verbose:
-                print("duration set to", duration)
-        elif o == "-s":
-            starttime = float(a)
-            if verbose:
-                print("starttime set to", starttime)
-        elif o == "-V":
-            theprefilter.settype("vlf")
-            if verbose:
-                print("prefiltering to vlf band")
-        elif o == "-L":
-            theprefilter.settype("lfo")
-            if verbose:
-                print("prefiltering to lfo band")
-        elif o == "-R":
-            theprefilter.settype("resp")
-            if verbose:
-                print("prefiltering to respiratory band")
-        elif o == "-C":
-            theprefilter.settype("card")
-            if verbose:
-                print("prefiltering to cardiac band")
-        elif o == "-F":
-            arbvec = a.split(",")
-            if len(arbvec) != 2 and len(arbvec) != 4:
-                usage()
-                sys.exit()
-            if len(arbvec) == 2:
-                arb_lower = float(arbvec[0])
-                arb_upper = float(arbvec[1])
-                arb_lowerstop = 0.9 * float(arbvec[0])
-                arb_upperstop = 1.1 * float(arbvec[1])
-            if len(arbvec) == 4:
-                arb_lower = float(arbvec[0])
-                arb_upper = float(arbvec[1])
-                arb_lowerstop = float(arbvec[2])
-                arb_upperstop = float(arbvec[3])
-            theprefilter.settype("arb")
-            theprefilter.setfreqs(arb_lowerstop, arb_lower, arb_upper, arb_upperstop)
-            if verbose:
-                print(
-                    "prefiltering to ",
-                    arb_lower,
-                    arb_upper,
-                    "(stops at ",
-                    arb_lowerstop,
-                    arb_upperstop,
-                    ")",
-                )
-        elif o == "-m":
-            minibatch = True
-            print("will perform MiniBatchKMeans")
-        elif o == "-b":
-            batch_size = int(a)
-            print("will use", batch_size, "as batch_size")
-        elif o == "-I":
-            n_init = int(a)
-            print("will do", n_init, "initializations")
-        elif o == "-n":
-            n_clusters = int(a)
-            print("will use", n_clusters, "clusters")
-        elif o == "-p":
-            n_pca = float(a)
-            if n_pca <= 0.0:
-                print("will estimate the number of pca components for dimensionality reduction")
-            elif n_pca < 1.0:
-                print(
-                    "will use enough pca components to explain at least",
-                    100.0 * n_pca,
-                    "% of the variance",
-                )
-            else:
-                n_pca = int(a)
-                print("will use", n_pca, "pca components for dimensionality reduction")
-        else:
-            assert False, "unhandled option"
-    """
     # check that required arguments are set
     if args.outputroot is None:
         print("outfile must be set")
@@ -670,8 +540,11 @@ def capfromany_main():
         print("will normalize timecourses to variance of 1.0")
     elif args.normmethod == "p2p":
         print("will normalize timecourses to p-p deviation of 1.0")
-    elif args.normmethod == "mac":
+    elif args.normmethod == "mad":
         print("will normalize timecourses to median average deviate of 1.0")
+    else:
+        print("illegal normalization type")
+        sys.exit()
 
     # save the command line
     ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
@@ -683,6 +556,8 @@ def capfromany_main():
         args.outputroot,
         args.n_pca,
         theprefilter,
+        trainedmodelroot=args.trainedmodelroot,
+        normmethod=args.normmethod,
         starttime=args.starttime,
         duration=args.duration,
         sigma=args.sigma,
@@ -698,7 +573,6 @@ def capfromany_main():
         if args.debug:
             print("no prefiltering applied")
 
-    # origdims = inputdata.shape
     thedims = trimmeddata.shape
     # print("original file dimensions:", origdims)
     print("trimmed data dimensions:", thedims)

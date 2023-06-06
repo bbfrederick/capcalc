@@ -11,3 +11,17 @@ capfromany \
     --segIDs first,second \
     --sigma 3.0 \
     --minout 2
+
+capfromany \
+    --infile /Users/frederic/Dropbox_PHC/connectome_quality/100307/preproc/100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR.nii.gz \
+    --infile /Users/frederic/Dropbox_PHC/connectome_quality/100307/preproc/100307/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR.nii.gz \
+    --outputroot output/noparcelrerun \
+    --maskname /Users/frederic/Dropbox_PHC/awsspeedcomparison/HCP_1200/100206/rapidtide_rfMRI_REST1_LR_desc-corrfit_mask.nii.gz \
+    --trainedmodelroot output/noparcel \
+    --n_pca 12 \
+    --minibatch \
+    --quality \
+    --segsize 1200,1200 \
+    --segIDs first,second \
+    --sigma 3.0 \
+    --minout 2

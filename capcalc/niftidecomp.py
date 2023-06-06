@@ -22,103 +22,13 @@ import sys
 import joblib
 import numpy as np
 from sklearn.decomposition import PCA, FastICA, SparsePCA
+from statsmodels.robust import mad
 
 import capcalc.filter as tide_filt
 import capcalc.io as tide_io
-from capcalc.parser_funcs import is_float, is_valid_file
-
-
-def _get_parser(decompaxis):
-    """
-    Argument parser for spatialdecomp and temporaldecomp
-    """
-    if decompaxis == "temporal":
-        parser = argparse.ArgumentParser(
-            prog="temporaldecomp",
-            description="Perform PCA or ICA decomposition on a data file in the time dimension.",
-            usage="%(prog)s datafile outputroot [options]",
-        )
-    elif decompaxis == "spatial":
-        parser = argparse.ArgumentParser(
-            prog="spatialdecomp",
-            description="Perform PCA or ICA decomposition on a data file in the spatial dimension.",
-            usage="%(prog)s datafile outputroot [options]",
-        )
-    else:
-        raise ValueError(f"Illegal decomposition type: {type}")
-
-    # Required arguments
-    parser.add_argument(
-        "datafile",
-        type=lambda x: is_valid_file(parser, x),
-        help="The name of the 3 or 4 dimensional nifti file to fit",
-    )
-    parser.add_argument("outputroot", help="The root name for the output nifti files")
-
-    # Optional arguments
-    parser.add_argument(
-        "--dmask",
-        dest="datamaskname",
-        type=lambda x: is_valid_file(parser, x),
-        action="store",
-        metavar="DATAMASK",
-        help=("Use DATAMASK to specify which voxels in the data to use."),
-        default=None,
-    )
-    parser.add_argument(
-        "--ncomp",
-        dest="ncomp",
-        type=lambda x: is_float(parser, x),
-        action="store",
-        metavar="NCOMPS",
-        help=("The number of PCA/ICA components to return (default is to estimate the number)."),
-        default=-1.0,
-    )
-    parser.add_argument(
-        "--smooth",
-        dest="sigma",
-        type=lambda x: is_float(parser, x),
-        action="store",
-        metavar="SIGMA",
-        help=("Spatially smooth the input data with a SIGMA mm kernel."),
-        default=0.0,
-    )
-    parser.add_argument(
-        "--type",
-        dest="decomptype",
-        action="store",
-        type=str,
-        choices=["pca", "sparse", "ica"],
-        help=("Type of decomposition to perform. Default is pca."),
-        default="pca",
-    )
-    parser.add_argument(
-        "--nodemean",
-        dest="demean",
-        action="store_false",
-        help=("Do not demean data prior to decomposition."),
-        default=True,
-    )
-    parser.add_argument(
-        "--novarnorm",
-        dest="varnorm",
-        action="store_false",
-        help=("Do not variance normalize data prior to decomposition."),
-        default=True,
-    )
-
-    return parser
-
-
-def transposeifspatial(data, decompaxis="temporal"):
-    if decompaxis == "spatial":
-        return np.transpose(data)
-    else:
-        return data
 
 
 def niftidecomp_workflow(
-    decompaxis,
     datafilelist,
     outputroot,
     datamaskname=None,
@@ -126,19 +36,15 @@ def niftidecomp_workflow(
     pcacomponents=0.5,
     icacomponents=None,
     trainedmodelroot=None,
-    varnorm=False,
-    normtype=None,
+    normmethod="None",
     demean=True,
     theprefilter=None,
     sigma=0.0,
     maskthresh=0.25,
 ):
-    print(f"Will perform {decomptype} analysis along the {decompaxis} axis")
+    print(f"Will perform {decomptype} analysis along the spatial dimension")
 
-    if decompaxis == "temporal":
-        decompaxisnum = 1
-    else:
-        decompaxisnum = 0
+    decompaxisnum = 0
 
     # read in data mask (it must exist)
     print("reading in mask array")
@@ -225,30 +131,36 @@ def niftidecomp_workflow(
     print(f"\t{procdata.shape[0]} valid voxels, {procdata.shape[1]} time points")
 
     # normalize the individual images
+    themean = np.mean(procdata, axis=0)
     if demean:
         print("demeaning array")
-        themean = np.mean(procdata, axis=decompaxisnum)
-        print("shape of mean", themean.shape)
-        for i in range(procdata.shape[1 - decompaxisnum]):
-            if decompaxisnum == 1:
-                procdata[i, :] -= themean[i]
-            else:
-                procdata[:, i] -= themean[i]
-    else:
-        themean = np.ones(procdata.shape[1 - decompaxisnum])
+        for i in range(procdata.shape[1]):
+            procdata[:, i] -= themean[i]
 
-    if normtype == "var":
-        print("variance normalizing array")
-        thevar = np.var(procdata, axis=decompaxisnum)
-        print("shape of var", thevar.shape)
-        for i in range(procdata.shape[1 - decompaxisnum]):
-            if decompaxisnum == 1:
-                procdata[i, :] /= thevar[i]
-            else:
-                procdata[:, i] /= thevar[i]
-        procdata = np.nan_to_num(procdata)
+    if normmethod == "None":
+        print("will not normalize timecourses")
+        thenormfac = themean * 0.0 + 1.0
+    elif normmethod == "percent":
+        print("will normalize timecourses to percentage of mean")
+        thenormfac = themean
+    elif normmethod == "stddev":
+        print("will normalize timecourses to standard deviation of 1.0")
+        thenormfac = np.std(procdata, axis=0)
+    elif normmethod == "z":
+        print("will normalize timecourses to variance of 1.0")
+        thenormfac = np.var(procdata, axis=0)
+    elif normmethod == "p2p":
+        print("will normalize timecourses to p-p deviation of 1.0")
+        thenormfac = np.max(procdata, axis=0) - np.min(procdata, axis=0)
+    elif normmethod == "mad":
+        print("will normalize timecourses to median average deviate of 1.0")
+        thenormfac = mad(procdata, axis=0)
     else:
-        thevar = np.ones(procdata.shape[1 - decompaxisnum])
+        print("illegal normalization type")
+        sys.exit()
+    for i in range(procdata.shape[1]):
+        procdata[:, i] /= thenormfac[i]
+    procdata = np.nan_to_num(procdata)
 
     # now perform the decomposition
     if decomptype == "ica":
@@ -258,15 +170,13 @@ def niftidecomp_workflow(
         else:
             print("will return", icacomponents, "components")
         thefit = FastICA(n_components=icacomponents).fit(
-            transposeifspatial(procdata, decompaxis=decompaxis)
+            np.transpose(procdata)
         )  # Reconstruct signals
         if icacomponents is None:
-            thecomponents = transposeifspatial(thefit.components_[:], decompaxis=decompaxis)
+            thecomponents = np.transpose(thefit.components_[:])
             print(thecomponents.shape[1], "components found")
         else:
-            thecomponents = transposeifspatial(
-                thefit.components_[0:icacomponents], decompaxis=decompaxis
-            )
+            thecomponents = np.transpose(thefit.components_[0:icacomponents])
             print("returning first", thecomponents.shape[1], "components found")
     else:
         if trainedmodelroot is not None:
@@ -296,65 +206,39 @@ def niftidecomp_workflow(
                 thepca = PCA(n_components=pcacomponents)
             else:
                 thepca = SparsePCA(n_components=pcacomponents)
-            thefit = thepca.fit(transposeifspatial(procdata, decompaxis=decompaxis))
 
             # save the model
             joblib.dump(thepca, outputroot + "_pca.joblib")
 
-        thetransform = thepca.transform(transposeifspatial(procdata, decompaxis=decompaxis))
-        theinvtrans = transposeifspatial(
-            thepca.inverse_transform(thetransform), decompaxis=decompaxis
-        )
+        thefit = thepca.fit(np.transpose(procdata))
+        thetransform = thepca.transform(np.transpose(procdata))
+        theinvtrans = np.transpose(thepca.inverse_transform(thetransform))
 
         if pcacomponents < 1.0:
-            thecomponents = transposeifspatial(thefit.components_[:], decompaxis=decompaxis)
+            thecomponents = np.transpose(thefit.components_[:])
             print("returning", thecomponents.shape[1], "components")
         else:
-            thecomponents = transposeifspatial(
-                thefit.components_[0:pcacomponents], decompaxis=decompaxis
-            )
+            thecomponents = np.transpose(thefit.components_[0:pcacomponents])
 
         # stash the eigenvalues
         exp_var_pct = 100.0 * thefit.explained_variance_ratio_
 
-        if decompaxis == "temporal":
-            # save the components
-            outputcomponents = thecomponents
+        # save the component images
+        outputcomponents = np.zeros((numspatiallocs, thecomponents.shape[1]), dtype="float")
+        outputcomponents[proclocs, :] = thecomponents[:, :]
+        outputcomponents = outputcomponents.reshape(
+            (xsize, ysize, numslices, thecomponents.shape[1])
+        )
 
-            """# save the singular values
-            print("writing singular values")
-            tide_io.writenpvecs(np.transpose(thesingvals), outputroot + "_singvals.txt")"""
+        # save the coefficients
+        outputcoefficients = np.transpose(thetransform)
+        # tide_io.writenpvecs(
+        #    outputcoefficients * thevar[i], outputroot + "_denormcoefficients.txt"
+        # )
 
-            # save the coefficients
-            coefficients = thetransform
-            print("coefficients shape:", coefficients.shape)
-            outputcoefficients = np.zeros((numspatiallocs, coefficients.shape[1]), dtype="float")
-            outputcoefficients[proclocs, :] = coefficients[:, :]
-            outputcoefficients = outputcoefficients.reshape(
-                (xsize, ysize, numslices, coefficients.shape[1])
-            )
-
-            # unnormalize the dimensionality reduced data
-            for i in range(procdata.shape[1 - decompaxisnum]):
-                theinvtrans[i, :] = thevar[i] * theinvtrans[i, :] + themean[i]
-
-        else:
-            # save the component images
-            outputcomponents = np.zeros((numspatiallocs, thecomponents.shape[1]), dtype="float")
-            outputcomponents[proclocs, :] = thecomponents[:, :]
-            outputcomponents = outputcomponents.reshape(
-                (xsize, ysize, numslices, thecomponents.shape[1])
-            )
-
-            # save the coefficients
-            outputcoefficients = np.transpose(thetransform)
-            # tide_io.writenpvecs(
-            #    outputcoefficients * thevar[i], outputroot + "_denormcoefficients.txt"
-            # )
-
-            # unnormalize the dimensionality reduced data
-            for i in range(totaltimepoints):
-                theinvtrans[:, i] = thevar[i] * theinvtrans[:, i] + themean[i]
+        # unnormalize the dimensionality reduced data
+        for i in range(totaltimepoints):
+            theinvtrans[:, i] = thevar[i] * theinvtrans[:, i] + themean[i]
 
         print("writing fit data")
         theheader = datafile_hdr
@@ -371,106 +255,3 @@ def niftidecomp_workflow(
         datafiledims,
         datafilesizes,
     )
-
-
-def getparameters(decompaxis):
-    try:
-        args = vars(_get_parser(decompaxis).parse_args())
-    except SystemExit:
-        _get_parser(decompaxis).print_help()
-        raise
-
-    if args["ncomp"] < 0.0:
-        args["pcacomponents"] = 0.5
-        args["icacomponents"] = None
-    elif args["ncomp"] < 1.0:
-        args["pcacomponents"] = args["ncomp"]
-        args["icacomponents"] = None
-    else:
-        args["pcacomponents"] = int(args["ncomp"])
-        args["icacomponents"] = int(args["ncomp"])
-
-    return args
-
-
-def main(decompaxis):
-    args = getparameters(decompaxis)
-
-    # save the command line
-    tide_io.writevec([" ".join(sys.argv)], args["outputroot"] + "_commandline.txt")
-
-    (
-        outputcomponents,
-        outputcoefficients,
-        outinvtrans,
-        exp_var_pct,
-        datafile_hdr,
-        datafiledims,
-        datafilesizes,
-    ) = niftidecomp_workflow(
-        decompaxis,
-        [args["datafile"]],
-        datamaskname=args["datamaskname"],
-        decomptype=args["decomptype"],
-        pcacomponents=args["pcacomponents"],
-        icacomponents=args["icacomponents"],
-        varnorm=args["varnorm"],
-        demean=args["demean"],
-        sigma=args["sigma"],
-    )
-
-    """print(f"{outputcomponents.shape=}")
-    print(f"{outputcoefficients.shape=}")
-    print(f"{outinvtrans.shape=}")
-    print(f"{exp_var_pct.shape=}")
-    print(f"{datafiledims.shape=}")
-    print(f"{datafilesizes.shape=}")"""
-
-    # save the eigenvalues
-    print("variance explained by component:", exp_var_pct)
-    tide_io.writenpvecs(
-        exp_var_pct,
-        args["outputroot"] + "_explained_variance_pct.txt",
-    )
-
-    if decompaxis == "temporal":
-        # save the components
-        print("writing component timecourses")
-        tide_io.writenpvecs(outputcomponents, args["outputroot"] + "_components.txt")
-
-        # save the coefficients
-        print("writing out the coefficients")
-        theheader = datafile_hdr.copy()
-        theheader["dim"][4] = outputcoefficients.shape[3]
-        tide_io.savetonifti(
-            outputcoefficients,
-            theheader,
-            args["outputroot"] + "_coefficients",
-        )
-    else:
-        # save the component images
-        print("writing component images")
-        theheader = datafile_hdr.copy()
-        theheader["dim"][4] = outputcomponents.shape[3]
-        tide_io.savetonifti(
-            outputcomponents,
-            theheader,
-            args["outputroot"] + "_components",
-        )
-
-        # save the coefficients
-        print("writing out the coefficients")
-        tide_io.writenpvecs(outputcoefficients, args["outputroot"] + "_coefficients.txt")
-        # tide_io.writenpvecs(
-        #    outputcoefficients * thevar[i], args["outputroot"] + "_denormcoefficients.txt"
-        # )
-    print("writing fit data")
-    tide_io.savetonifti(
-        outinvtrans,
-        datafile_hdr,
-        args["outputroot"] + "_fit",
-    )
-
-
-if __name__ == "__main__":
-    main("spatial")
