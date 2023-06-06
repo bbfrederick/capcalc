@@ -52,7 +52,7 @@ DEFAULT_MAXITER = 250
 DEFAULT_NINIT = 100
 
 
-def gettimecoursedata(
+def niftitotimecourse(
     infilename,
     datamaskname,
     outputroot,
@@ -67,118 +67,131 @@ def gettimecoursedata(
     maskthresh=0.25,
     debug=False,
 ):
-    # see if we are dealing with NIFTI files or text files
-    if ccalc_io.checkifnifti(infilename[0]):
-        inputisnifti = True
-        if datamaskname is not None:
-            (
-                datamask_img,
-                datamask_data,
-                datamask_hdr,
-                datamaskdims,
-                datamasksizes,
-            ) = ccalc_io.readfromnifti(datamaskname)
-        else:
-            print("using nifti files requires the use of a mask file")
-            sys.exit()
-        xsize, ysize, numslices, timepoints = ccalc_io.parseniftidims(datamaskdims)
-        numspatialpoints = int(xsize) * int(ysize) * int(numslices)
-        print(f"number of spatial points from mask = {numspatialpoints}")
-        themask = datamask_data.reshape((numspatialpoints))
-        thevalidpoints = np.where(themask > maskthresh)
-
-        # Load the data.  If input is nifti, the first thing to do is reduce dimensionality A LOT
+    # read in a list of NIFTI files
+    if datamaskname is not None:
         (
-            outputcomponents,
-            inputdata,
-            outinvtrans,
-            exp_var_pct,
-            datafile_hdr,
-            datafiledims,
-            datafilesizes,
-            normfacs,
-            means,
-        ) = niftidecomp_workflow(
-            infilename,
-            outputroot,
-            datamaskname=datamaskname,
-            decomptype="pca",
-            pcacomponents=n_pca,
-            icacomponents=None,
-            trainedmodelroot=trainedmodelroot,
-            normmethod=normmethod,
-            demean=True,
-            theprefilter=theprefilter,
-            sigma=sigma,
-            maskthresh=maskthresh,
-        )
-        Fs = 1.0 / datafilesizes[4]
+            datamask_img,
+            datamask_data,
+            datamask_hdr,
+            datamaskdims,
+            datamasksizes,
+        ) = ccalc_io.readfromnifti(datamaskname)
+    else:
+        print("using nifti files requires the use of a mask file")
+        sys.exit()
+    xsize, ysize, numslices, timepoints = ccalc_io.parseniftidims(datamaskdims)
+    numspatialpoints = int(xsize) * int(ysize) * int(numslices)
+    print(f"number of spatial points from mask = {numspatialpoints}")
+    themask = datamask_data.reshape((numspatialpoints))
+    thevalidpoints = np.where(themask > maskthresh)
 
-        if debug:
-            print(f"{outputcomponents.shape=}")
-            print(f"{inputdata.shape=}")
-            print(f"{outinvtrans.shape=}")
-            print(f"{exp_var_pct.shape=}")
-            print(f"{datafiledims.shape=}")
-            print(f"{datafilesizes.shape=}")
+    # Load the data.  If input is nifti, the first thing to do is reduce dimensionality A LOT
+    (
+        outputcomponents,
+        inputdata,
+        outinvtrans,
+        exp_var_pct,
+        datafile_hdr,
+        datafiledims,
+        datafilesizes,
+        normfacs,
+        means,
+    ) = niftidecomp_workflow(
+        infilename,
+        outputroot,
+        datamaskname=datamaskname,
+        decomptype="pca",
+        pcacomponents=n_pca,
+        icacomponents=None,
+        trainedmodelroot=trainedmodelroot,
+        normmethod=normmethod,
+        demean=True,
+        theprefilter=theprefilter,
+        sigma=sigma,
+        maskthresh=maskthresh,
+    )
+    Fs = 1.0 / datafilesizes[4]
 
-        # save the eigenvalues
-        if debug:
-            print("variance explained by components:", exp_var_pct)
-        ccalc_io.writenpvecs(
-            exp_var_pct,
-            f"{outputroot}_explained_variance_pct.txt",
-        )
+    if debug:
+        print(f"{outputcomponents.shape=}")
+        print(f"{inputdata.shape=}")
+        print(f"{outinvtrans.shape=}")
+        print(f"{exp_var_pct.shape=}")
+        print(f"{datafiledims.shape=}")
+        print(f"{datafilesizes.shape=}")
 
-        if debug:
-            print("writing component images")
-        theheader = datafile_hdr.copy()
-        theheader["dim"][4] = outputcomponents.shape[3]
-        ccalc_io.savetonifti(
-            outputcomponents,
-            theheader,
-            f"{outputroot}_components",
-        )
-        print("writing out the coefficients")
-        ccalc_io.writenpvecs(inputdata, f"{outputroot}_coefficients.txt")
+    # save the eigenvalues
+    if debug:
+        print("variance explained by components:", exp_var_pct)
+    ccalc_io.writenpvecs(
+        exp_var_pct,
+        f"{outputroot}_explained_variance_pct.txt",
+    )
+
+    if debug:
+        print("writing component images")
+    theheader = datafile_hdr.copy()
+    theheader["dim"][4] = outputcomponents.shape[3]
+    ccalc_io.savetonifti(
+        outputcomponents,
+        theheader,
+        f"{outputroot}_components",
+    )
+    print("writing out the coefficients")
+    ccalc_io.writenpvecs(inputdata, f"{outputroot}_coefficients.txt")
+    if debug:
+        print("input data shape is ", inputdata.shape)
+    numpoints = inputdata.shape[1]
+    startpoint = max([int(starttime * Fs), 0]) + skippts
+    endpoint = min([startpoint + int(duration * Fs), numpoints])
+    trimmeddata = inputdata[:, startpoint:endpoint]
+    return trimmeddata, Fs, normfacs, means
+
+
+def readtcsfromtext(
+    infilename,
+    Fs,
+    outputroot,
+    n_pca,
+    theprefilter,
+    normmethod="None",
+    trainedmodelroot=None,
+    skippts=0,
+    starttime=0.0,
+    duration=100000000.0,
+    sigma=0.0,
+    maskthresh=0.25,
+    debug=False,
+):
+    startpoint = max([int(starttime * Fs), 0]) + skippts
+    if len(infilename) == 1:
+        # each column is a timecourse, each row is a timepoint
+        print("processing single input file")
+        matrixoutput = True
+        inputdata = ccalc_io.readvecs(infilename[0])[skippts:]
         if debug:
             print("input data shape is ", inputdata.shape)
         numpoints = inputdata.shape[1]
-        startpoint = max([int(starttime * Fs), 0]) + skippts
         endpoint = min([startpoint + int(duration * Fs), numpoints])
         trimmeddata = inputdata[:, startpoint:endpoint]
+    elif len(infilename) == 2:
+        print("processing two input files")
+        inputdata1 = ccalc_io.readvec(infilename[0])
+        numpoints = len(inputdata1)
+        inputdata2 = ccalc_io.readvec(infilename[1])
+        endpoint1 = min(
+            [startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))]
+        )
+        endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
+        trimmeddata = np.zeros((2, numpoints), dtype="float")
+        trimmeddata[0, :] = inputdata1[startpoint:endpoint1]
+        trimmeddata[1, :] = inputdata2[0:endpoint2]
     else:
-        inputisnifti = False
-        startpoint = max([int(starttime * Fs), 0]) + skippts
-        if len(infilename) == 1:
-            # each column is a timecourse, each row is a timepoint
-            print("processing single input file")
-            matrixoutput = True
-            inputdata = ccalc_io.readvecs(infilename[0])[skippts:]
-            if debug:
-                print("input data shape is ", inputdata.shape)
-            numpoints = inputdata.shape[1]
-            endpoint = min([startpoint + int(duration * Fs), numpoints])
-            trimmeddata = inputdata[:, startpoint:endpoint]
-        elif len(infilename) == 2:
-            print("processing two input files")
-            inputdata1 = ccalc_io.readvec(infilename[0])
-            numpoints = len(inputdata1)
-            inputdata2 = ccalc_io.readvec(infilename[1])
-            endpoint1 = min(
-                [startpoint + int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))]
-            )
-            endpoint2 = min([int(duration * Fs), int(len(inputdata1)), int(len(inputdata2))])
-            trimmeddata = np.zeros((2, numpoints), dtype="float")
-            trimmeddata[0, :] = inputdata1[startpoint:endpoint1]
-            trimmeddata[1, :] = inputdata2[0:endpoint2]
-        else:
-            print(
-                "showstxcorr requires 1 multicolumn timecourse file or two single column timecourse files as input"
-            )
-            usage()
-            sys.exit()
-    return trimmeddata, Fs, normfacs, means
+        print(
+            "showstxcorr requires 1 multicolumn timecourse file or two single column timecourse files as input"
+        )
+        sys.exit()
+    return trimmeddata
 
 
 def doclustering(
@@ -197,7 +210,7 @@ def doclustering(
         if initialcenters is None:
             theinit = "k-means++"
         else:
-            theinit = theclustercenters
+            theinit = initialcenters
             max_iter = 1
 
         print("training model")
@@ -479,7 +492,6 @@ def capfromany_main():
     # check that required arguments are set
     if args.outputroot is None:
         print("outfile must be set")
-        usage()
         sys.exit()
 
     # check to make sure groups and subsegments are in agreement
@@ -554,20 +566,24 @@ def capfromany_main():
     ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
 
     # read in the files and get everything trimmed to the right length
-    trimmeddata, Fs, normfacs, means = gettimecoursedata(
-        args.infilename,
-        args.datamaskname,
-        args.outputroot,
-        args.n_pca,
-        theprefilter,
-        trainedmodelroot=args.trainedmodelroot,
-        normmethod=args.normmethod,
-        starttime=args.starttime,
-        duration=args.duration,
-        sigma=args.sigma,
-        skippts=args.skip,
-    )
-    sampletime = 1.0 / Fs
+    if ccalc_io.checkifnifti(args.infilename[0]):
+        inputisnifti = True
+        trimmeddata, Fs, normfacs, means = niftitotimecourse(
+            args.infilename,
+            args.datamaskname,
+            args.outputroot,
+            args.n_pca,
+            theprefilter,
+            trainedmodelroot=args.trainedmodelroot,
+            normmethod=args.normmethod,
+            starttime=args.starttime,
+            duration=args.duration,
+            sigma=args.sigma,
+            skippts=args.skip,
+        )
+        sampletime = 1.0 / Fs
+    else:
+        pass
 
     # band limit the regressors if that is needed
     if theprefilter.gettype() != "None":
@@ -1001,8 +1017,8 @@ def capfromany_main():
             index=False,
         )
         overallrawtransmat = allrawtransmats[0] * 0.0
-        if debug:
-            print(f"{len(alltransmats)=}")
+        if args.debug:
+            print(f"{len(allrawtransmats)=}")
         for segment in range(numsegs):
             overallrawtransmat += allrawtransmats[segment]
         overallnormtransmat, overalloffdiagtransmat = ccalc_utils.calcmats(
