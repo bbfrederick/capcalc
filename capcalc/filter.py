@@ -22,13 +22,14 @@
 package.
 
 """
-
 import sys
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pyfftw
-#from numba import jit
+
+# from numba import jit
 from scipy import fftpack, ndimage, signal
 from scipy.signal import savgol_filter
 
@@ -1456,7 +1457,11 @@ class Plethfilter:
         self.a = retvec[1]
 
     def apply(self, data):
-        return signal.filtfilt(self.b, self.a, data, axis=-1, padtype="odd", padlen=None)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="Undefined plan with nthreads. This is a bug"
+            )
+            return signal.filtfilt(self.b, self.a, data, axis=-1, padtype="odd", padlen=None)
 
 
 class NoncausalFilter:
