@@ -49,6 +49,7 @@ DEFAULT_MINHOLDLENGTH = 1
 DEFAULT_NCLUSTERS = 8
 DEFAULT_NPCA = 8
 DEFAULT_MAXITER = 250
+DEFAULT_NINIT = 100
 
 
 def gettimecoursedata(
@@ -187,6 +188,7 @@ def doclustering(
     batch_size=DEFAULT_BATCH_SIZE,
     n_clusters=DEFAULT_NCLUSTERS,
     max_iter=DEFAULT_MAXITER,
+    n_init=DEFAULT_NINIT,
     trainedmodelroot=None,
     initialcenters=None,
 ):
@@ -359,8 +361,8 @@ def _get_parser():
         "--n_init",
         type=int,
         metavar="N_INIT",
-        help="Number of starting states to try for k-means clustering",
-        default=100,
+        help=f"Number of starting states to try for k-means clustering. Default is {DEFAULT_NINIT}.",
+        default=DEFAULT_NINIT,
     )
     cluster_opts.add_argument(
         "--batch_size",
@@ -728,6 +730,7 @@ def capfromany_main():
         batch_size=args.batch_size,
         n_clusters=args.n_clusters,
         max_iter=args.max_iter,
+        n_init=args.n_init,
         trainedmodelroot=args.trainedmodelroot,
         initialcenters=args.initialcenters,
     )
