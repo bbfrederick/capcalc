@@ -197,27 +197,30 @@ def addreqoutputtextfile(parser, varname, rootname=False):
     )
 
 
-def addnormalizationopts(parser, normtarget="timecourse", defaultmethod=DEFAULT_NORMTYPE):
+def addnormalizationopts(
+    parser, phases=[""], normtarget="timecourses", defaultmethods=[DEFAULT_NORMTYPE]
+):
     norm_opts = parser.add_argument_group("Normalization options")
-    norm_opts.add_argument(
-        "--normmethod",
-        dest="normmethod",
-        action="store",
-        type=str,
-        choices=["None", "percent", "variance", "stddev", "z", "p2p", "mad"],
-        help=(
-            f"Demean and normalize {normtarget} "
-            "using one of the following methods: "
-            '"None" - demean only; '
-            '"percent" - divide by mean; '
-            '"variance" - divide by variance; '
-            '"stddev" or "z" - divide by standard deviation; '
-            '"p2p" - divide by range; '
-            '"mad" - divide by median absolute deviation. '
-            f'Default is "{defaultmethod}".'
-        ),
-        default=defaultmethod,
-    )
+    for idx, thephase in enumerate(phases):
+        norm_opts.add_argument(
+            f"--{thephase}normmethod",
+            dest=f"{thephase}normmethod",
+            action="store",
+            type=str,
+            choices=["None", "percent", "variance", "stddev", "z", "p2p", "mad"],
+            help=(
+                f"Demean and {thephase}normalize {normtarget} "
+                "using one of the following methods: "
+                '"None" - demean only; '
+                '"percent" - divide by mean; '
+                '"variance" - divide by variance; '
+                '"stddev" or "z" - divide by standard deviation; '
+                '"p2p" - divide by range; '
+                '"mad" - divide by median absolute deviation. '
+                f'Default is "{defaultmethods[idx % len(phases)]}".'
+            ),
+            default=defaultmethods[idx % len(phases)],
+        )
 
 
 def addversionopts(parser):

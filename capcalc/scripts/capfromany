@@ -94,7 +94,7 @@ def niftitotimecourse(
         datafile_hdr,
         datafiledims,
         datafilesizes,
-        normfacs,
+        prenormfacs,
         means,
     ) = niftidecomp_workflow(
         infilename,
@@ -145,7 +145,7 @@ def niftitotimecourse(
     startpoint = max([int(starttime * Fs), 0]) + skippts
     endpoint = min([startpoint + int(duration * Fs), numpoints])
     trimmeddata = inputdata[:, startpoint:endpoint]
-    return trimmeddata, Fs, normfacs, means
+    return trimmeddata, Fs, prenormfacs, means
 
 
 def readtcsfromtext(
@@ -352,7 +352,7 @@ def _get_parser():
     pf.addfilteropts(parser)
 
     # normalization
-    pf.addnormalizationopts(parser, defaultmethod="z")
+    pf.addnormalizationopts(parser, phases=["pre", "post"], defaultmethods=["percent", "z"])
 
     # clustering
     cluster_opts = parser.add_argument_group("Clustering options")
@@ -546,20 +546,20 @@ def capfromany_main():
         targetfeatures = ccentershape[1]
         print("will use", n_clusters, "clusters and", targetfeatures, "features")
 
-    if args.normmethod == "None":
-        print("will not normalize timecourses")
-    elif args.normmethod == "percent":
-        print("will normalize timecourses to percentage of mean")
-    elif args.normmethod == "stddev":
-        print("will normalize timecourses to standard deviation of 1.0")
-    elif args.normmethod == "z":
-        print("will normalize timecourses to variance of 1.0")
-    elif args.normmethod == "p2p":
-        print("will normalize timecourses to p-p deviation of 1.0")
-    elif args.normmethod == "mad":
-        print("will normalize timecourses to median average deviate of 1.0")
+    if args.prenormmethod == "None":
+        print("will not prenormalize timecourses")
+    elif args.prenormmethod == "percent":
+        print("will prenormalize timecourses to percentage of mean")
+    elif args.prenormmethod == "stddev":
+        print("will prenormalize timecourses to standard deviation of 1.0")
+    elif args.prenormmethod == "z":
+        print("will prenormalize timecourses to variance of 1.0")
+    elif args.prenormmethod == "p2p":
+        print("will prenormalize timecourses to p-p deviation of 1.0")
+    elif args.prenormmethod == "mad":
+        print("will prenormalize timecourses to median average deviate of 1.0")
     else:
-        print("illegal normalization type")
+        print("illegal prenormalization type")
         sys.exit()
 
     # save the command line
@@ -568,14 +568,14 @@ def capfromany_main():
     # read in the files and get everything trimmed to the right length
     if ccalc_io.checkifnifti(args.infilename[0]):
         inputisnifti = True
-        trimmeddata, Fs, normfacs, means = niftitotimecourse(
+        trimmeddata, Fs, prenormfacs, means = niftitotimecourse(
             args.infilename,
             args.datamaskname,
             args.outputroot,
             args.n_pca,
             theprefilter,
             trainedmodelroot=args.trainedmodelroot,
-            normmethod=args.normmethod,
+            normmethod=args.prenormmethod,
             starttime=args.starttime,
             duration=args.duration,
             sigma=args.sigma,
@@ -633,17 +633,17 @@ def capfromany_main():
                 else:
                     segdata = reformdata[feature, subsegstart : subsegstart + subseglen]
 
-                if args.normmethod == "None":
+                if args.postnormmethod == "None":
                     segnorm = segdata - np.mean(segdata)
-                elif args.normmethod == "percent":
+                elif args.postnormmethod == "percent":
                     segnorm = ccalc_math.pcnormalize(segdata)
-                elif args.normmethod == "z":
+                elif args.postnormmethod == "z":
                     segnorm = ccalc_math.varnormalize(segdata)
-                elif args.normmethod == "stddev":
+                elif args.postnormmethod == "stddev":
                     segnorm = ccalc_math.stdnormalize(segdata)
-                elif args.normmethod == "p2p":
+                elif args.postnormmethod == "p2p":
                     segnorm = ccalc_math.ppnormalize(segdata)
-                elif args.normmethod == "mad":
+                elif args.postnormmethod == "mad":
                     segnorm = ccalc_math.madnormalize(segdata)
                 else:
                     segnorm = segdata
