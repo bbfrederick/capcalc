@@ -41,6 +41,14 @@ def niftidecomp_workflow(
     sigma=0.0,
     maskthresh=0.25,
 ):
+    # read in data
+    # spatially filter (or not)
+    # spectrally filter each segment (or not)
+    # mask the data (or don't)
+    # demean (or not)
+    # normalize all timecourses (or not)
+    # do a pca decomposition to find spatial components
+
     print(f"Will perform {decomptype} analysis along the spatial dimension")
 
     decompaxisnum = 0
@@ -130,35 +138,35 @@ def niftidecomp_workflow(
     print(f"\t{procdata.shape[0]} valid voxels, {procdata.shape[1]} time points")
 
     # normalize the individual images
-    themean = np.mean(procdata, axis=0)
+    themeans = np.mean(procdata, axis=0)
     if demean:
         print("demeaning array")
         for i in range(procdata.shape[1]):
-            procdata[:, i] -= themean[i]
+            procdata[:, i] -= themeans[i]
 
     if normmethod == "None":
         print("will not normalize timecourses")
-        thenormfac = themean * 0.0 + 1.0
+        thenormfacs = themeans * 0.0 + 1.0
     elif normmethod == "percent":
         print("will normalize timecourses to percentage of mean")
-        thenormfac = themean
+        thenormfacs = themeans
     elif normmethod == "stddev":
         print("will normalize timecourses to standard deviation of 1.0")
-        thenormfac = np.std(procdata, axis=0)
+        thenormfacs = np.std(procdata, axis=0)
     elif normmethod == "z":
         print("will normalize timecourses to variance of 1.0")
-        thenormfac = np.var(procdata, axis=0)
+        thenormfacs = np.var(procdata, axis=0)
     elif normmethod == "p2p":
         print("will normalize timecourses to p-p deviation of 1.0")
-        thenormfac = np.max(procdata, axis=0) - np.min(procdata, axis=0)
+        thenormfacs = np.max(procdata, axis=0) - np.min(procdata, axis=0)
     elif normmethod == "mad":
         print("will normalize timecourses to median average deviate of 1.0")
-        thenormfac = mad(procdata, axis=0)
+        thenormfacs = mad(procdata, axis=0)
     else:
         print("illegal normalization type")
         sys.exit()
     for i in range(procdata.shape[1]):
-        procdata[:, i] /= thenormfac[i]
+        procdata[:, i] /= thenormfacs[i]
     procdata = np.nan_to_num(procdata)
 
     # now perform the decomposition
@@ -234,7 +242,7 @@ def niftidecomp_workflow(
 
         # denormalize the dimensionality reduced data
         for i in range(totaltimepoints):
-            theinvtrans[:, i] = thenormfac[i] * theinvtrans[:, i] + themean[i]
+            theinvtrans[:, i] = thenormfacs[i] * theinvtrans[:, i] + themeans[i]
 
         print("writing fit data")
         theheader = datafile_hdr
@@ -250,6 +258,6 @@ def niftidecomp_workflow(
         datafile_hdr,
         datafiledims,
         datafilesizes,
-        thenormfac,
-        themean,
+        thenormfacs,
+        themeans,
     )

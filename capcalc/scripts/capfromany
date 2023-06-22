@@ -95,7 +95,7 @@ def niftitotimecourse(
         datafiledims,
         datafilesizes,
         prenormfacs,
-        means,
+        premeans,
     ) = niftidecomp_workflow(
         infilename,
         outputroot,
@@ -141,11 +141,13 @@ def niftitotimecourse(
     ccalc_io.writenpvecs(inputdata, f"{outputroot}_coefficients.txt")
     if debug:
         print("input data shape is ", inputdata.shape)
+    ccalc_io.writenpvecs(prenormfacs, f"{outputroot}_prenormfacs.txt")
+    ccalc_io.writenpvecs(premeans, f"{outputroot}_premeans.txt")
     numpoints = inputdata.shape[1]
     startpoint = max([int(starttime * Fs), 0]) + skippts
     endpoint = min([startpoint + int(duration * Fs), numpoints])
     trimmeddata = inputdata[:, startpoint:endpoint]
-    return trimmeddata, Fs, prenormfacs, means
+    return trimmeddata, outputcomponents, Fs, prenormfacs, premeans
 
 
 def readtcsfromtext(
@@ -546,6 +548,22 @@ def capfromany_main():
         targetfeatures = ccentershape[1]
         print("will use", n_clusters, "clusters and", targetfeatures, "features")
 
+    # save the command line
+    ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
+
+    # describe the spatial prefiltering
+    if args.sigma == 0.0:
+        print("no spatial prefiltering will be performed")
+    else:
+        print(f"data will be spatially prefiltered with a {args.sigma}mm gaussian kernel")
+
+    # describe spectral prefiltering
+    if theprefilter.gettype() != "None":
+        print("filtering to ", theprefilter.gettype(), " band")
+    else:
+        print("no prefiltering will be applied")
+
+    # describe the normalization
     if args.prenormmethod == "None":
         print("will not prenormalize timecourses")
     elif args.prenormmethod == "percent":
@@ -562,13 +580,10 @@ def capfromany_main():
         print("illegal prenormalization type")
         sys.exit()
 
-    # save the command line
-    ccalc_io.writevec([" ".join(sys.argv)], args.outputroot + "_commandline.txt")
-
     # read in the files and get everything trimmed to the right length
     if ccalc_io.checkifnifti(args.infilename[0]):
         inputisnifti = True
-        trimmeddata, Fs, prenormfacs, means = niftitotimecourse(
+        trimmeddata, outputcomponents, Fs, prenormfacs, premeans = niftitotimecourse(
             args.infilename,
             args.datamaskname,
             args.outputroot,
@@ -585,14 +600,9 @@ def capfromany_main():
     else:
         pass
 
-    # band limit the regressors if that is needed
-    if theprefilter.gettype() != "None":
-        if args.debug:
-            print("filtering to ", theprefilter.gettype(), " band")
-    else:
-        if args.debug:
-            print("no prefiltering applied")
+    # save the means and normalization factors
 
+    # we now have all the imaging data read in preprocessed, and reduced to pca coefficient timecourses
     thedims = trimmeddata.shape
     # print("original file dimensions:", origdims)
     print("trimmed data dimensions:", thedims)
@@ -622,7 +632,7 @@ def capfromany_main():
 
     for feature in range(n_features):
         if args.debug:
-            print("preprocessing feature", feature)
+            print("second stage feature preprocessing ", feature)
         for segment in range(numsegs):
             subsegstart = segment * segsize
             for subseglen in subsegs:
