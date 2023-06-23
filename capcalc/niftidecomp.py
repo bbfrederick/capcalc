@@ -40,6 +40,7 @@ def niftidecomp_workflow(
     theprefilter=None,
     sigma=0.0,
     maskthresh=0.25,
+    segmentnorm=True,
 ):
     # read in data
     # spatially filter (or not)
@@ -76,6 +77,7 @@ def niftidecomp_workflow(
     # now read in data
     print("reading in data files")
     numfiles = len(datafilelist)
+    filelens = np.zeros((numfiles), dtype=int)
     for idx, datafile in enumerate(datafilelist):
         print(f"reading {datafile}...")
         (
@@ -86,19 +88,18 @@ def niftidecomp_workflow(
             datafilesizes,
         ) = tide_io.readfromnifti(datafile)
 
+        xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
+        xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
         if idx == 0:
-            xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
-            xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
-            totaltimepoints = timepoints * numfiles
             originaldatafiledims = datafiledims.copy()
+            originaldatafilesizes = datafilesizes.copy()
+            totaltimepoints = numfiles * timepoints
             rs_datafile = np.zeros((numspatiallocs, totaltimepoints), dtype=float)
         else:
-            if (not tide_io.checkspacedimmatch(datafiledims, originaldatafiledims)) or (
-                not tide_io.checktimematch(datafiledims, originaldatafiledims)
-            ):
-                print("all input data files must have the same dimensions")
+            if (not tide_io.checkspacedimmatch(datafiledims, originaldatafiledims)) or (not tide_io.checkspaceresmatch(datafilesizes, originaldatafilesizes)):
+                print("all input data files must have the same spatial dimensions")
                 exit()
-
+        s
         # smooth the data
         if sigma > 0.0:
             print("\tsmoothing data")
@@ -137,37 +138,72 @@ def niftidecomp_workflow(
     print(f"\t{rs_datafile.shape[0]} total voxels, {rs_datafile.shape[1]} time points")
     print(f"\t{procdata.shape[0]} valid voxels, {procdata.shape[1]} time points")
 
-    # normalize the individual images
-    themeans = np.mean(procdata, axis=0)
-    if demean:
-        print("demeaning array")
-        for i in range(procdata.shape[1]):
-            procdata[:, i] -= themeans[i]
+    if segmentnorm:
+        # normalize the individual segments
+        startpoint = 0
+        for idx in range(len(filelens)):
+            themeans = np.mean(procdata[startpoint:startpoint + ], axis=0)
+            if demean:
+                print("demeaning array")
+                for i in range(procdata.shape[1]):
+                    procdata[:, i] -= themeans[i]
 
-    if normmethod == "None":
-        print("will not normalize timecourses")
-        thenormfacs = themeans * 0.0 + 1.0
-    elif normmethod == "percent":
-        print("will normalize timecourses to percentage of mean")
-        thenormfacs = themeans
-    elif normmethod == "stddev":
-        print("will normalize timecourses to standard deviation of 1.0")
-        thenormfacs = np.std(procdata, axis=0)
-    elif normmethod == "z":
-        print("will normalize timecourses to variance of 1.0")
-        thenormfacs = np.var(procdata, axis=0)
-    elif normmethod == "p2p":
-        print("will normalize timecourses to p-p deviation of 1.0")
-        thenormfacs = np.max(procdata, axis=0) - np.min(procdata, axis=0)
-    elif normmethod == "mad":
-        print("will normalize timecourses to median average deviate of 1.0")
-        thenormfacs = mad(procdata, axis=0)
+            if normmethod == "None":
+                print("will not normalize timecourses")
+                thenormfacs = themeans * 0.0 + 1.0
+            elif normmethod == "percent":
+                print("will normalize timecourses to percentage of mean")
+                thenormfacs = themeans
+            elif normmethod == "stddev":
+                print("will normalize timecourses to standard deviation of 1.0")
+                thenormfacs = np.std(procdata, axis=0)
+            elif normmethod == "z":
+                print("will normalize timecourses to variance of 1.0")
+                thenormfacs = np.var(procdata, axis=0)
+            elif normmethod == "p2p":
+                print("will normalize timecourses to p-p deviation of 1.0")
+                thenormfacs = np.max(procdata, axis=0) - np.min(procdata, axis=0)
+            elif normmethod == "mad":
+                print("will normalize timecourses to median average deviate of 1.0")
+                thenormfacs = mad(procdata, axis=0)
+            else:
+                print("illegal normalization type")
+                sys.exit()
+            for i in range(procdata.shape[1]):
+                procdata[:, i] /= thenormfacs[i]
+            procdata = np.nan_to_num(procdata)
     else:
-        print("illegal normalization type")
-        sys.exit()
-    for i in range(procdata.shape[1]):
-        procdata[:, i] /= thenormfacs[i]
-    procdata = np.nan_to_num(procdata)
+        # normalize the individual images
+        themeans = np.mean(procdata, axis=0)
+        if demean:
+            print("demeaning array")
+            for i in range(procdata.shape[1]):
+                procdata[:, i] -= themeans[i]
+
+        if normmethod == "None":
+            print("will not normalize timecourses")
+            thenormfacs = themeans * 0.0 + 1.0
+        elif normmethod == "percent":
+            print("will normalize timecourses to percentage of mean")
+            thenormfacs = themeans
+        elif normmethod == "stddev":
+            print("will normalize timecourses to standard deviation of 1.0")
+            thenormfacs = np.std(procdata, axis=0)
+        elif normmethod == "z":
+            print("will normalize timecourses to variance of 1.0")
+            thenormfacs = np.var(procdata, axis=0)
+        elif normmethod == "p2p":
+            print("will normalize timecourses to p-p deviation of 1.0")
+            thenormfacs = np.max(procdata, axis=0) - np.min(procdata, axis=0)
+        elif normmethod == "mad":
+            print("will normalize timecourses to median average deviate of 1.0")
+            thenormfacs = mad(procdata, axis=0)
+        else:
+            print("illegal normalization type")
+            sys.exit()
+        for i in range(procdata.shape[1]):
+            procdata[:, i] /= thenormfacs[i]
+        procdata = np.nan_to_num(procdata)
 
     # now perform the decomposition
     if decomptype == "ica":
