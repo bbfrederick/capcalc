@@ -90,16 +90,19 @@ def niftidecomp_workflow(
 
         xsize, ysize, numslices, timepoints = tide_io.parseniftidims(datafiledims)
         xdim, ydim, slicethickness, tr = tide_io.parseniftisizes(datafilesizes)
+        filelens[idx] = timepoints
         if idx == 0:
             originaldatafiledims = datafiledims.copy()
             originaldatafilesizes = datafilesizes.copy()
             totaltimepoints = numfiles * timepoints
             rs_datafile = np.zeros((numspatiallocs, totaltimepoints), dtype=float)
         else:
-            if (not tide_io.checkspacedimmatch(datafiledims, originaldatafiledims)) or (not tide_io.checkspaceresmatch(datafilesizes, originaldatafilesizes)):
+            if (not tide_io.checkspacedimmatch(datafiledims, originaldatafiledims)) or (
+                not tide_io.checkspaceresmatch(datafilesizes, originaldatafilesizes)
+            ):
                 print("all input data files must have the same spatial dimensions")
                 exit()
-        s
+
         # smooth the data
         if sigma > 0.0:
             print("\tsmoothing data")
@@ -141,39 +144,54 @@ def niftidecomp_workflow(
     if segmentnorm:
         # normalize the individual segments
         startpoint = 0
-        for idx in range(len(filelens)):
-            themeans = np.mean(procdata[startpoint:startpoint + ], axis=0)
+        themeans = np.zeros((procdata.shape[0], numfiles), dtype=float)
+        thenormfacs = np.zeros((procdata.shape[0], numfiles), dtype=float)
+        for idx in range(numfiles):
+            print(f"normalizing {filelens[idx]} images in segment {idx}")
+            themeans[:, idx] = np.mean(
+                procdata[:, startpoint : startpoint + filelens[idx]], axis=1
+            )
             if demean:
                 print("demeaning array")
-                for i in range(procdata.shape[1]):
-                    procdata[:, i] -= themeans[i]
+                for i in range(procdata.shape[0]):
+                    procdata[i, startpoint : startpoint + filelens[idx]] -= themeans[i, idx]
 
             if normmethod == "None":
                 print("will not normalize timecourses")
-                thenormfacs = themeans * 0.0 + 1.0
+                thenormfacs[:, idx] = themeans[:, idx] * 0.0 + 1.0
             elif normmethod == "percent":
                 print("will normalize timecourses to percentage of mean")
-                thenormfacs = themeans
+                thenormfacs[:, idx] = themeans[:, idx]
             elif normmethod == "stddev":
                 print("will normalize timecourses to standard deviation of 1.0")
-                thenormfacs = np.std(procdata, axis=0)
+                thenormfacs[:, idx] = np.std(
+                    procdata[:, startpoint : startpoint + filelens[idx]], axis=1
+                )
             elif normmethod == "z":
                 print("will normalize timecourses to variance of 1.0")
-                thenormfacs = np.var(procdata, axis=0)
+                thenormfacs[:, idx] = np.var(
+                    procdata[:, startpoint : startpoint + filelens[idx]], axis=1
+                )
             elif normmethod == "p2p":
                 print("will normalize timecourses to p-p deviation of 1.0")
-                thenormfacs = np.max(procdata, axis=0) - np.min(procdata, axis=0)
+                thenormfacs[:, idx] = np.max(
+                    procdata[:, startpoint : startpoint + filelens[idx]], axis=1
+                ) - np.min(procdata[:, startpoint : startpoint + filelens[idx]], axis=1)
             elif normmethod == "mad":
                 print("will normalize timecourses to median average deviate of 1.0")
-                thenormfacs = mad(procdata, axis=0)
+                thenormfacs[:, idx] = mad(
+                    procdata[:, startpoint : startpoint + filelens[idx]], axis=1
+                )
             else:
                 print("illegal normalization type")
                 sys.exit()
-            for i in range(procdata.shape[1]):
-                procdata[:, i] /= thenormfacs[i]
-            procdata = np.nan_to_num(procdata)
+            for i in range(procdata.shape[0]):
+                procdata[i, startpoint : startpoint + filelens[idx]] /= thenormfacs[i, idx]
+            startpoint += filelens[idx]
+        procdata = np.nan_to_num(procdata)
     else:
         # normalize the individual images
+        print(f"normalizing {procdata.shape[1]} images")
         themeans = np.mean(procdata, axis=0)
         if demean:
             print("demeaning array")
@@ -277,8 +295,20 @@ def niftidecomp_workflow(
         outputcoefficients = np.transpose(thetransform)
 
         # denormalize the dimensionality reduced data
-        for i in range(totaltimepoints):
-            theinvtrans[:, i] = thenormfacs[i] * theinvtrans[:, i] + themeans[i]
+        if segmentnorm:
+            # normalize the individual segments
+            startpoint = 0
+            for idx in range(numfiles):
+                print(f"denormalizing section {idx} with size {filelens[idx]}")
+                theinvtrans[:, startpoint : startpoint + filelens[idx]] = (thenormfacs[:, idx])[
+                    :, None
+                ] * theinvtrans[:, startpoint : startpoint + filelens[idx]] + (themeans[:, idx])[
+                    :, None
+                ]
+                startpoint += filelens[idx]
+        else:
+            for i in range(totaltimepoints):
+                theinvtrans[:, i] = thenormfacs[i] * theinvtrans[:, i] + themeans[i]
 
         print("writing fit data")
         theheader = datafile_hdr
