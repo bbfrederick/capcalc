@@ -65,6 +65,7 @@ def niftitotimecourse(
     duration=100000000.0,
     sigma=0.0,
     maskthresh=0.25,
+    segmentnorm=True,
     debug=False,
 ):
     # read in a list of NIFTI files
@@ -109,6 +110,7 @@ def niftitotimecourse(
         theprefilter=theprefilter,
         sigma=sigma,
         maskthresh=maskthresh,
+        segmentnorm=segmentnorm,
     )
     Fs = 1.0 / datafilesizes[4]
 
@@ -147,7 +149,7 @@ def niftitotimecourse(
     startpoint = max([int(starttime * Fs), 0]) + skippts
     endpoint = min([startpoint + int(duration * Fs), numpoints])
     trimmeddata = inputdata[:, startpoint:endpoint]
-    return trimmeddata, outputcomponents, Fs, prenormfacs, premeans
+    return trimmeddata, outputcomponents, Fs, prenormfacs, premeans, theheader
 
 
 def readtcsfromtext(
@@ -334,6 +336,15 @@ def _get_parser():
         dest="standardscale",
         action="store_false",
         help=("Do not use StandardScaler on input timecourses."),
+        default=True,
+    )
+    preproc_opts.add_argument(
+        "--nosegmentnorm",
+        dest="segmentnorm",
+        action="store_false",
+        help=(
+            "Do not normalize file timecourses individually.  This is probably a bad idea.  Don't use this option."
+        ),
         default=True,
     )
     preproc_opts.add_argument(
@@ -583,7 +594,14 @@ def capfromany_main():
     # read in the files and get everything trimmed to the right length
     if ccalc_io.checkifnifti(args.infilename[0]):
         inputisnifti = True
-        trimmeddata, outputcomponents, Fs, prenormfacs, premeans = niftitotimecourse(
+        (
+            trimmeddata,
+            outputcomponents,
+            Fs,
+            prenormfacs,
+            premeans,
+            theniftiheader,
+        ) = niftitotimecourse(
             args.infilename,
             args.datamaskname,
             args.outputroot,
@@ -595,6 +613,7 @@ def capfromany_main():
             duration=args.duration,
             sigma=args.sigma,
             skippts=args.skip,
+            segmentnorm=args.segmentnorm,
         )
         sampletime = 1.0 / Fs
     else:
@@ -756,6 +775,20 @@ def capfromany_main():
         trainedmodelroot=args.trainedmodelroot,
         initialcenters=args.initialcenters,
     )
+
+    # project the clusters to image space and write them out
+    theclusters = kmeans.cluster_centers_
+    numclusters, numfeatures = theclusters.shape
+    projclusterheader = theniftiheader.copy()
+    projclusterheader["dim"][4] = numclusters
+    xdim, ydim, zdim, dummy = ccalc_io.parseniftidims(projclusterheader["dim"])
+    projclusters = np.zeros((xdim, ydim, zdim, theclusters.shape[0]), dtype=float)
+    for clusternum in range(numclusters):
+        for pcacomp in range(numfeatures):
+            projclusters[:, :, :, clusternum] += (
+                theclusters[clusternum, pcacomp] * outputcomponents[:, :, :, pcacomp]
+            )
+    ccalc_io.savetonifti(projclusters, projclusterheader, args.outputroot + "_clustercenters")
 
     # generate the state labels
     thestatelabels = kmeans.predict(X)
