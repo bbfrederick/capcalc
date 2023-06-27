@@ -332,7 +332,7 @@ def _get_parser():
         default=8,
     )
     preproc_opts.add_argument(
-        "--nostandardscalar",
+        "--nostandardscaler",
         dest="standardscale",
         action="store_false",
         help=("Do not use StandardScaler on input timecourses."),
