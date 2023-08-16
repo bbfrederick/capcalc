@@ -1,5 +1,5 @@
 # Start from the fredericklab base container
-FROM fredericklab/basecontainer:v0.1.9
+FROM fredericklab/basecontainer:v0.2.1
 
 # Create a shared $HOME directory
 RUN useradd -m -s /bin/bash -G users capcalc
@@ -7,11 +7,15 @@ WORKDIR /home/capcalc
 ENV HOME="/home/capcalc"
 
 
-# Installing capcalc
+# Install capcalc
 COPY . /src/capcalc
 RUN cd /src/capcalc && \
     pip install . && \
     rm -rf /src/capcalc/build /src/capcalc/dist
+
+# clean up
+RUN mamba clean -y --all
+RUN pip cache purge
 
 ENV IS_DOCKER_8395080871=1
 
