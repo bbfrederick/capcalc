@@ -1,5 +1,5 @@
 # Start from the fredericklab base container
-FROM fredericklab/basecontainer:v0.2.1
+FROM fredericklab/basecontainer:v0.2.2
 
 # Install capcalc
 COPY . /src/capcalc
