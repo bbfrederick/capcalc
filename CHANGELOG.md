@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.3.7 (9/13/23)
+* Mass merge of a bunch of dependabot PRs.
+
 ## Version 1.3.6 (5/11/23)
 * (Docker) Updated to python 3.11 basecontainer.
 * (Docker) Fixed testdocker.sh.
