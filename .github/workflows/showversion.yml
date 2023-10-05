@@ -1,19 +1,16 @@
-name: Upload latest to DockerHub
+name: Show git version
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - 'main'
+    branches: [ main ]
 
 jobs:
-  docker:
+  showversion:
 
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v0.10.2
         with:
@@ -53,51 +50,11 @@ jobs:
           GITVERSION=${GITPREVVERSION}+${GITCOMMITS}.g${GITSHA8}
           GITTIME=`git show | grep Date | head -n 1 | awk '{print $5 $7}'`
           GITDATE=${{ steps.gitversion.outputs.commitDate }}"T"${GITTIME}
-          echo "GITVERSION=${GITVERSION}" >> $GITHUB_ENV
-          echo "GITSHA=${GITSHA}" >> $GITHUB_ENV
-          echo "GITDATE=${GITDATE}" >> $GITHUB_ENV
           BUILD_TIME=$(date -Iseconds)
           echo "BUILD_TIME=${BUILD_TIME}" >> $GITHUB_ENV
-
-      - name: What
-        run: echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Get version number
-        id: get_version
-        run: echo "VERSION=${{ github.ref }}" >> $GITHUB_OUTPUT
-
-      - name: Free disk space
-        run: | 
-          df -h
-          sudo rm -rf ${GITHUB_WORKSPACE}/.git
-          sudo swapoff -a
-          sudo rm -f /swapfile
-          sudo apt clean
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          df -h
-
-      - name: Build and push
-        id: docker_build
-        uses: docker/build-push-action@v5
-        with:
-          platforms: linux/amd64,linux/arm64
-          push: true
-          sbom: false
-          provenance: false
-          tags: fredericklab/capcalc:latest
-          build-args: |
-            BRANCH=${{ env.BRANCH }}
-            GITVERSION=${{ env.GITVERSION }}
-            GITSHA=${{ env.GITSHA }}
-            GITDATE=${{ env.GITDATE }}
-            BUILD_TIME=${{ env.BUILD_TIME }}
+          echo "GITVERSION: ${GITVERSION}"
+          echo "GITDIRECTVERSION: ${{ env.GITDIRECTVERSION}}"
+          echo "GITSHA: ${GITSHA}"
+          echo "GITCOMMITS: ${GITCOMMITS}"
+          echo "GITSHA8: ${GITSHA8}"
+          echo "GITDATE: ${GITDATE}"

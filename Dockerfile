@@ -1,8 +1,29 @@
 # Start from the fredericklab base container
-FROM fredericklab/basecontainer:v0.2.3
+FROM fredericklab/basecontainer:v0.2.4
+
+# get build arguments
+ARG BUILD_TIME
+ARG BRANCH
+ARG GITVERSION
+ARG GITSHA
+ARG GITDATE
+
+# set and echo environment variables
+ENV BUILD_TIME $BUILD_TIME
+ENV BRANCH $BRANCH
+ENV GITVERSION=${GITVERSION}
+ENV GITSHA=${GITSHA}
+ENV GITDATE=${GITDATE}
+
+RUN echo "BRANCH: "$BRANCH
+RUN echo "BUILD_TIME: "$BUILD_TIME
+RUN echo "GITVERSION: "$GITVERSION
+RUN echo "GITSHA: "$GITSHA
+RUN echo "GITDATE: "$GITDATE
 
 # Install capcalc
 COPY . /src/capcalc
+RUN echo $GITVERSION > /src/capcalc/VERSION
 RUN cd /src/capcalc && \
     pip install . && \
     rm -rf /src/capcalc/build /src/capcalc/dist
@@ -25,18 +46,10 @@ ENTRYPOINT ["/usr/local/miniconda/bin/capcalc_dispatcher"]
 # set a non-root user
 USER capcalc
 
-ARG VERSION
-ARG BUILD_DATE
-ARG VCS_REF
-
-RUN echo $VERSION
-RUN echo $BUILD_DATE
-RUN echo $VCS_REF
-
-LABEL org.label-schema.build-date=$BUILD_DATE \
+LABEL org.label-schema.build-date=$BUILD_TIME \
       org.label-schema.name="capcalc" \
       org.label-schema.description="capcalc - a set of tools for delay processing" \
       org.label-schema.url="http://nirs-fmri.net" \
-      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-ref=$GITVERSION \
       org.label-schema.vcs-url="https://github.com/bbfrederick/capcalc" \
-      org.label-schema.version=$VERSION
+      org.label-schema.version=$GITVERSION
