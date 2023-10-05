@@ -41,7 +41,7 @@ ENV IS_DOCKER_8395080871=1
 
 RUN ldconfig
 WORKDIR /tmp/
-ENTRYPOINT ["/usr/local/miniconda/bin/capcalc_dispatcher"]
+ENTRYPOINT ["capcalc_dispatcher"]
 
 # set a non-root user
 USER capcalc
