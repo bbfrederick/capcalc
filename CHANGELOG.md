@@ -1,5 +1,9 @@
 # Release history
 
+## Version 1.3.8 (12/11/23)
+* (Docker) Updated to basecontainer 0.3.0.
+* (Docker) Added caching to build.
+
 ## Version 1.3.7 (9/13/23)
 * Mass merge of a bunch of dependabot PRs.
 * (Docker) Updated to basecontainer 0.2.3.
