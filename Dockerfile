@@ -29,7 +29,7 @@ RUN cd /src/capcalc && \
     rm -rf /src/capcalc/build /src/capcalc/dist
 
 # clean up
-RUN mamba clean -y --all
+#RUN mamba clean -y --all
 RUN pip cache purge
 
 # Create a shared $HOME directory
