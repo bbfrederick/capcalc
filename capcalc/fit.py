@@ -26,7 +26,8 @@ import numpy as np
 import pyfftw
 import scipy as sp
 import scipy.special as sps
-#from numba import jit
+
+# from numba import jit
 from scipy.signal import find_peaks, hilbert
 
 import capcalc.util as ccalc_util

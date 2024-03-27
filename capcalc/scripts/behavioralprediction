@@ -22,6 +22,7 @@
 import os
 
 import numpy as np
+
 import capcalc.io as ccalc_io
 
 '''% This code is released under the terms of the GNU GPL v2. This code

@@ -30,10 +30,12 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-#from numba import jit
 
 import capcalc._version as ccalc_versioneer
 import capcalc.io as ccalc_io
+
+# from numba import jit
+
 
 LGR = logging.getLogger(__name__)
 TimingLGR = logging.getLogger("TIMING")
