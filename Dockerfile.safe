@@ -77,10 +77,8 @@ RUN mamba install -y python \
                      h5py \
                      "tensorflow>=2.4.0" \
                      pyqtgraph \
-                     pyfftw \
                      pandas \
-                     versioneer \
-                     numba; sync && \
+                     versioneer; sync && \
     chmod -R a+rX /usr/local/miniconda; sync && \
     chmod +x /usr/local/miniconda/bin/*; sync && \
     conda-build purge-all; sync && \

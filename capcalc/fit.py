@@ -23,22 +23,15 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pyfftw
 import scipy as sp
 import scipy.special as sps
-
-# from numba import jit
 from scipy.signal import find_peaks, hilbert
 
 import capcalc.util as ccalc_util
 
-fftpack = pyfftw.interfaces.scipy_fftpack
-pyfftw.interfaces.cache.enable()
-
 # ---------------------------------------- Global constants -------------------------------------------
 defaultbutterorder = 6
 MAXLINES = 10000000
-donotbeaggressive = True
 
 # ----------------------------------------- Conditional imports ---------------------------------------
 try:
@@ -47,31 +40,6 @@ try:
     memprofilerexists = True
 except ImportError:
     memprofilerexists = False
-
-donotusenumba = True
-
-
-def conditionaljit():
-    def resdec(f):
-        if donotusenumba:
-            return f
-        return jit(f, nopython=False)
-
-    return resdec
-
-
-def conditionaljit2():
-    def resdec(f):
-        if donotusenumba or donotbeaggressive:
-            return f
-        return jit(f, nopython=False)
-
-    return resdec
-
-
-def disablenumba():
-    global donotusenumba
-    donotusenumba = True
 
 
 # --------------------------- Fitting functions -------------------------------------------------
@@ -108,7 +76,6 @@ def gaussskresiduals(p, y, x):
     return y - gausssk_eval(x, p)
 
 
-@conditionaljit()
 def gaussresiduals(p, y, x):
     """
 
@@ -174,7 +141,6 @@ def gausssk_eval(x, p):
     return p[0] * sp.stats.norm.pdf(t) * sp.stats.norm.cdf(p[3] * t)
 
 
-@conditionaljit()
 def kaiserbessel_eval(x, p):
     """
 
@@ -201,7 +167,6 @@ def kaiserbessel_eval(x, p):
     )
 
 
-@conditionaljit()
 def gauss_eval(x, p):
     """
 
@@ -254,7 +219,6 @@ def risetime_eval_loop(x, p):
     return r
 
 
-@conditionaljit()
 def trapezoid_eval(x, toplength, p):
     """
 
@@ -277,7 +241,6 @@ def trapezoid_eval(x, toplength, p):
         return p[1] * (np.exp(-(corrx - toplength) / p[3]))
 
 
-@conditionaljit()
 def risetime_eval(x, p):
     """
 
@@ -367,7 +330,8 @@ def locpeak(data, samplerate, lastpeaktime, winsizeinsecs=5.0, thresh=0.75, hyst
 
 
 # generate the polynomial fit timecourse from the coefficients
-@conditionaljit()
+
+
 def trendgen(thexvals, thefitcoffs, demean):
     """
 
@@ -416,7 +380,6 @@ def detrend(inputdata, order=1, demean=False):
     return inputdata - thefittc
 
 
-@conditionaljit()
 def findfirstabove(theyvals, thevalue):
     """
 
@@ -640,7 +603,6 @@ def territorydecomp(
     return fitmap, thecoffs, theRs
 
 
-@conditionaljit()
 def refinepeak_quad(x, y, peakindex, stride=1):
     # first make sure this actually is a peak
     ismax = None
@@ -670,7 +632,6 @@ def refinepeak_quad(x, y, peakindex, stride=1):
     return peakloc, peakval, peakwidth, ismax, badfit
 
 
-@conditionaljit2()
 def findmaxlag_gauss(
     thexcorr_x,
     thexcorr_y,
@@ -924,7 +885,6 @@ def findmaxlag_gauss(
     return maxindex, maxlag, maxval, maxsigma, maskval, failreason, fitstart, fitend
 
 
-@conditionaljit2()
 def maxindex_noedge(thexcorr_x, thexcorr_y, bipolar=False):
     """
 
@@ -965,8 +925,6 @@ def maxindex_noedge(thexcorr_x, thexcorr_y, bipolar=False):
     return maxindex, flipfac
 
 
-# disabled conditionaljit on 11/8/16.  This causes crashes on some machines (but not mine, strangely enough)
-@conditionaljit2()
 def findmaxlag_gauss_rev(
     thexcorr_x,
     thexcorr_y,
@@ -1266,7 +1224,6 @@ def findmaxlag_gauss_rev(
     )
 
 
-@conditionaljit2()
 def findmaxlag_quad(
     thexcorr_x,
     thexcorr_y,

@@ -19,25 +19,33 @@
 # $Date: 2016/07/12 13:50:29 $
 # $Id: ccalc_funcs.py,v 1.4 2016/07/12 13:50:29 frederic Exp $
 #
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
-import pyfftw
-
-# from numba import jit
-from scipy import fftpack
 from statsmodels.robust import mad
 
 import capcalc.filter as ccalc_filt
 import capcalc.fit as ccalc_fit
 
-fftpack = pyfftw.interfaces.scipy_fftpack
-pyfftw.interfaces.cache.enable()
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    try:
+        import pyfftw
+    except ImportError:
+        pyfftwpresent = False
+    else:
+        pyfftwpresent = True
+
+from scipy import fftpack
+
+if pyfftwpresent:
+    fftpack = pyfftw.interfaces.scipy_fftpack
+    pyfftw.interfaces.cache.enable()
 
 # ---------------------------------------- Global constants -------------------------------------------
 defaultbutterorder = 6
 MAXLINES = 10000000
-donotusenumba = True
-donotbeaggressive = True
 
 # ----------------------------------------- Conditional imports ---------------------------------------
 try:
@@ -46,30 +54,6 @@ try:
     memprofilerexists = True
 except ImportError:
     memprofilerexists = False
-
-
-# ----------------------------------------- Conditional jit handling ----------------------------------
-def conditionaljit():
-    def resdec(f):
-        if donotusenumba:
-            return f
-        return jit(f, nopython=False)
-
-    return resdec
-
-
-def conditionaljit2():
-    def resdec(f):
-        if donotusenumba or donotbeaggressive:
-            return f
-        return jit(f, nopython=True)
-
-    return resdec
-
-
-def disablenumba():
-    global donotusenumba
-    donotusenumba = True
 
 
 # --------------------------- Spectral analysis functions ---------------------------------------
@@ -262,7 +246,6 @@ def znormalize(vector):
     return stdnormalize(vector)
 
 
-@conditionaljit()
 def madnormalize(vector, returnnormfac=False):
     """
 
@@ -288,7 +271,6 @@ def madnormalize(vector, returnnormfac=False):
             return demedianed
 
 
-@conditionaljit()
 def stdnormalize(vector):
     """
 
@@ -373,7 +355,6 @@ def imagevariance(thedata, thefilter, samplefreq, debug=False):
     return np.var(filteredim, axis=1)
 
 
-@conditionaljit()
 def corrnormalize(thedata, detrendorder=1, windowfunc="hamming"):
     """
 

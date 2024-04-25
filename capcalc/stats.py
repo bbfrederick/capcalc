@@ -21,22 +21,16 @@
 #
 import matplotlib.pyplot as plt
 import numpy as np
-import pyfftw
 import scipy as sp
-
-# from numba import jit
 from scipy.stats import johnsonsb, kurtosis, kurtosistest
 
 import capcalc.fit as ccalc_fit
 import capcalc.io as ccalc_io
 
-fftpack = pyfftw.interfaces.scipy_fftpack
-pyfftw.interfaces.cache.enable()
-
 # ---------------------------------------- Global constants -------------------------------------------
 defaultbutterorder = 6
 MAXLINES = 10000000
-donotbeaggressive = True
+
 
 # ----------------------------------------- Conditional imports ---------------------------------------
 try:
@@ -45,32 +39,6 @@ try:
     memprofilerexists = True
 except ImportError:
     memprofilerexists = False
-
-
-donotusenumba = True
-
-
-def disablenumba():
-    global donotusenumba
-    donotusenumba = True
-
-
-def conditionaljit():
-    def resdec(f):
-        if donotusenumba:
-            return f
-        return jit(f, nopython=False)
-
-    return resdec
-
-
-def conditionaljit2():
-    def resdec(f):
-        if donotusenumba or donotbeaggressive:
-            return f
-        return jit(f, nopython=False)
-
-    return resdec
 
 
 # --------------------------- probability functions -------------------------------------------------

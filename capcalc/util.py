@@ -34,9 +34,6 @@ import pandas as pd
 import capcalc._version as ccalc_versioneer
 import capcalc.io as ccalc_io
 
-# from numba import jit
-
-
 LGR = logging.getLogger(__name__)
 TimingLGR = logging.getLogger("TIMING")
 MemoryLGR = logging.getLogger("MEMORY")
@@ -45,8 +42,7 @@ MemoryLGR = logging.getLogger("MEMORY")
 # ---------------------------------------- Global constants -------------------------------------------
 defaultbutterorder = 6
 MAXLINES = 10000000
-donotusenumba = True
-donotbeaggressive = True
+
 
 # ----------------------------------------- Conditional imports ---------------------------------------
 try:
@@ -63,43 +59,6 @@ def checkimports(optiondict):
     else:
         print("memprofiler does not exist")
     optiondict["memprofilerexists"] = memprofilerexists
-
-    if donotbeaggressive:
-        print("no aggressive optimization")
-    else:
-        print("aggressive optimization")
-    optiondict["donotbeaggressive"] = donotbeaggressive
-
-    global donotusenumba
-    if donotusenumba:
-        print("will not use numba even if present")
-    else:
-        print("using numba if present")
-    optiondict["donotusenumba"] = donotusenumba
-
-
-# ----------------------------------------- Conditional jit handling ----------------------------------
-def conditionaljit():
-    def resdec(f):
-        if donotusenumba:
-            return f
-        return jit(f, nopython=False)
-
-    return resdec
-
-
-def conditionaljit2():
-    def resdec(f):
-        if donotusenumba or donotbeaggressive:
-            return f
-        return jit(f, nopython=False)
-
-    return resdec
-
-
-def disablenumba():
-    global donotusenumba
-    donotusenumba = True
 
 
 # --------------------------- Utility functions -------------------------------------------------

@@ -8,6 +8,5 @@ conda install \
         scikit-learn \
         matplotlib \
         statsmodels \
-        pyfftw \
         nibabel \
         versioneer
