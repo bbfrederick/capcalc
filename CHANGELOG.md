@@ -1,5 +1,14 @@
 # Release history
 
+## Version 1.3.9 (4/25/23)
+* (package) Removed numba as a dependency.
+* (package) Made pyfftw an optional dependency (it's no longer in basecontainer).
+* (package) Made some proactive fixes for numpy 2.0.0 compatibility.
+* (package) Accepted several dependabot PRs.
+* (package) General cleanup of automated workflows to match updates to rapidtide.
+* (Docker) Cleaned up and simplified Dockerfile.
+* (Docker) Updated to basecontainer:latest-release (0.3.5 atm).
+
 ## Version 1.3.8 (12/11/23)
 * (Docker) Updated to basecontainer 0.3.0.
 * (Docker) Added caching to build.
