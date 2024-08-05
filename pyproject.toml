@@ -22,6 +22,66 @@ classifiers = [
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
+]
+requires-python = '>=3.8'
+dependencies = [
+  'numpy',
+  'scipy',
+  'scikit-learn',
+  'matplotlib',
+  'statsmodels',
+  'nibabel',
+  'versioneer',
+]
+dynamic = ['version']
+
+[project.urls]
+'Homepage' = 'https://github.com/bbfrederick/capcalc'
+'Bug Tracker' = 'https://github.com/bbfrederick/capcalc/issues'
+'Repository' = 'https://github.com/bbfrederick/capcalc.git'
+'Documentation' = 'https://capcalc.readthedocs.io'
+'Changelog' = 'https://github.com/bbfrederick/capcalc/blob/main/CHANGELOG.md'
+
+[project.optional-dependencies]
+test = [
+  'codecov',
+  'coverage',
+  'coveralls',
+  'flake8-black',
+  'pytest',
+  'pytest-cov',
+]
+doc = [
+  'sphinx',
+  'sphinx_rtd_theme',
+  'sphinx-argparse',
+  'sphinx-gallery',
+  'm2r',
+  'numpydoc',
+  'recommonmark',
+  'mistune',
+]
+
+[tool.setuptools]
+include-package-data = true 
+
+[tool.setuptools.packages.find]
+include = ['capcalc']
+
+[tool.setuptools.package-data]
+capcalc = ['capcalc/*.py', 'capcalc/scripts/*']
+
+[tool.setuptools.dynamic]
+version = {attr = "capcalc.__version__"}
+
+[tool.setuptools.exclude-package-data]
+capcalc = ['.eggs', '.git', '.github', '.pytest_cache']
+
+# Aliases
+docs = ['capcalc[doc]']
+tests = ['capcalc[test]']
+all = ['capcalc[docs,tests]']
+
 
 [tool.black]
 line-length = 99
@@ -46,7 +106,7 @@ exclude = '''
 '''
 
 [tool.isort]
-profile = "black"
+profile = 'black'
 multi_line_output = 3
 
 [tool.versioneer]
@@ -56,4 +116,3 @@ versionfile_source = "capcalc/_version.py"
 versionfile_build = "capcalc/_version.py"
 tag_prefix = ""
 parentdir_prefix = "capcalc-"
-

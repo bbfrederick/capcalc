@@ -2,5 +2,5 @@
 
 git pull
 cleandirs
-pip install .
-rm -rf build dist capcalc.egg-info
+pip install -e .
+rm -rf capcalc.egg-info
