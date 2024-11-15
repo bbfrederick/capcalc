@@ -23,7 +23,7 @@ import sys
 
 def main():
     # get the command line parameters
-    if os.getenv("IS_DOCKER_8395080871") is not None:
+    if os.getenv("IN_DOCKER_CONTAINER") is not None:
         isdocker = True
         execdir = sys.path[0]
     else:

@@ -37,7 +37,7 @@ RUN useradd -m -s /bin/bash -G users capcalc
 WORKDIR /home/capcalc
 ENV HOME="/home/capcalc"
 
-ENV IS_DOCKER_8395080871=1
+ENV IN_DOCKER_CONTAINER=1
 
 RUN ldconfig
 WORKDIR /tmp/
