@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.4.0 (11/18/23)
+* (Docker) Made compatible with the new (small) basecontainer architecture.
+
 ## Version 1.3.9 (4/25/23)
 * (package) Removed numba as a dependency.
 * (package) Made pyfftw an optional dependency (it's no longer in basecontainer).
