@@ -25,16 +25,16 @@ RUN echo "GITDATE: "$GITDATE
 COPY . /src/capcalc
 RUN echo $GITVERSION > /src/capcalc/VERSION
 
-# init and install picachooser
+# init and install capcalc
 RUN uv pip install --upgrade pip
 RUN cd /src/capcalc && \
     uv pip install .
 RUN chmod -R a+r /src/capcalc
 
 # install versioneer
-RUN cd /src/picachooser && \
+RUN cd /src/capcalc && \
     versioneer install --no-vendor && \
-    rm -rf /src/picachooser/build /src/picachooser/dist
+    rm -rf /src/capcalc/build /src/capcalc/dist
 
 # clean up
 RUN pip cache purge
@@ -65,7 +65,7 @@ ENTRYPOINT ["/opt/miniforge3/envs/science/bin/capcalc_dispatcher"]
 
 LABEL org.label-schema.build-date=$BUILD_TIME \
       org.label-schema.name="capcalc" \
-      org.label-schema.description="capcalc - a set of tools for delay processing" \
+      org.label-schema.description="capcalc - coactivation pattern analysis software" \
       org.label-schema.url="http://nirs-fmri.net" \
       org.label-schema.vcs-ref=$GITVERSION \
       org.label-schema.vcs-url="https://github.com/bbfrederick/capcalc" \
