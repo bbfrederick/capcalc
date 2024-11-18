@@ -36,6 +36,9 @@ RUN cd /src/capcalc && \
     versioneer install --no-vendor && \
     rm -rf /src/capcalc/build /src/capcalc/dist
 
+# update the paths to libraries
+RUN ldconfig
+
 # clean up
 RUN pip cache purge
 
@@ -48,13 +51,22 @@ RUN useradd \
     --home /home/$USER \
     $USER
 RUN cp ~/.bashrc /home/$USER/.bashrc; chown $USER /home/$USER/.bashrc
-
+RUN chown -R $USER /src/$USER
 WORKDIR /home/$USER
 ENV HOME="/home/$USER"
 
+RUN /opt/miniforge3/bin/mamba init
+RUN echo "mamba activate science" >> /home/rapidtide/.bashrc
+RUN echo "/opt/miniforge3/bin/mamba activate science" >> /home/rapidtide/.bashrc
+
+# switch to the capcalc user
+USER $USER
+
+# set up variable for non-interactive shell
+ENV PATH=/opt/miniforge3/envs/science/bin:/opt/miniforge3/condabin:.:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 ENV IN_DOCKER_CONTAINER=1
 
-RUN ldconfig
 WORKDIR /tmp/
 
 # set to non-root user and initialize mamba
