@@ -56,8 +56,8 @@ WORKDIR /home/$USER
 ENV HOME="/home/$USER"
 
 RUN /opt/miniforge3/bin/mamba init
-RUN echo "mamba activate science" >> /home/rapidtide/.bashrc
-RUN echo "/opt/miniforge3/bin/mamba activate science" >> /home/rapidtide/.bashrc
+RUN echo "mamba activate science" >> /home/capcalc/.bashrc
+RUN echo "/opt/miniforge3/bin/mamba activate science" >> /home/capcalc/.bashrc
 
 # switch to the capcalc user
 USER $USER
