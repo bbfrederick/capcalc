@@ -21,6 +21,9 @@ RUN echo "GITVERSION: "$GITVERSION
 RUN echo "GITSHA: "$GITSHA
 RUN echo "GITDATE: "$GITDATE
 
+# security patches
+RUN uv pip install "cryptography>=42.0.4" "urllib3>=1.26.17"
+
 # copy capcalc into container
 COPY . /src/capcalc
 RUN echo $GITVERSION > /src/capcalc/VERSION
