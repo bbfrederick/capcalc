@@ -1,5 +1,9 @@
 # Release history
 
+## Version 1.4.1 (6/5/25)
+* (Docker) Turned on provenance and sbom in Docker builds.
+* (Docker) Rebuilt on the newest basecontainer with several security fixes.
+
 ## Version 1.4.0 (11/18/23)
 * (Docker) Made compatible with the new (small) basecontainer architecture.
 
