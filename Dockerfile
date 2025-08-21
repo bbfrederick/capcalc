@@ -58,12 +58,10 @@ RUN chown -R $USER /src/$USER
 WORKDIR /home/$USER
 ENV HOME="/home/$USER"
 
-RUN /opt/miniforge3/bin/mamba init
+# set to non-root user and initialize mamba
+USER capcalc
+RUN /opt/miniforge3/mamba shell
 RUN echo "mamba activate science" >> /home/capcalc/.bashrc
-RUN echo "/opt/miniforge3/bin/mamba activate science" >> /home/capcalc/.bashrc
-
-# switch to the capcalc user
-USER $USER
 
 # set up variable for non-interactive shell
 ENV PATH=/opt/miniforge3/envs/science/bin:/opt/miniforge3/condabin:.:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
