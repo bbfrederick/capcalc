@@ -5,6 +5,7 @@ FROM fredericklab/basecontainer:latest-release
 ARG BUILD_TIME
 ARG BRANCH
 ARG GITVERSION
+ARG GITDIRECTVERSION
 ARG GITSHA
 ARG GITDATE
 
@@ -14,12 +15,14 @@ ENV BRANCH=$BRANCH
 ENV GITVERSION=${GITVERSION}
 ENV GITSHA=${GITSHA}
 ENV GITDATE=${GITDATE}
+ENV GITDIRECTVERSION=${GITDIRECTVERSION}
 
 RUN echo "BRANCH: "$BRANCH
 RUN echo "BUILD_TIME: "$BUILD_TIME
 RUN echo "GITVERSION: "$GITVERSION
 RUN echo "GITSHA: "$GITSHA
 RUN echo "GITDATE: "$GITDATE
+RUN echo "GITDIRECTVERSION: "$GITDIRECTVERSION
 
 # security patches
 RUN uv pip install "cryptography>=42.0.4" "urllib3>=1.26.17"
@@ -34,13 +37,16 @@ RUN cd /src/capcalc && \
     uv pip install .
 RUN chmod -R a+r /src/capcalc
 
-# install versioneer
+# install versioneer and clean up
 RUN cd /src/capcalc && \
     versioneer install --no-vendor && \
     rm -rf /src/capcalc/build /src/capcalc/dist
 
 # update the paths to libraries
 RUN ldconfig
+
+# set a flag so we know we're in a container
+ENV RUNNING_IN_CONTAINER=1
 
 # clean up
 RUN pip cache purge
@@ -55,8 +61,9 @@ RUN useradd \
     $USER
 RUN cp ~/.bashrc /home/$USER/.bashrc; chown $USER /home/$USER/.bashrc
 RUN chown -R $USER /src/$USER
+
 WORKDIR /home/$USER
-ENV HOME="/home/$USER"
+ENV HOME="/home/capcalc"
 
 # initialize user mamba
 RUN /opt/miniforge3/bin/mamba shell
@@ -68,13 +75,7 @@ USER capcalc
 # set up variable for non-interactive shell
 ENV PATH=/opt/miniforge3/envs/science/bin:/opt/miniforge3/condabin:.:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-ENV IN_DOCKER_CONTAINER=1
-
 WORKDIR /tmp/
-
-# set to non-root user and initialize mamba
-USER $USER
-RUN /opt/miniforge3/bin/mamba init
 
 ENTRYPOINT ["/opt/miniforge3/envs/science/bin/capcalc_dispatcher"]
 
