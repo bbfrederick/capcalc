@@ -1,6 +1,6 @@
 #!/bin/bash
 
 git pull
-cleandirs
+./cleandirs
 pip install -e .
 rm -rf capcalc.egg-info
