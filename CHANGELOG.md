@@ -2,6 +2,7 @@
 
 ## Version 1.5.1 (8/22/25)
 * (deployment) Attempt to fix pypi deployment.
+* (docs) A few tweaks to the sidebar.
 
 ## Version 1.5.0 (8/22/25)
 * (package) Modernized packaging and installation to match rapidtide (moved pretty much everything to pyproject.toml).
