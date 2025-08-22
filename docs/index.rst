@@ -15,8 +15,8 @@ HTML documentation is here: http://capcalc.readthedocs.io/en/latest/
    :target: https://pypi.python.org/pypi/capcalc/
 .. image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
    :target: https://opensource.org/licenses/Apache-2.0
-.. image:: https://readthedocs.org/projects/capcalc/badge/?version=dev
-   :target: http://capcalc.readthedocs.io/en/dev/?badge=dev
+.. image:: https://readthedocs.org/projects/capcalc/badge/?version=latest
+   :target: http://capcalc.readthedocs.io/en/dev/?badge=latest
 .. image:: https://zenodo.org/badge/83364565.svg
    :target: https://zenodo.org/badge/latestdoi/83364565
 .. image:: https://img.shields.io/badge/NIH-R01--NS097512--01A1-yellowgreen.svg
