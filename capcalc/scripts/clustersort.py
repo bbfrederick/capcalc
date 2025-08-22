@@ -1,6 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: latin-1 -*-
 #
-#   Copyright 2016 Blaise Frederick
+#   Copyright 2019-2025 Blaise Frederick
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -14,10 +15,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-#
-#       $Author: frederic $
-#       $Date: 2016/06/14 12:04:50 $
-#       $Id: linfit,v 1.4 2016/06/14 12:04:50 frederic Exp $
 #
 import argparse
 import sys
@@ -330,5 +327,9 @@ def main():
         thetemplate = remappedtempout[proclocs]
 
 
-if __name__ == "__main__":
+def entrypoint():
     main()
+
+
+if __name__ == "__main__":
+    entrypoint()

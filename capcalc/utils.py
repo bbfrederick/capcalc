@@ -1,6 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: latin-1 -*-
 #
-#   Copyright 2016-2019 Blaise Frederick
+#   Copyright 2019-2025 Blaise Frederick
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -14,10 +15,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-#
-#       $Author: frederic $
-#       $Date: 2016/06/14 12:04:51 $
-#       $Id: showstxcorr,v 1.11 2016/06/14 12:04:51 frederic Exp $
 #
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt

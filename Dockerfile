@@ -37,10 +37,8 @@ RUN cd /src/capcalc && \
     uv pip install .
 RUN chmod -R a+r /src/capcalc
 
-# install versioneer and clean up
-RUN cd /src/capcalc && \
-    versioneer install --no-vendor && \
-    rm -rf /src/capcalc/build /src/capcalc/dist
+# clean up build directories
+RUN rm -rf /src/picachooser/build /src/picachooser/dist
 
 # update the paths to libraries
 RUN ldconfig

@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: latin-1 -*-
 #
-#   Copyright 2016-2021 Blaise Frederick
+#   Copyright 2019-2025 Blaise Frederick
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -223,5 +223,9 @@ def main():
         )
 
 
-if __name__ == "__main__":
+def entrypoint():
     main()
+
+
+if __name__ == "__main__":
+    entrypoint()

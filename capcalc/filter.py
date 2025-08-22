@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: latin-1 -*-
 #
-#   Copyright 2016-2021 Blaise Frederick
+#   Copyright 2019-2025 Blaise Frederick
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -14,9 +14,6 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-#
-# $Author: frederic $
-# $Date: 2016/07/12 13:50:29 $
 #
 """This module contains all the filtering operations for the rapidtide
 package.

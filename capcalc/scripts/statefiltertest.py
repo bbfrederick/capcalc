@@ -1,5 +1,21 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
+# -*- coding: latin-1 -*-
+#
+#   Copyright 2019-2025 Blaise Frederick
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+#
 import numpy as np
 import pylab as plt
 
@@ -50,9 +66,18 @@ def statefilter(thestates, minlength, minhold, debug=False):
     return thefiltstates
 
 
-thestates = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 1, 2, 0, 1, 1, 1, 1, 2, 2, 1, 1, 1])
+def main():
+    thestates = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 1, 2, 0, 1, 1, 1, 1, 2, 2, 1, 1, 1])
 
-thefiltstates = statefilter(thestates, 2, 2, debug=1)
-plt.plot(thestates)
-plt.plot(thefiltstates + 1)
-plt.show()
+    thefiltstates = statefilter(thestates, 2, 2, debug=1)
+    plt.plot(thestates)
+    plt.plot(thefiltstates + 1)
+    plt.show()
+
+
+def entrypoint():
+    main()
+
+
+if __name__ == "__main__":
+    entrypoint()

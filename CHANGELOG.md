@@ -1,8 +1,11 @@
 # Release history
 
-## Version 1.4.1 (6/5/25)
+## Version 1.5.0 (8/22/25)
+* (package) Modernized packaging and installation to match rapidtide (moved pretty much everything to pyproject.toml).
+* (package) Fixed all the copyright notices.
 * (Docker) Turned on provenance and sbom in Docker builds.
 * (Docker) Rebuilt on the newest basecontainer with several security fixes.
+* Merged many, many dependabot PR's
 
 ## Version 1.4.0 (11/18/23)
 * (Docker) Made compatible with the new (small) basecontainer architecture.

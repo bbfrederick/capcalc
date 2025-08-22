@@ -1,6 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: latin-1 -*-
 #
-#   Copyright 2016 Blaise Frederick
+#   Copyright 2019-2025 Blaise Frederick
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -14,10 +15,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-#
-# $Author: frederic $
-#       $Date: 2016/07/11 14:50:43 $
-#       $Id: showxcorr,v 1.41 2016/07/11 14:50:43 frederic Exp $
 #
 import bisect
 import sys
@@ -61,20 +58,29 @@ def usage():
     return ()
 
 
-# get the command line parameters
-debug = False
-nargs = len(sys.argv)
-if nargs != 5:
-    usage()
-    exit()
-infilename = sys.argv[1]
-timestep = float(sys.argv[2])
-numpoints = int(sys.argv[3])
-outfilename = sys.argv[4]
+def main():
+    # get the command line parameters
+    debug = False
+    nargs = len(sys.argv)
+    if nargs != 5:
+        usage()
+        exit()
+    infilename = sys.argv[1]
+    timestep = float(sys.argv[2])
+    numpoints = int(sys.argv[3])
+    outfilename = sys.argv[4]
 
-# now make the vector
-inputdata = ccalc_io.readvecs(infilename)
-timeaxis = np.arange(0.0, numpoints * timestep, timestep)
-outputdata = 0.0 * timeaxis
-outputdata = maketcfrom3col(inputdata, timeaxis, outputdata, debug=debug)
-ccalc_io.writenpvecs(outputdata, outfilename)
+    # now make the vector
+    inputdata = ccalc_io.readvecs(infilename)
+    timeaxis = np.arange(0.0, numpoints * timestep, timestep)
+    outputdata = 0.0 * timeaxis
+    outputdata = maketcfrom3col(inputdata, timeaxis, outputdata, debug=debug)
+    ccalc_io.writenpvecs(outputdata, outfilename)
+
+
+def entrypoint():
+    main()
+
+
+if __name__ == "__main__":
+    entrypoint()
