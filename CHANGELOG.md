@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.5.1 (8/22/25)
+* (deployment) Attempt to fix pypi deployment.
+
 ## Version 1.5.0 (8/22/25)
 * (package) Modernized packaging and installation to match rapidtide (moved pretty much everything to pyproject.toml).
 * (package) Fixed all the copyright notices.
