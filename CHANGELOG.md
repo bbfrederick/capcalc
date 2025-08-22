@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.5.2 (8/22/25)
+* (deployment) Well, that didn't work.  Here's another attempt to fix pypi deployment.
+
 ## Version 1.5.1 (8/22/25)
 * (deployment) Attempt to fix pypi deployment.
 * (docs) A few tweaks to the sidebar.
