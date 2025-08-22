@@ -36,7 +36,7 @@ The other simple way to get this all done is to use Anaconda python
 from Continuum Analytics. It’s a free, curated scientific Python
 distribution that is easy to maintain and takes a lot of headaches out
 of maintaining a distribution. It also already comes with almost all of the
-dependancies for capcalc installed by default. You can get it here:
+dependencies for capcalc installed by default. You can get it here:
 https://www.continuum.io. You should download the most recent Python 3 version.
 
 After installing Anaconda python, install the remaining dependency

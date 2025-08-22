@@ -788,7 +788,7 @@ def makemask(image, threshpct=25.0, verbose=False, nozero=False, noneg=False):
             pctthresh,
             " threshpct:",
             threshpct,
-            " mask threshhold:",
+            " mask threshold:",
             threshval,
         )
     themask = np.where(image > threshval, np.int16(1), np.int16(0))

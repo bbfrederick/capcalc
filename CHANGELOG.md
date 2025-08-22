@@ -39,7 +39,7 @@
 * (capfromtcs) Revert change to max_iter when specifying initialcenters.
 
 ## Version 1.3.3 (1/10/23)
-* (capfromtcs) Changed intialization of kmeans from initialcenters, save more intermediate results.
+* (capfromtcs) Changed initialization of kmeans from initialcenters, save more intermediate results.
 * (utils.py) Factored out some transition array calculations.
 
 ## Version 1.3.2 (11/15/22)
@@ -58,7 +58,7 @@
 * (capfromtcs, clustercomp) Used newer, non-deprecated method to access nifti files with nibabel.
 * (package) Added docker and singularity test scripts.
 * (package) Reformatted several files with black.
-* (package) Made many (unsuccesful) attempts to get the documentation to build.
+* (package) Made many (unsuccessful) attempts to get the documentation to build.
 
 ## Version 1.2.2.5 (8/30/22)
 * (package) Bump to trigger github deployment.

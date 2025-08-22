@@ -264,8 +264,8 @@ def _get_parser():
         action="store",
         type=str,
         choices=["euclidean"],
-        help=("Select affinity type.  Default is euclidian. "),
-        default="euclidian",
+        help=("Select affinity type.  Default is euclidean. "),
+        default="euclidean",
     )
     parser.add_argument(
         "--n_clusters",
@@ -289,7 +289,7 @@ def _get_parser():
         "--display",
         dest="display",
         action="store_true",
-        help=("Display intitial tSNE map."),
+        help=("Display initial tSNE map."),
         default=False,
     )
     parser.add_argument(

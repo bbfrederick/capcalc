@@ -113,7 +113,7 @@ Usage:
 				  [--pca] [--ica] [-p NUMCOMPONENTS]
 
 		required arguments:
-		    -i, --infile=TIMECOURSEFILE  - text file mulitple timeseries
+		    -i, --infile=TIMECOURSEFILE  - text file multiple timeseries
 		    -o, --outfile=OUTNAME        - the root name of the output files
 
 		    --samplefreq=FREQ            - sample frequency of all timecourses is FREQ 
@@ -158,7 +158,7 @@ Usage:
 		    --pca                        - perform PCA dimensionality reduction prior to analysis
 		    --ica                        - perform ICA dimensionality reduction prior to analysis
 		    -p NUMCOMPONENTS             - set the number of p/ica components to NUMCOMPONENTS (default is 8).  Set to -1 to estimate
-		    --noscale                    - do not apply standard scaler befor cluster fitting
+		    --noscale                    - do not apply standard scaler before cluster fitting
 
 		  Other:
 		    --GBR                        - apply gradient boosting regressor testing on clusters
