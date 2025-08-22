@@ -1,5 +1,8 @@
 # Release history
 
+## Version 1.5.1.2 (8/22/25)
+* (docs) Sigh.  While fixing deployment I broke the documentation.  This should fix it.
+
 ## Version 1.5.1.1 (8/22/25)
 * (deployment) Well, that didn't work.  Here's another attempt to fix pypi deployment.
 
