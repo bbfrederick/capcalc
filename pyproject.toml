@@ -101,7 +101,6 @@ docs = ['capcalc[doc]']
 tests = ['capcalc[test]']
 all = ['capcalc[docs,tests]']
 
-
 [tool.black]
 line-length = 99
 target-version = ['py39']
@@ -121,6 +120,7 @@ exclude = '''
   | get_version.py
   | versioneer.py
   | capcalc/_version.py
+  | capcalc/data
 )
 '''
 
@@ -133,7 +133,7 @@ VCS = 'git'
 style = 'pep440'
 versionfile_source = 'capcalc/_version.py'
 versionfile_build = 'capcalc/_version.py'
-tag_prefix = ''
+tag_prefix = 'v'
 parentdir_prefix = 'capcalc-'
 
 [tool.codespell]
