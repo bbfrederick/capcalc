@@ -3,6 +3,7 @@
 ## Version 1.5.0 (8/22/25)
 * (package) Modernized packaging and installation to match rapidtide (moved pretty much everything to pyproject.toml).
 * (package) Fixed all the copyright notices.
+* (package) Added codespell.
 * (Docker) Turned on provenance and sbom in Docker builds.
 * (Docker) Rebuilt on the newest basecontainer with several security fixes.
 * Merged many, many dependabot PR's
