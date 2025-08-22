@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# capcalc documentation build configuration file, copied from rapidtide
+# capcalc documentation build configuration file,
+# copied from rapidtide
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -21,10 +22,33 @@ from m2r import MdInclude
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
+sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("sphinxext"))
 sys.path.insert(0, os.path.abspath("../capcalc"))
+print(sys.path)
+
+import versioneer
+
+current_dir = os.getcwd()
+os.chdir(os.path.dirname(versioneer.__file__))
+
+versioneer.VCS = "git"
+versioneer.versionfile_source = "../capcalc/_version.py"
+versioneer.versionfile_build = "../capcalc/_version.py"
+versioneer.tag_prefix = "capcalc-"  # tags are like capcalc-1.2.0
+versioneer.parentdir_prefix = ".."
+
+__version = versioneer.get_version().replace(".dirty", "")
+
+del versioneer
+os.chdir(current_dir)
+
+on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 
 from github_link import make_linkcode_resolve
+
+import capcalc
 
 # -- General configuration ------------------------------------------------
 
@@ -33,7 +57,7 @@ from github_link import make_linkcode_resolve
 pdf_break_level = 2
 
 # generate autosummary even if no references
-autosummary_generate = False
+autosummary_generate = True
 autodoc_default_flags = ["members", "inherited-members"]
 add_module_names = True
 
@@ -89,9 +113,9 @@ author = "Blaise Frederick"
 # built documents.
 #
 # The short X.Y version.
-import capcalc.util as ccalc_util
+import capcalc.util as cc_util
 
-version = ccalc_util.version()[0].replace("v", "").split("+")[0]
+version = cc_util.version()[0].replace("v", "").split("+")[0]
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -100,7 +124,7 @@ release = version
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = "en"
+language = None
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
