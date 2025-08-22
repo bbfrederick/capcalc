@@ -105,7 +105,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "capcalc"
-copyright = "2016-" + datetime.today().strftime("%Y") + ", Blaise Frederick"
+copyright = "2019-" + datetime.today().strftime("%Y") + ", Blaise Frederick"
 author = "Blaise Frederick"
 
 # The version info for the project you're documenting, acts as replacement for
