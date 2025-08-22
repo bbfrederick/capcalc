@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# capcalc documentation build configuration file,
-# copied from rapidtide
+# capcalc documentation build configuration file, copied from
+# rapidtide 8/21/2025
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -16,8 +16,6 @@
 import os
 import sys
 from datetime import datetime
-
-from m2r import MdInclude
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -46,6 +44,7 @@ os.chdir(current_dir)
 
 on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 
+
 from github_link import make_linkcode_resolve
 
 import capcalc
@@ -66,6 +65,7 @@ add_module_names = True
 # ones.
 extensions = [
     "sphinx.ext.todo",
+    "sphinx.ext.autosectionlabel",
     "sphinx.ext.coverage",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
@@ -73,11 +73,12 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
+    "myst_parser",
     "numpydoc",
     "sphinx.ext.ifconfig",
     "sphinx.ext.linkcode",
-    "recommonmark",
     "sphinx_gallery.gen_gallery",
+    "sphinxcontrib.bibtex",
 ]
 
 from distutils.version import LooseVersion
@@ -94,8 +95,7 @@ templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
-# source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+source_suffix = [".rst"]
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
@@ -105,7 +105,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "capcalc"
-copyright = "2020-" + datetime.today().strftime("%Y") + ", Blaise Frederick"
+copyright = "2016-" + datetime.today().strftime("%Y") + ", Blaise Frederick"
 author = "Blaise Frederick"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -113,9 +113,9 @@ author = "Blaise Frederick"
 # built documents.
 #
 # The short X.Y version.
-import capcalc.util as cc_util
+import capcalc.util as tide_util
 
-version = cc_util.version()[0].replace("v", "").split("+")[0]
+version = tide_util.version()[0].replace("v", "").split("+")[0]
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -124,7 +124,7 @@ release = version
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -207,14 +207,6 @@ html_static_path = ["_static"]
 # https://github.com/rtfd/sphinx_rtd_theme/issues/117
 def setup(app):
     app.add_css_file("theme_overrides.css")
-    # Fix to https://github.com/sphinx-doc/sphinx/issues/7420
-    # from https://github.com/life4/deal/commit/7f33cbc595ed31519cefdfaaf6f415dada5acd94
-    # from m2r to make `mdinclude` work
-    app.add_config_value("no_underscore_emphasis", False, "env")
-    app.add_config_value("m2r_parse_relative_links", False, "env")
-    app.add_config_value("m2r_anonymous_references", False, "env")
-    app.add_config_value("m2r_disable_inline_math", False, "env")
-    app.add_directive("mdinclude", MdInclude)
 
 
 # Add any extra paths that contain custom files (such as robots.txt or
@@ -374,17 +366,39 @@ linkcode_resolve = make_linkcode_resolve(
     "https://github.com/bbfrederick/" "capcalc/blob/{revision}/" "{package}/{path}#L{lineno}",
 )
 
-# Example configuration for intersphinx: refer to the Python standard library.
+# -----------------------------------------------------------------------------
+# intersphinx
+# -----------------------------------------------------------------------------
+_python_version_str = f"{sys.version_info.major}.{sys.version_info.minor}"
+_python_doc_base = f"https://docs.python.org/{_python_version_str}"
 intersphinx_mapping = {
-    "http://docs.python.org/3.6": None,
-    "http://docs.scipy.org/doc/numpy": None,
-    "http://docs.scipy.org/doc/scipy/reference": None,
-    "http://matplotlib.org/": None,
-    "http://scikit-learn.org/stable": None,
-    "http://nipy.org/nibabel/": None,
-    "http://pandas.pydata.org/pandas-docs/stable/": None,
+    "python": (_python_doc_base, None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "scipy": (
+        "https://docs.scipy.org/doc/scipy/reference",
+        (None, "./_intersphinx/scipy-objects.inv"),
+    ),
+    "matplotlib": (
+        "https://matplotlib.org/stable/",
+        (None, "https://matplotlib.org/stable/objects.inv"),
+    ),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "nibabel": ("https://nipy.org/nibabel/", None),
+    "nilearn": ("http://nilearn.github.io/stable/", None),
+    "scikit-learn": ("http://scikit-learn.org/stable", None),
 }
 
+# -----------------------------------------------------------------------------
+# sphinxcontrib-bibtex
+# -----------------------------------------------------------------------------
+bibtex_bibfiles = ["references.bib"]
+bibtex_defalut_style = "unsrt"
+bibtex_reference_style = "author_year"
+bibtex_footbibliography_header = ""
+
+# -----------------------------------------------------------------------------
+# sphinx gallery
+# -----------------------------------------------------------------------------
 sphinx_gallery_conf = {
     # path to your examples scripts
     "examples_dirs": "../examples",
