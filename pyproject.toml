@@ -141,4 +141,4 @@ parentdir_prefix = 'capcalc-'
 skip = '.git*,versioneer.py,*.css,exportlist.txt,data,*.bib'
 check-hidden = true
 ignore-regex = '\bsubjeT\b'
-ignore-words-list = 'thex,normall'
+ignore-words-list = 'thex,normall,Nd'
