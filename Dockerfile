@@ -57,18 +57,18 @@ RUN useradd \
     --groups users \
     --home /home/$USER \
     $USER
-RUN cp ~/.bashrc /home/$USER/.bashrc; chown $USER /home/$USER/.bashrc
+#RUN cp ~/.bashrc /home/$USER/.bashrc; chown $USER /home/$USER/.bashrc
 RUN chown -R $USER /src/$USER
 
 WORKDIR /home/$USER
 ENV HOME="/home/capcalc"
 
-# initialize user mamba
-RUN /opt/miniforge3/bin/mamba shell
-RUN echo "mamba activate science" >> /home/capcalc/.bashrc
-
 # set to non-root user
 USER capcalc
+
+# initialize user mamba
+RUN /opt/miniforge3/bin/mamba shell init --shell bash
+RUN echo "mamba activate science" >> /home/capcalc/.bashrc
 
 # set up variable for non-interactive shell
 ENV PATH=/opt/miniforge3/envs/science/bin:/opt/miniforge3/condabin:.:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
