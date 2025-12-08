@@ -24,7 +24,7 @@ docutils==0.21.2
     #   sphinx-argparse
     #   sphinx-rtd-theme
     #   sphinxcontrib-bibtex
-fonttools==4.59.1
+fonttools==4.61.0
     # via matplotlib
 idna==3.10
     # via requests
