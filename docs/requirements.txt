@@ -24,7 +24,7 @@ docutils==0.21.2
     #   sphinx-argparse
     #   sphinx-rtd-theme
     #   sphinxcontrib-bibtex
-fonttools==4.61.0
+fonttools==4.61.1
     # via matplotlib
 idna==3.10
     # via requests
@@ -160,7 +160,7 @@ typing-extensions==4.14.1
     # via nibabel
 tzdata==2025.2
     # via pandas
-urllib3==2.6.0
+urllib3==2.6.3
     # via requests
 versioneer==0.29
     # via capcalc (../pyproject.toml)
